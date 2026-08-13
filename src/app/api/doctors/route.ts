@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
     specialization: specialization || undefined,
     bio: bio || undefined,
     active: true,
+    approvalStatus: "approved",
     createdAt: new Date().toISOString(),
   };
   await adminDb.collection("users").doc(user.uid).set(profile);
@@ -59,11 +60,11 @@ export async function GET(req: NextRequest) {
   let doctors = snap.docs.map((d) => d.data() as DoctorProfile);
 
   // Patients only get to see doctors they could actually be booked with —
-  // active ones — and never their email/contact details.
+  // approved, active ones — and never their email/contact details.
   if (auth.role === "patient") {
     doctors = doctors
-      .filter((d) => d.active)
-      .map(({ uid, name, specialization, bio, photoURL, active, online }) => ({
+      .filter((d) => d.active && d.approvalStatus === "approved")
+      .map(({ uid, name, specialization, bio, photoURL, active, online, approvalStatus }) => ({
         uid,
         name,
         specialization,
@@ -71,10 +72,18 @@ export async function GET(req: NextRequest) {
         photoURL,
         active,
         online,
+        approvalStatus,
         role: "doctor",
         email: "",
         createdAt: "",
       }));
+  }
+
+  // A doctor logging into their own dashboard only ever needs their own
+  // record here (used for the "Doctor" select elsewhere) — admin sees
+  // everyone, including pending requests, so the approvals list can render.
+  if (auth.role === "doctor") {
+    doctors = doctors.filter((d) => d.uid === auth.uid);
   }
 
   return NextResponse.json(doctors);
@@ -86,7 +95,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { uid, active, online } = await req.json();
+  const { uid, active, online, approvalStatus } = await req.json();
 
   // A doctor may only flip their own presence status.
   if (auth.role === "doctor") {
@@ -97,9 +106,29 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Admin path: suspend/reinstate a doctor account.
-  if (!uid || typeof active !== "boolean") {
-    return NextResponse.json({ error: "Missing uid or active" }, { status: 400 });
+  if (!uid) {
+    return NextResponse.json({ error: "Missing uid" }, { status: 400 });
+  }
+
+  // Admin path: approve / reject a self-registered doctor's request.
+  if (approvalStatus === "approved" || approvalStatus === "rejected") {
+    if (approvalStatus === "approved") {
+      // Approving activates the account — the doctor now shows up to
+      // patients and can sign in to the doctor dashboard.
+      await adminAuth.updateUser(uid, { disabled: false });
+      await adminDb.collection("users").doc(uid).update({ approvalStatus, active: true });
+    } else {
+      // Rejecting disables login outright — a rejected request should not
+      // be able to sign in and see a half-built dashboard.
+      await adminAuth.updateUser(uid, { disabled: true });
+      await adminDb.collection("users").doc(uid).update({ approvalStatus, active: false });
+    }
+    return NextResponse.json({ ok: true });
+  }
+
+  // Admin path: suspend/reinstate an already-approved doctor account.
+  if (typeof active !== "boolean") {
+    return NextResponse.json({ error: "Missing active or approvalStatus" }, { status: 400 });
   }
 
   // Suspending disables login entirely — a suspended doctor can't be used

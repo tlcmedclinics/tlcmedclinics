@@ -59,12 +59,25 @@ export default function Header() {
           </a>
 
           {!loading && user && profile ? (
-            <Link
-              href={dashboardPath[profile.role] ?? "/"}
-              className="btn-ghost !px-5 !py-2.5"
-            >
-              My Dashboard
-            </Link>
+            <>
+              {profile.role === "patient" && (
+                <Link href="/patient/book" className="btn-primary !px-5 !py-2.5">
+                  Book Appointment
+                </Link>
+              )}
+              <Link
+                href={dashboardPath[profile.role] ?? "/"}
+                title="My Dashboard"
+                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo text-sm font-semibold text-white transition-opacity hover:opacity-85"
+              >
+                {profile.photoURL ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profile.photoURL} alt={profile.name} className="h-full w-full object-cover" />
+                ) : (
+                  (profile.name?.trim()?.[0] ?? "?").toUpperCase()
+                )}
+              </Link>
+            </>
           ) : (
             <Link
               href="/login"
@@ -73,13 +86,6 @@ export default function Header() {
               Login
             </Link>
           )}
-
-          <Link
-            href="/contact"
-            className="btn-primary !px-5 !py-2.5"
-          >
-            Book Appointment
-          </Link>
         </div>
       </div>
     </header>

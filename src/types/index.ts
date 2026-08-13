@@ -22,6 +22,11 @@ export interface DoctorProfile extends UserProfile {
   bio?: string;
   active: boolean; // admin can suspend a doctor without deleting the account
   online?: boolean; // doctor-controlled presence toggle, shown to patients when picking a doctor
+  // Self-registered doctors start "pending" and are invisible to patients /
+  // cannot log into the doctor dashboard until an admin approves them.
+  // Doctors created directly by admin (scripts/create-doctor, admin panel)
+  // are "approved" immediately.
+  approvalStatus: "pending" | "approved" | "rejected";
 }
 
 export type AppointmentStatus =

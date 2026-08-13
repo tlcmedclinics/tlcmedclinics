@@ -67,14 +67,34 @@ export default function AdminDoctorsPage() {
     }
   }
 
+  async function decide(doctor: DoctorProfile, approvalStatus: "approved" | "rejected") {
+    try {
+      const res = await authedFetch("/api/doctors", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ uid: doctor.uid, approvalStatus }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success(
+        approvalStatus === "approved" ? `${doctor.name} approved.` : `${doctor.name}'s request declined.`
+      );
+      load();
+    } catch {
+      toast.error("Couldn't update this request. Please try again.");
+    }
+  }
+
+  const pending = doctors.filter((d) => d.approvalStatus === "pending");
+  const decided = doctors.filter((d) => d.approvalStatus !== "pending");
+
   return (
     <div className="animate-fade-up">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="h1">Doctors</h1>
           <p className="mt-2 text-sm text-ink-soft">
-            Create doctor accounts here — each doctor only ever sees the patients you assign to
-            them from the Appointments page.
+            Create doctor accounts here, or approve doctors who registered themselves — each
+            doctor only ever sees the patients you assign to them from the Appointments page.
           </p>
         </div>
         <button
@@ -143,39 +163,91 @@ export default function AdminDoctorsPage() {
 
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">Loading…</p>
-      ) : doctors.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">No doctors yet — add the first one above.</p>
       ) : (
-        <div className="mt-6 space-y-3">
-          {doctors.map((d) => (
-            <div
-              key={d.uid}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/70 p-5"
-            >
-              <div>
-                <p className="font-medium text-ink">{d.name}</p>
-                <p className="text-sm text-ink-soft">
-                  {d.email} {d.specialization && `· ${d.specialization}`}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    d.active ? "bg-green-100 text-green-700" : "bg-crimson/10 text-crimson-deep"
-                  }`}
-                >
-                  {d.active ? "Active" : "Suspended"}
-                </span>
-                <button
-                  onClick={() => toggleActive(d)}
-                  className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
-                >
-                  {d.active ? "Suspend" : "Reactivate"}
-                </button>
+        <>
+          {pending.length > 0 && (
+            <div className="mt-8">
+              <h2 className="text-sm font-semibold text-ink">
+                Pending requests <span className="text-ink-soft">({pending.length})</span>
+              </h2>
+              <div className="mt-3 space-y-3">
+                {pending.map((d) => (
+                  <div
+                    key={d.uid}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-600/25 bg-amber-50 p-5"
+                  >
+                    <div>
+                      <p className="font-medium text-ink">{d.name}</p>
+                      <p className="text-sm text-ink-soft">
+                        {d.email} {d.phone && `· ${d.phone}`} {d.specialization && `· ${d.specialization}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => decide(d, "approved")}
+                        className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white hover:bg-indigo-deep"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => decide(d, "rejected")}
+                        className="rounded-full border border-crimson px-4 py-2 text-xs font-medium text-crimson-deep hover:bg-crimson hover:text-white"
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          <div className="mt-8">
+            {pending.length > 0 && <h2 className="text-sm font-semibold text-ink">All doctors</h2>}
+            {decided.length === 0 ? (
+              <p className="mt-3 text-sm text-ink-soft">No doctors yet — add the first one above.</p>
+            ) : (
+              <div className="mt-3 space-y-3">
+                {decided.map((d) => (
+                  <div
+                    key={d.uid}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/70 p-5"
+                  >
+                    <div>
+                      <p className="font-medium text-ink">{d.name}</p>
+                      <p className="text-sm text-ink-soft">
+                        {d.email} {d.specialization && `· ${d.specialization}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {d.approvalStatus === "rejected" ? (
+                        <span className="rounded-full bg-crimson/10 px-3 py-1 text-xs font-medium text-crimson-deep">
+                          Declined
+                        </span>
+                      ) : (
+                        <>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${
+                              d.active ? "bg-green-100 text-green-700" : "bg-crimson/10 text-crimson-deep"
+                            }`}
+                          >
+                            {d.active ? "Active" : "Suspended"}
+                          </span>
+                          <button
+                            onClick={() => toggleActive(d)}
+                            className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
+                          >
+                            {d.active ? "Suspend" : "Reactivate"}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

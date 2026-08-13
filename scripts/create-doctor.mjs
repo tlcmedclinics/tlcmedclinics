@@ -48,6 +48,7 @@ await db.collection("users").doc(user.uid).set({
   email,
   specialization: specialization || undefined,
   active: true,
+  approvalStatus: "approved",
   createdAt: new Date().toISOString(),
 });
 
