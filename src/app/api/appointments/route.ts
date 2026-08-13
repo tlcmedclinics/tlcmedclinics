@@ -31,11 +31,6 @@ export async function POST(req: NextRequest) {
   if (!service || !date || !time || !bookingType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
-
-  // Online payment must carry a verified payment reference from
-  // /api/payments/checkout before an appointment is confirmed — no
-  // reference, no confirmed booking. The call-back path never touches
-  // payment and is left "pending" for the clinic to confirm by phone.
   const isPaid = bookingType === "online-payment" && Boolean(paymentReference);
 
   if (bookingType === "online-payment" && !isPaid) {
@@ -95,26 +90,25 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let query = adminDb.collection("appointments").orderBy("createdAt", "desc");
+    let query: FirebaseFirestore.Query = adminDb.collection("appointments");
 
     if (auth.role === "patient") {
-      query = query.where("patientId", "==", auth.uid) as typeof query;
+      query = query.where("patientId", "==", auth.uid);
     } else if (auth.role === "doctor") {
-      // A doctor only ever sees the patients assigned to them by admin.
-      query = query.where("doctorId", "==", auth.uid) as typeof query;
+      query = query.where("doctorId", "==", auth.uid);
+    } else {
+      query = query.orderBy("createdAt", "desc");
     }
-    // admin sees every appointment across every doctor
 
     const snap = await query.get();
-    const appointments = snap.docs.map((d) => d.data());
+    const appointments = snap.docs.map((d) => d.data() as Appointment);
+
+    if (auth.role !== "admin") {
+      appointments.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
+    }
 
     return NextResponse.json(appointments);
   } catch (err: unknown) {
-    // A where()+orderBy() combo needs a Firestore composite index the first
-    // time it's ever run — without this catch, that failure crashed the
-    // route with an empty 500 and no clue in the browser. Now the real
-    // Firestore message (which includes a direct "create index" link when
-    // that's the cause) reaches the client and the server logs.
     const message = err instanceof Error ? err.message : "Failed to load appointments";
     console.error("[GET /api/appointments]", err);
     return NextResponse.json({ error: message }, { status: 500 });
@@ -138,17 +132,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
   const appointment = snap.data();
-
-  // Only admin assigns/reassigns a doctor to a booking.
   if (doctorId !== undefined || doctorName !== undefined) {
     if (auth.role !== "admin") {
       return NextResponse.json({ error: "Only the clinic can assign a doctor" }, { status: 403 });
     }
     await ref.update({ doctorId: doctorId || null, doctorName: doctorName || null });
   }
-
-  // Only the assigned doctor can write a prescription, and only once there's
-  // actually been a session (not on a still-pending booking).
   if (prescription !== undefined) {
     if (auth.role !== "doctor" || appointment?.doctorId !== auth.uid) {
       return NextResponse.json({ error: "Only the treating doctor can add a prescription" }, { status: 403 });
@@ -158,7 +147,6 @@ export async function PATCH(req: NextRequest) {
 
   if (status) {
     if (auth.role === "patient") {
-      // A patient may only cancel their own booking — nothing else.
       if (appointment?.patientId !== auth.uid) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
@@ -174,14 +162,11 @@ export async function PATCH(req: NextRequest) {
         cancelledBy: "patient",
         cancelReason: cancelReason || undefined,
         cancelledAt: new Date().toISOString(),
-        // Flag it for the clinic to actually process the refund — we don't
-        // touch money automatically here, admin confirms and triggers it.
         paymentStatus: wasPaid ? "refunded" : appointment?.paymentStatus,
       });
       return NextResponse.json({ ok: true });
     }
 
-    // A doctor may only update the status of their own assigned patients.
     if (auth.role === "doctor" && appointment?.doctorId !== auth.uid) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
