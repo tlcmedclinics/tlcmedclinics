@@ -1,0 +1,38 @@
+{
+  "name": "tlc-med-clinics",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "create-admin": "node --env-file=.env.local scripts/create-admin.mjs",
+    "create-doctor": "node --env-file=.env.local scripts/create-doctor.mjs",
+    "seed-services": "node --env-file=.env.local scripts/seed-services.mjs"
+  },
+  "dependencies": {
+    "cloudinary": "^2.10.0",
+    "firebase": "^12.17.0",
+    "firebase-admin": "^14.2.0",
+    "next": "16.3.0",
+    "nodemailer": "^9.0.3",
+    "stripe": "^22.4.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "overrides": {
+    "jose": "5.9.6"
+  }
+}

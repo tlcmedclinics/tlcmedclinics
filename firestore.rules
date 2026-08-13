@@ -1,0 +1,84 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function role() {
+      return request.auth.token.role;
+    }
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      return isSignedIn() && role() == 'admin';
+    }
+    function isDoctor() {
+      return isSignedIn() && role() == 'doctor';
+    }
+
+    // Users can read/write their own profile; admin can read/write any.
+    // (A doctor's UI reads patient name/phone off the appointment doc
+    // itself, which is denormalized for exactly this reason — a doctor
+    // never needs direct read access to a patient's own profile doc.)
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow write: if isOwner(uid) || isAdmin();
+    }
+
+    // Appointments: the patient who booked it, its assigned doctor, and
+    // admin can read. Patients can create their own booking directly (used
+    // by the Flutter app); only admin assigns/reassigns a doctor; admin or
+    // the assigned doctor can update status (confirm/complete/cancel);
+    // only admin can delete.
+    match /appointments/{id} {
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.patientId == request.auth.uid)
+        || (isDoctor() && resource.data.doctorId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.patientId == request.auth.uid;
+      allow update: if isAdmin()
+        || (isDoctor() && resource.data.doctorId == request.auth.uid
+            && request.resource.data.doctorId == resource.data.doctorId);
+      allow delete: if isAdmin();
+    }
+
+    // Services: public can read (booking form + services page), admin manages.
+    match /services/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Chat messages: end-to-end-ish encrypted — Firestore only ever holds
+    // ciphertext + iv (see /api/chat/[threadId]/key for how the AES-GCM key
+    // is derived and handed out). Only the patient, the assigned doctor, and
+    // admin on this appointment (threadId === appointment id) may read/write.
+    match /chatThreads/{threadId}/messages/{messageId} {
+      allow read, write: if isSignedIn() && (
+        isAdmin() ||
+        get(/databases/$(database)/documents/appointments/$(threadId)).data.patientId == request.auth.uid ||
+        (isDoctor() &&
+          get(/databases/$(database)/documents/appointments/$(threadId)).data.doctorId == request.auth.uid)
+      );
+    }
+
+    // Coupons and payments: admin can read/manage everything. A signed-in
+    // patient may create their own payment record (mock checkout, used by
+    // both the web and Flutter booking flow) but never read/edit others'.
+    match /coupons/{code} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /payments/{id} {
+      allow read: if isAdmin();
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Blogs: public can read published posts, admin manages everything.
+    match /blogs/{id} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow write: if isAdmin();
+    }
+  }
+}
