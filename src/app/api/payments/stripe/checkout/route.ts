@@ -23,20 +23,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const pendingBookingId = await createPendingBooking({
-    patientId: auth.uid,
-    patientName: patientName ?? "",
-    patientPhone: patientPhone || undefined,
-    doctorId: doctorId || undefined,
-    doctorName: doctorName || undefined,
-    service,
-    mode: mode ?? "video",
-    date,
-    time,
-    notes: notes || undefined,
-    amount: Number(amount) || 0,
-    couponCode: couponCode || undefined,
-  });
+  let pendingBookingId: string;
+  try {
+    pendingBookingId = await createPendingBooking({
+      patientId: auth.uid,
+      patientName: patientName ?? "",
+      patientPhone: patientPhone || undefined,
+      doctorId: doctorId || undefined,
+      doctorName: doctorName || undefined,
+      service,
+      mode: mode ?? "video",
+      date,
+      time,
+      notes: notes || undefined,
+      amount: Number(amount) || 0,
+      couponCode: couponCode || undefined,
+    });
+  } catch (err) {
+    console.error("[POST /api/payments/stripe/checkout] createPendingBooking", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not start checkout" },
+      { status: 500 }
+    );
+  }
 
   const origin = req.nextUrl.origin;
 

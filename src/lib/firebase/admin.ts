@@ -30,3 +30,12 @@ function getAdminApp(): App {
 export const adminApp = getAdminApp();
 export const adminAuth = getAuth(adminApp);
 export const adminDb = getFirestore(adminApp);
+
+// Route handlers across this app (appointments, payments, etc.) build
+// documents with optional fields left as `undefined` (e.g. doctorId,
+// couponCode, notes) when they don't apply. The Admin SDK throws on
+// `undefined` values by default ("Cannot use 'undefined' as a Firestore
+// value"), which was crashing those routes with an uncaught 500 before this
+// setting existed. This makes Firestore silently drop undefined fields
+// instead, matching how they're already treated everywhere else in the app.
+adminDb.settings({ ignoreUndefinedProperties: true });

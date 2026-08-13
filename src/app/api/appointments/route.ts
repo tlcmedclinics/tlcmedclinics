@@ -68,7 +68,15 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString(),
   };
 
-  await ref.set(appointment);
+  try {
+    await ref.set(appointment);
+  } catch (err) {
+    console.error("[POST /api/appointments]", err);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not save appointment" },
+      { status: 500 }
+    );
+  }
 
   sendMail({
     subject: isPaid ? "New paid appointment booked" : "New appointment — call-back requested",
