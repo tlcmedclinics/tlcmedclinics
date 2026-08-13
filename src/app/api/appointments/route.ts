@@ -86,20 +86,31 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  let query = adminDb.collection("appointments").orderBy("createdAt", "desc");
+  try {
+    let query = adminDb.collection("appointments").orderBy("createdAt", "desc");
 
-  if (auth.role === "patient") {
-    query = query.where("patientId", "==", auth.uid) as typeof query;
-  } else if (auth.role === "doctor") {
-    // A doctor only ever sees the patients assigned to them by admin.
-    query = query.where("doctorId", "==", auth.uid) as typeof query;
+    if (auth.role === "patient") {
+      query = query.where("patientId", "==", auth.uid) as typeof query;
+    } else if (auth.role === "doctor") {
+      // A doctor only ever sees the patients assigned to them by admin.
+      query = query.where("doctorId", "==", auth.uid) as typeof query;
+    }
+    // admin sees every appointment across every doctor
+
+    const snap = await query.get();
+    const appointments = snap.docs.map((d) => d.data());
+
+    return NextResponse.json(appointments);
+  } catch (err: unknown) {
+    // A where()+orderBy() combo needs a Firestore composite index the first
+    // time it's ever run — without this catch, that failure crashed the
+    // route with an empty 500 and no clue in the browser. Now the real
+    // Firestore message (which includes a direct "create index" link when
+    // that's the cause) reaches the client and the server logs.
+    const message = err instanceof Error ? err.message : "Failed to load appointments";
+    console.error("[GET /api/appointments]", err);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
-  // admin sees every appointment across every doctor
-
-  const snap = await query.get();
-  const appointments = snap.docs.map((d) => d.data());
-
-  return NextResponse.json(appointments);
 }
 
 export async function PATCH(req: NextRequest) {
