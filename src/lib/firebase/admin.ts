@@ -38,4 +38,15 @@ export const adminDb = getFirestore(adminApp);
 // value"), which was crashing those routes with an uncaught 500 before this
 // setting existed. This makes Firestore silently drop undefined fields
 // instead, matching how they're already treated everywhere else in the app.
-adminDb.settings({ ignoreUndefinedProperties: true });
+//
+// Each API route is bundled separately by Next.js, so this module can be
+// evaluated more than once per process even though they all resolve to the
+// same underlying Firestore instance (via the reused `adminApp`). Firestore
+// only allows settings() to be called once ever on a given instance, so a
+// second evaluation throws "Firestore has already been initialized" — that's
+// expected here, not a real error, so it's safe to swallow.
+try {
+  adminDb.settings({ ignoreUndefinedProperties: true });
+} catch {
+  // Already configured by an earlier module evaluation — fine, ignore.
+}
