@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import PaypalButton from "@/components/PaypalButton";
 import type { Service, DoctorProfile } from "@/types";
+import type { Slot } from "@/types/slot";
 
 type Step = "details" | "payment" | "done-paid" | "done-callback";
 
@@ -15,10 +16,11 @@ type Details = {
   service: string;
   amount: number;
   mode: string;
-  date: string;
-  time: string;
   phone: string;
   notes: string;
+  slotId: string;
+  date: string;
+  time: string;
   doctorId: string;
   doctorName: string;
 };
@@ -32,6 +34,15 @@ function BookAppointmentContent() {
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [selectedServiceName, setSelectedServiceName] = useState("");
+
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+
+  const [mode, setMode] = useState("video");
+  const [phone, setPhone] = useState("");
+  const [notes, setNotes] = useState("");
+
   const [step, setStep] = useState<Step>("details");
   const [details, setDetails] = useState<Details | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -47,6 +58,10 @@ function BookAppointmentContent() {
       .then(setDoctors)
       .finally(() => setLoadingDoctors(false));
   }, []);
+
+  useEffect(() => {
+    setPhone((p) => p || profile?.phone || "");
+  }, [profile]);
 
   const selectedService = services.find((s) => s.name === selectedServiceName);
 
@@ -65,29 +80,64 @@ function BookAppointmentContent() {
     return matched.length > 0 ? matched : doctors;
   })();
 
+  // Load available slots for whichever doctors match this service. Patients
+  // never type a date/time themselves — they only ever pick one of these.
+  useEffect(() => {
+    setSelectedSlot(null);
+    if (!selectedServiceName || loadingDoctors) {
+      setSlots([]);
+      return;
+    }
+    setLoadingSlots(true);
+    authedFetch(`/api/slots?onlyAvailable=true&service=${encodeURIComponent(selectedServiceName)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((all: Slot[]) => {
+        const matchingIds = new Set(matchingDoctors.map((d) => d.uid));
+        setSlots(all.filter((s) => matchingIds.has(s.doctorId)));
+      })
+      .catch(() => setSlots([]))
+      .finally(() => setLoadingSlots(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedServiceName, loadingDoctors, doctors]);
+
+  const slotsByDate = (() => {
+    const grouped = new Map<string, Slot[]>();
+    for (const s of slots) {
+      const arr = grouped.get(s.date) ?? [];
+      arr.push(s);
+      grouped.set(s.date, arr);
+    }
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
+  })();
+
   function handleDetailsSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const svc = services.find((s) => s.name === form.get("service"));
-    const doctorId = String(form.get("doctorId") ?? "");
-    const doctor = doctors.find((d) => d.uid === doctorId);
-
+    if (!selectedSlot) {
+      toast.error("Pick an available slot first.");
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error("Add a phone number.");
+      return;
+    }
     setDetails({
-      service: String(form.get("service")),
-      amount: svc?.price ?? 0,
-      mode: String(form.get("mode")),
-      date: String(form.get("date")),
-      time: String(form.get("time")),
-      phone: String(form.get("phone")),
-      notes: String(form.get("notes") ?? ""),
-      doctorId: doctor?.uid ?? "",
-      doctorName: doctor?.name ?? "",
+      service: selectedServiceName,
+      amount: selectedService?.price ?? 0,
+      mode,
+      phone,
+      notes,
+      slotId: selectedSlot.id,
+      date: selectedSlot.date,
+      time: selectedSlot.time,
+      doctorId: selectedSlot.doctorId,
+      doctorName: selectedSlot.doctorName,
     });
     setStep("payment");
   }
 
   // Call-back bookings skip payment entirely — the appointment is created
-  // right away, unpaid, for the clinic to confirm by phone.
+  // right away, unpaid, for the clinic to confirm by phone. It still holds
+  // the chosen slot immediately so nobody else can take it.
   async function requestCallback() {
     if (!details) return;
     setSubmitting(true);
@@ -98,14 +148,11 @@ function BookAppointmentContent() {
         body: JSON.stringify({
           patientName: profile?.name,
           patientPhone: details.phone,
-          doctorId: details.doctorId || undefined,
-          doctorName: details.doctorName || undefined,
           service: details.service,
           mode: details.mode,
-          date: details.date,
-          time: details.time,
           notes: details.notes,
           amount: details.amount,
+          slotId: details.slotId,
           bookingType: "call-back",
         }),
       });
@@ -119,6 +166,10 @@ function BookAppointmentContent() {
       setStep("done-callback");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      // Most likely someone else took the slot in the meantime — send the
+      // patient back to pick another one instead of dead-ending.
+      setStep("details");
+      setDetails(null);
     } finally {
       setSubmitting(false);
     }
@@ -132,14 +183,11 @@ function BookAppointmentContent() {
     return {
       patientName: profile?.name,
       patientPhone: details.phone,
-      doctorId: details.doctorId || undefined,
-      doctorName: details.doctorName || undefined,
       service: details.service,
       mode: details.mode,
-      date: details.date,
-      time: details.time,
       notes: details.notes,
       amount: details.amount,
+      slotId: details.slotId,
     };
   }
 
@@ -207,7 +255,6 @@ function BookAppointmentContent() {
       {step === "details" && (
         <form onSubmit={handleDetailsSubmit} className="mt-8 space-y-5">
           <select
-            name="service"
             required
             className="input"
             value={selectedServiceName}
@@ -227,65 +274,80 @@ function BookAppointmentContent() {
 
           {selectedServiceName && (
             <div>
-              <select name="doctorId" className="input" defaultValue="" disabled={loadingDoctors}>
-                <option value="">
-                  {loadingDoctors
-                    ? "Loading doctors…"
-                    : matchingDoctors.length === 0
-                    ? "No doctor available yet — the clinic will assign one"
-                    : "Any available doctor"}
-                </option>
-                {matchingDoctors.map((d) => (
-                  <option key={d.uid} value={d.uid}>
-                    Dr. {d.name.replace(/^Dr\.?\s*/i, "")}
-                    {d.specialization ? ` — ${d.specialization}` : ""}
-                    {d.online ? " · online now" : ""}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-ink-soft">
-                Pick a doctor for this service, or leave it on &ldquo;Any available doctor&rdquo; and the clinic
-                will assign one.
-              </p>
+              <p className="text-xs font-medium text-ink-soft">Available slots</p>
+              {loadingSlots ? (
+                <p className="mt-2 text-sm text-ink-soft">Loading slots…</p>
+              ) : slotsByDate.length === 0 ? (
+                <p className="mt-2 text-sm text-ink-soft">
+                  No open slots for this service right now — please check back soon or request a
+                  call-back once you continue.
+                </p>
+              ) : (
+                <div className="mt-2 space-y-3">
+                  {slotsByDate.map(([date, daySlots]) => (
+                    <div key={date}>
+                      <p className="text-xs font-semibold text-ink">{date}</p>
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {daySlots
+                          .sort((a, b) => a.time.localeCompare(b.time))
+                          .map((s) => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => setSelectedSlot(s)}
+                              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                                selectedSlot?.id === s.id
+                                  ? "border-indigo bg-indigo text-white"
+                                  : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+                              }`}
+                            >
+                              {s.time} · Dr. {s.doctorName.replace(/^Dr\.?\s*/i, "")}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
-          <div>
-            <select name="mode" required className="input" defaultValue="video">
-              <option value="video">Video consultation</option>
-              <option value="audio">Audio call</option>
-              <option value="chat">Chat consultation</option>
-              <option value="in-person">In-person visit</option>
-            </select>
-            <p className="mt-1.5 text-xs text-ink-soft">
-              Video/audio/chat sessions open on their own at your scheduled time — no separate app needed.
-            </p>
-          </div>
+          {selectedSlot && (
+            <>
+              <div>
+                <select value={mode} onChange={(e) => setMode(e.target.value)} required className="input">
+                  <option value="video">Video consultation</option>
+                  <option value="audio">Audio call</option>
+                  <option value="chat">Chat consultation</option>
+                  <option value="in-person">In-person visit</option>
+                </select>
+                <p className="mt-1.5 text-xs text-ink-soft">
+                  Video/audio/chat sessions open on their own at your scheduled time — no separate app needed.
+                </p>
+              </div>
 
-          <input
-            name="phone"
-            type="tel"
-            required
-            defaultValue={profile?.phone ?? ""}
-            placeholder="Phone number (03XX-XXXXXXX)"
-            className="input"
-          />
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="Phone number (03XX-XXXXXXX)"
+                className="input"
+              />
 
-          <div className="grid grid-cols-2 gap-4">
-            <input name="date" type="date" required className="input" />
-            <input name="time" type="time" required className="input" />
-          </div>
-
-          <textarea
-            name="notes"
-            rows={3}
-            placeholder="Anything the clinic should know (optional)"
-            className="input resize-none"
-          />
+              <textarea
+                rows={3}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Anything the clinic should know (optional)"
+                className="input resize-none"
+              />
+            </>
+          )}
 
           <button
             type="submit"
-            disabled={loadingServices}
+            disabled={loadingServices || !selectedSlot}
             className="w-full rounded-full bg-crimson px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-crimson-deep disabled:opacity-60"
           >
             Continue

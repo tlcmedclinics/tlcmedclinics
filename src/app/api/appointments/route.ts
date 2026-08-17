@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Appointment } from "@/types";
+import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
 
 export async function POST(req: NextRequest) {
@@ -16,19 +17,16 @@ export async function POST(req: NextRequest) {
     patientPhone,
     service,
     mode,
-    date,
-    time,
+    slotId,
     notes,
     amount,
     couponCode,
     bookingType,
     paymentProvider,
     paymentReference,
-    doctorId,
-    doctorName,
   } = body;
 
-  if (!service || !date || !time || !bookingType) {
+  if (!service || !slotId || !bookingType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
   const isPaid = bookingType === "online-payment" && Boolean(paymentReference);
@@ -40,42 +38,61 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const ref = adminDb.collection("appointments").doc();
-  const appointment: Appointment = {
-    id: ref.id,
-    patientId: auth.uid,
-    patientName: patientName ?? "",
-    patientPhone: patientPhone ?? undefined,
-    doctorId: doctorId || undefined,
-    doctorName: doctorName || undefined,
-    service,
-    mode: mode ?? "video",
-    date,
-    time,
-    status: isPaid ? "confirmed" : "pending",
-    amount: Number(amount) || 0,
-    couponCode: couponCode || undefined,
-    bookingType,
-    paymentStatus: isPaid ? "paid" : "unpaid",
-    paymentProvider: isPaid ? paymentProvider ?? "card" : undefined,
-    paymentReference: isPaid ? paymentReference : undefined,
-    notes: notes || undefined,
-    createdAt: new Date().toISOString(),
-  };
+  const appointmentRef = adminDb.collection("appointments").doc();
+  const slotRef = adminDb.collection("slots").doc(slotId);
 
+  let appointment: Appointment;
   try {
-    await ref.set(appointment);
+    appointment = await adminDb.runTransaction(async (tx) => {
+      const slotSnap = await tx.get(slotRef);
+      if (!slotSnap.exists) {
+        throw new Error("This slot no longer exists — please pick another.");
+      }
+      const slot = slotSnap.data() as Slot;
+      if (slot.status !== "available") {
+        throw new Error("This slot was just booked by someone else — please pick another.");
+      }
+
+      // Date/time/doctor always come from the slot itself, never from the
+      // client — the patient only ever picks a slot, not a date/time.
+      const built: Appointment = {
+        id: appointmentRef.id,
+        patientId: auth.uid,
+        patientName: patientName ?? "",
+        patientPhone: patientPhone ?? undefined,
+        doctorId: slot.doctorId || undefined,
+        doctorName: slot.doctorName || undefined,
+        service,
+        mode: mode ?? "video",
+        date: slot.date,
+        time: slot.time,
+        status: isPaid ? "confirmed" : "pending",
+        amount: Number(amount) || 0,
+        couponCode: couponCode || undefined,
+        bookingType,
+        paymentStatus: isPaid ? "paid" : "unpaid",
+        paymentProvider: isPaid ? paymentProvider ?? "card" : undefined,
+        paymentReference: isPaid ? paymentReference : undefined,
+        notes: notes || undefined,
+        slotId,
+        createdAt: new Date().toISOString(),
+      } as Appointment & { slotId: string };
+
+      tx.set(appointmentRef, built);
+      tx.update(slotRef, { status: "booked", appointmentId: appointmentRef.id });
+      return built;
+    });
   } catch (err) {
     console.error("[POST /api/appointments]", err);
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not save appointment" },
-      { status: 500 }
+      { status: err instanceof Error && err.message.includes("just booked") ? 409 : 500 }
     );
   }
 
   sendMail({
     subject: isPaid ? "New paid appointment booked" : "New appointment — call-back requested",
-    text: `${appointment.patientName} (${patientPhone ?? "no phone"}) booked ${appointment.service} on ${date} ${time}. ${
+    text: `${appointment.patientName} (${patientPhone ?? "no phone"}) booked ${appointment.service} on ${appointment.date} ${appointment.time}. ${
       isPaid ? "Paid online — confirmed automatically." : "Wants a call to confirm — please call them back."
     }`,
   }).catch(() => {});
@@ -131,7 +148,7 @@ export async function PATCH(req: NextRequest) {
   if (!snap.exists) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
-  const appointment = snap.data();
+  const appointment = snap.data() as Appointment & { slotId?: string };
   if (doctorId !== undefined || doctorName !== undefined) {
     if (auth.role !== "admin") {
       return NextResponse.json({ error: "Only the clinic can assign a doctor" }, { status: 403 });
@@ -164,6 +181,13 @@ export async function PATCH(req: NextRequest) {
         cancelledAt: new Date().toISOString(),
         paymentStatus: wasPaid ? "refunded" : appointment?.paymentStatus,
       });
+      if (appointment.slotId) {
+        await adminDb
+          .collection("slots")
+          .doc(appointment.slotId)
+          .update({ status: "available", appointmentId: null })
+          .catch(() => {});
+      }
       return NextResponse.json({ ok: true });
     }
 
@@ -177,6 +201,13 @@ export async function PATCH(req: NextRequest) {
       updates.cancelledAt = new Date().toISOString();
     }
     await ref.update(updates);
+    if (status === "cancelled" && appointment.slotId) {
+      await adminDb
+        .collection("slots")
+        .doc(appointment.slotId)
+        .update({ status: "available", appointmentId: null })
+        .catch(() => {});
+    }
   }
 
   return NextResponse.json({ ok: true });

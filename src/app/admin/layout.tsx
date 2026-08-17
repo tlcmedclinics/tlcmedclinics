@@ -10,6 +10,7 @@ import { useToast } from "@/contexts/ToastContext";
 const links = [
   { href: "/admin/dashboard", label: "Overview" },
   { href: "/admin/appointments", label: "Appointments" },
+  { href: "/admin/slots", label: "Slots" },
   { href: "/admin/doctors", label: "Doctors" },
   { href: "/admin/services", label: "Services" },
   { href: "/admin/coupons", label: "Coupons" },
