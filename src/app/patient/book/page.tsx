@@ -178,18 +178,21 @@ function BookAppointmentContent() {
   // Booking payload shared by both the Stripe and PayPal endpoints — the
   // server stashes it in a pendingBookings doc and only creates the real
   // appointment once payment actually clears.
-  function bookingPayload() {
-    if (!details) return null;
-    return {
-      patientName: profile?.name,
-      patientPhone: details.phone,
-      service: details.service,
-      mode: details.mode,
-      notes: details.notes,
-      amount: details.amount,
-      slotId: details.slotId,
-    };
-  }
+function bookingPayload() {
+  if (!details) return null;
+
+  return {
+    patientName: profile?.name,
+    patientPhone: details.phone,
+    service: details.service,
+    mode: details.mode,
+    date: details.date,
+    time: details.time,
+    notes: details.notes,
+    amount: details.amount,
+    slotId: details.slotId,
+  };
+}
 
   // Stripe is a full hosted-page redirect — the browser leaves the app and
   // comes back to /patient/book/success once payment is done.
