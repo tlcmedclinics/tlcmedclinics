@@ -23,6 +23,7 @@ export default function AdminSlotsPage() {
     date: "",
     times: "",
     durationMinutes: "30",
+    mode: "online" as "online" | "in-clinic",
   });
 
   async function load() {
@@ -79,6 +80,7 @@ export default function AdminSlotsPage() {
           date: form.date,
           times,
           durationMinutes: Number(form.durationMinutes) || 30,
+          mode: form.mode,
         }),
       });
       const data = await res.json();
@@ -209,6 +211,17 @@ export default function AdminSlotsPage() {
             onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
           />
         </div>
+        <div>
+          <label className="text-xs font-medium text-ink-soft">In-clinic or online</label>
+          <select
+            className="input mt-1"
+            value={form.mode}
+            onChange={(e) => setForm({ ...form, mode: e.target.value as "online" | "in-clinic" })}
+          >
+            <option value="online">Online (telemedicine)</option>
+            <option value="in-clinic">In clinic</option>
+          </select>
+        </div>
         <div className="sm:col-span-2">
           <label className="text-xs font-medium text-ink-soft">
             Times — comma-separated (e.g. 09:00, 09:30, 10:00, 14:00)
@@ -270,7 +283,8 @@ export default function AdminSlotsPage() {
                           {s.time} · {s.doctorName}
                         </p>
                         <p className="text-xs text-ink-soft">
-                          {s.service ? s.service : "Any service"} · {s.durationMinutes} min
+                          {s.service ? s.service : "Any service"} · {s.durationMinutes} min ·{" "}
+                          {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">

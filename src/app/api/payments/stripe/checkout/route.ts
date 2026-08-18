@@ -17,9 +17,9 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { patientName, patientPhone, doctorId, doctorName, service, mode, date, time, notes, amount, couponCode } = body;
+  const { patientName, patientPhone, doctorId, doctorName, service, mode, date, time, notes, amount, couponCode, slotId, patientType, sessionType } = body;
 
-  if (!service || !date || !time || !amount) {
+  if (!service || !date || !time || !amount || !slotId) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -38,6 +38,9 @@ export async function POST(req: NextRequest) {
       notes: notes || undefined,
       amount: Number(amount) || 0,
       couponCode: couponCode || undefined,
+      patientType: patientType === "follow-up" ? "follow-up" : "new",
+      sessionType: sessionType || undefined,
+      slotId,
     });
   } catch (err) {
     console.error("[POST /api/payments/stripe/checkout] createPendingBooking", err);

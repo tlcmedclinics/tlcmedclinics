@@ -10,6 +10,7 @@ import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
+import type { Slot } from "@/types/slot";
 
 const statusStyles: Record<AppointmentStatus, string> = {
   pending: "bg-mist text-ink-soft",
@@ -40,6 +41,10 @@ export default function AdminAppointmentsPage() {
     | { kind: "chat"; threadId: string; patientName: string }
     | null
   >(null);
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
+  const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
+  const [savingReschedule, setSavingReschedule] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -104,6 +109,50 @@ export default function AdminAppointmentsPage() {
       load();
     } catch {
       toast.error("Couldn't update the status. Please try again.");
+    }
+  }
+
+  // Reschedule — opens a picker of the same doctor's other open slots.
+  // Free/available slots only, so this can never double-book.
+  async function openReschedule(a: Appointment) {
+    setReschedulingId(a.id);
+    setRescheduleSlots([]);
+    if (!a.doctorId) {
+      toast.error("Assign a doctor before rescheduling.");
+      setReschedulingId(null);
+      return;
+    }
+    setLoadingRescheduleSlots(true);
+    try {
+      const res = await authedFetch(
+        `/api/slots?onlyAvailable=true&doctorId=${encodeURIComponent(a.doctorId)}`
+      );
+      const data: Slot[] = res.ok ? await res.json() : [];
+      setRescheduleSlots(data);
+    } catch {
+      toast.error("Couldn't load that doctor's open slots.");
+    } finally {
+      setLoadingRescheduleSlots(false);
+    }
+  }
+
+  async function confirmReschedule(appointmentId: string, newSlotId: string) {
+    setSavingReschedule(true);
+    try {
+      const res = await authedFetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: appointmentId, newSlotId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "Couldn't reschedule");
+      toast.success("Appointment rescheduled — patient and doctor notified.");
+      setReschedulingId(null);
+      load();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't reschedule this appointment.");
+    } finally {
+      setSavingReschedule(false);
     }
   }
 
@@ -198,7 +247,18 @@ export default function AdminAppointmentsPage() {
                         : "Requested a call-back"}
                     </p>
                     {a.notes && <p className="mt-1 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}
-                    <div className="mt-2 flex items-center gap-2">
+                    {a.consultMode && (
+                      <p className="mt-1 text-[0.65rem] uppercase tracking-wide text-ink-soft/70">
+                        {a.consultMode === "in-clinic" ? "In clinic" : "Online"}
+                        {a.patientType ? ` · ${a.patientType === "new" ? "New patient" : "Follow-up"}` : ""}
+                      </p>
+                    )}
+                    {a.rescheduledFrom && (
+                      <p className="mt-1 text-[0.65rem] text-ink-soft/70">
+                        Rescheduled from {a.rescheduledFrom.date} {a.rescheduledFrom.time}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <label className="text-[0.65rem] uppercase tracking-wide text-ink-soft/70">
                         Doctor
                       </label>
@@ -214,7 +274,50 @@ export default function AdminAppointmentsPage() {
                           </option>
                         ))}
                       </select>
+                      {a.status !== "completed" && a.status !== "cancelled" && (
+                        <button
+                          type="button"
+                          onClick={() => openReschedule(a)}
+                          className="rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
+                        >
+                          Reschedule
+                        </button>
+                      )}
                     </div>
+
+                    {reschedulingId === a.id && (
+                      <div className="mt-3 rounded-xl border border-indigo/20 bg-indigo/5 p-3">
+                        {loadingRescheduleSlots ? (
+                          <p className="text-xs text-ink-soft">Loading open slots…</p>
+                        ) : rescheduleSlots.length === 0 ? (
+                          <p className="text-xs text-ink-soft">
+                            No other open slots for this doctor right now — add one from the Slots
+                            page first.
+                          </p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {rescheduleSlots.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                disabled={savingReschedule}
+                                onClick={() => confirmReschedule(a.id, s.id)}
+                                className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+                              >
+                                {s.date} · {s.time} · {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setReschedulingId(null)}
+                          className="mt-2 text-xs text-ink-soft hover:text-crimson-deep"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span

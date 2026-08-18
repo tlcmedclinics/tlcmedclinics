@@ -19,6 +19,7 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date");
   const service = searchParams.get("service");
   const onlyAvailable = searchParams.get("onlyAvailable") === "true";
+  const mode = searchParams.get("mode"); // "in-clinic" | "online"
 
   try {
     let query: FirebaseFirestore.Query = adminDb.collection("slots");
@@ -34,6 +35,10 @@ export async function GET(req: NextRequest) {
     // equality filter server-side.
     if (service) {
       slots = slots.filter((s) => !s.service || s.service === service);
+    }
+    if (mode === "in-clinic" || mode === "online") {
+      // Missing mode on older slots defaults to "online".
+      slots = slots.filter((s) => (s.mode ?? "online") === mode);
     }
 
     slots.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
@@ -58,7 +63,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { doctorId, doctorName, service, date, time, times, durationMinutes } = body;
+  const { doctorId, doctorName, service, date, time, times, durationMinutes, mode } = body;
 
   const timeList: string[] = Array.isArray(times) && times.length > 0 ? times : time ? [time] : [];
 
@@ -82,6 +87,7 @@ export async function POST(req: NextRequest) {
         date,
         time: t,
         durationMinutes: Number(durationMinutes) || 30,
+        mode: mode === "in-clinic" ? "in-clinic" : "online",
         status: "available",
         createdAt: new Date().toISOString(),
       };
@@ -108,7 +114,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { id, date, time, durationMinutes, service, status } = await req.json();
+  const { id, date, time, durationMinutes, service, status, mode } = await req.json();
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
@@ -133,6 +139,7 @@ export async function PATCH(req: NextRequest) {
   if (time !== undefined) updates.time = time;
   if (durationMinutes !== undefined) updates.durationMinutes = Number(durationMinutes) || slot.durationMinutes;
   if (service !== undefined) updates.service = service || null;
+  if (mode !== undefined) updates.mode = mode === "in-clinic" ? "in-clinic" : "online";
   if (status !== undefined) {
     // Only allow manually freeing a slot here, not manually marking one
     // booked — booking always goes through /api/appointments so the

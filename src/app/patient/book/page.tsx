@@ -7,10 +7,11 @@ import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import PaypalButton from "@/components/PaypalButton";
-import type { Service, DoctorProfile } from "@/types";
+import type { Coupon, DoctorProfile, PatientType, Service, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
 
-type Step = "details" | "payment" | "done-paid" | "done-callback";
+type Step = "type" | "details" | "payment" | "done-paid" | "done-callback";
+type ConsultMode = "online" | "in-clinic";
 
 type Details = {
   service: string;
@@ -23,7 +24,24 @@ type Details = {
   time: string;
   doctorId: string;
   doctorName: string;
+  couponCode?: string;
+  patientType: PatientType;
+  sessionType?: SessionType;
 };
+
+// Follow-up bookings are just regular Service docs tagged under a
+// "Follow-up" category from the admin panel — that reuses the existing
+// service pricing UI instead of a separate config screen. This just
+// recognizes which services belong in which branch of the flow.
+function isFollowUpService(s: Service) {
+  return /follow|session/i.test(s.category) || /follow|session/i.test(s.name);
+}
+
+function guessSessionType(s: Service): SessionType {
+  if (/60/.test(s.name)) return "session-60";
+  if (/30/.test(s.name)) return "session-30";
+  return "regular-followup";
+}
 
 function BookAppointmentContent() {
   const router = useRouter();
@@ -35,6 +53,14 @@ function BookAppointmentContent() {
   const [loadingDoctors, setLoadingDoctors] = useState(true);
   const [selectedServiceName, setSelectedServiceName] = useState("");
 
+  const [patientType, setPatientType] = useState<PatientType | null>(null);
+  const [consultMode, setConsultMode] = useState<ConsultMode>("online");
+
+  const [couponCode, setCouponCode] = useState("");
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState("");
+
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -43,7 +69,7 @@ function BookAppointmentContent() {
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
 
-  const [step, setStep] = useState<Step>("details");
+  const [step, setStep] = useState<Step>("type");
   const [details, setDetails] = useState<Details | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -63,7 +89,20 @@ function BookAppointmentContent() {
     setPhone((p) => p || profile?.phone || "");
   }, [profile]);
 
+  const newPatientServices = services.filter((s) => !isFollowUpService(s));
+  const followUpServices = services.filter(isFollowUpService);
+  const visibleServices = patientType === "follow-up" ? followUpServices : newPatientServices;
+
   const selectedService = services.find((s) => s.name === selectedServiceName);
+
+  const basePrice = selectedService?.price ?? 0;
+  const discountedAmount = (() => {
+    if (!appliedCoupon || patientType !== "new") return basePrice;
+    if (appliedCoupon.discountType === "percent") {
+      return Math.max(0, Math.round(basePrice * (1 - appliedCoupon.discountValue / 100)));
+    }
+    return Math.max(0, basePrice - appliedCoupon.discountValue);
+  })();
 
   // Doctors whose specialization mentions this service's name or category —
   // the clinic doesn't hard-link doctors to services by id, so this is a
@@ -80,8 +119,10 @@ function BookAppointmentContent() {
     return matched.length > 0 ? matched : doctors;
   })();
 
-  // Load available slots for whichever doctors match this service. Patients
-  // never type a date/time themselves — they only ever pick one of these.
+  // Load available slots for whichever doctors match this service, filtered
+  // by whether the patient wants an in-clinic or online (telemedicine)
+  // consultation — each doctor's own availability/mode is set from the
+  // admin/doctor slots panel, so patients only ever see real openings.
   useEffect(() => {
     setSelectedSlot(null);
     if (!selectedServiceName || loadingDoctors) {
@@ -89,7 +130,9 @@ function BookAppointmentContent() {
       return;
     }
     setLoadingSlots(true);
-    authedFetch(`/api/slots?onlyAvailable=true&service=${encodeURIComponent(selectedServiceName)}`)
+    authedFetch(
+      `/api/slots?onlyAvailable=true&service=${encodeURIComponent(selectedServiceName)}&mode=${consultMode}`
+    )
       .then((res) => (res.ok ? res.json() : []))
       .then((all: Slot[]) => {
         const matchingIds = new Set(matchingDoctors.map((d) => d.uid));
@@ -98,7 +141,7 @@ function BookAppointmentContent() {
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedServiceName, loadingDoctors, doctors]);
+  }, [selectedServiceName, loadingDoctors, doctors, consultMode]);
 
   const slotsByDate = (() => {
     const grouped = new Map<string, Slot[]>();
@@ -109,6 +152,28 @@ function BookAppointmentContent() {
     }
     return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
   })();
+
+  async function applyCoupon() {
+    if (!couponCode.trim()) return;
+    setApplyingCoupon(true);
+    setCouponError("");
+    try {
+      const res = await authedFetch(`/api/coupons/${encodeURIComponent(couponCode.trim())}`);
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setAppliedCoupon(null);
+        setCouponError(data.error ?? "This coupon isn't valid right now.");
+        return;
+      }
+      setAppliedCoupon(data.coupon as Coupon);
+      toast.success("Coupon applied.");
+    } catch {
+      setAppliedCoupon(null);
+      setCouponError("Couldn't check that coupon. Please try again.");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  }
 
   function handleDetailsSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -122,7 +187,7 @@ function BookAppointmentContent() {
     }
     setDetails({
       service: selectedServiceName,
-      amount: selectedService?.price ?? 0,
+      amount: patientType === "new" ? discountedAmount : basePrice,
       mode,
       phone,
       notes,
@@ -131,6 +196,9 @@ function BookAppointmentContent() {
       time: selectedSlot.time,
       doctorId: selectedSlot.doctorId,
       doctorName: selectedSlot.doctorName,
+      couponCode: patientType === "new" && appliedCoupon ? appliedCoupon.code : undefined,
+      patientType: patientType ?? "new",
+      sessionType: patientType === "follow-up" && selectedService ? guessSessionType(selectedService) : undefined,
     });
     setStep("payment");
   }
@@ -153,6 +221,9 @@ function BookAppointmentContent() {
           notes: details.notes,
           amount: details.amount,
           slotId: details.slotId,
+          couponCode: details.couponCode,
+          patientType: details.patientType,
+          sessionType: details.sessionType,
           bookingType: "call-back",
         }),
       });
@@ -178,24 +249,25 @@ function BookAppointmentContent() {
   // Booking payload shared by both the Stripe and PayPal endpoints — the
   // server stashes it in a pendingBookings doc and only creates the real
   // appointment once payment actually clears.
-function bookingPayload() {
-  if (!details) return null;
+  function bookingPayload() {
+    if (!details) return null;
 
-  return {
-    patientName: profile?.name,
-    patientPhone: details.phone,
-    service: details.service,
-    mode: details.mode,
-    date: details.date,
-    time: details.time,
-    notes: details.notes,
-    amount: details.amount,
-    slotId: details.slotId,
-  };
-}
+    return {
+      patientName: profile?.name,
+      patientPhone: details.phone,
+      service: details.service,
+      mode: details.mode,
+      date: details.date,
+      time: details.time,
+      notes: details.notes,
+      amount: details.amount,
+      slotId: details.slotId,
+      couponCode: details.couponCode,
+      patientType: details.patientType,
+      sessionType: details.sessionType,
+    };
+  }
 
-  // Stripe is a full hosted-page redirect — the browser leaves the app and
-  // comes back to /patient/book/success once payment is done.
   async function handleStripeCheckout() {
     const payload = bookingPayload();
     if (!payload) return;
@@ -228,7 +300,7 @@ function bookingPayload() {
         </p>
         <p className="mt-2 text-sm text-ink-soft">
           {step === "done-paid"
-            ? "Your payment was received and your slot is confirmed."
+            ? "Your payment was received and your slot is confirmed. You'll get a notification here and by email — the clinic and your doctor have been notified too."
             : "Our team will call you shortly to confirm your appointment."}
         </p>
         <button
@@ -250,30 +322,144 @@ function bookingPayload() {
       </p>
 
       <div className="mt-6 flex items-center gap-2 text-xs font-medium text-ink-soft">
-        <span className={step === "details" ? "text-indigo" : ""}>1. Details</span>
+        <span className={step === "type" ? "text-indigo" : ""}>1. Visit type</span>
         <span className="h-px w-6 bg-line" />
-        <span className={step === "payment" ? "text-indigo" : ""}>2. Confirm</span>
+        <span className={step === "details" ? "text-indigo" : ""}>2. Details</span>
+        <span className="h-px w-6 bg-line" />
+        <span className={step === "payment" ? "text-indigo" : ""}>3. Confirm</span>
       </div>
+
+      {step === "type" && (
+        <div className="mt-8 space-y-3">
+          <button
+            type="button"
+            onClick={() => {
+              setPatientType("new");
+              setSelectedServiceName("");
+              setStep("details");
+            }}
+            className="w-full rounded-2xl border border-line/70 p-5 text-left transition-colors hover:border-indigo"
+          >
+            <p className="font-medium text-ink">New patient</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              First visit — choose a service, apply a coupon if you have one, then pick your doctor.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setPatientType("follow-up");
+              setSelectedServiceName("");
+              setStep("details");
+            }}
+            className="w-full rounded-2xl border border-line/70 p-5 text-left transition-colors hover:border-indigo"
+          >
+            <p className="font-medium text-ink">Follow-up</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              Already a patient — book a regular follow-up (15 min) or a longer session (30/60 min).
+            </p>
+          </button>
+        </div>
+      )}
 
       {step === "details" && (
         <form onSubmit={handleDetailsSubmit} className="mt-8 space-y-5">
+          <button
+            type="button"
+            onClick={() => setStep("type")}
+            className="text-xs font-medium text-indigo hover:text-indigo-deep"
+          >
+            ← Change visit type
+          </button>
+
           <select
             required
             className="input"
             value={selectedServiceName}
-            onChange={(e) => setSelectedServiceName(e.target.value)}
+            onChange={(e) => {
+              setSelectedServiceName(e.target.value);
+              setAppliedCoupon(null);
+              setCouponCode("");
+              setCouponError("");
+            }}
             disabled={loadingServices}
           >
             <option value="" disabled>
-              {loadingServices ? "Loading services…" : "Select a service"}
+              {loadingServices
+                ? "Loading services…"
+                : patientType === "follow-up"
+                ? "Select follow-up type"
+                : "Select a service"}
             </option>
-            {services.map((s) => (
+            {visibleServices.map((s) => (
               <option key={s.id} value={s.name}>
                 {s.name}
-                {typeof s.price === "number" ? ` — from PKR ${s.price.toLocaleString()}` : ""}
+                {typeof s.price === "number" ? ` — PKR ${s.price.toLocaleString()}` : ""}
               </option>
             ))}
           </select>
+
+          {patientType === "new" && selectedServiceName && (
+            <div>
+              <div className="flex gap-2">
+                <input
+                  className="input flex-1"
+                  placeholder="Coupon code (optional)"
+                  value={couponCode}
+                  onChange={(e) => {
+                    setCouponCode(e.target.value);
+                    setAppliedCoupon(null);
+                    setCouponError("");
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={applyingCoupon || !couponCode.trim()}
+                  className="rounded-full border border-line px-4 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+                >
+                  {applyingCoupon ? "Checking…" : "Apply"}
+                </button>
+              </div>
+              {couponError && <p className="mt-1.5 text-xs text-crimson-deep">{couponError}</p>}
+              {appliedCoupon && (
+                <p className="mt-1.5 text-xs text-indigo">
+                  {appliedCoupon.code} applied — PKR {discountedAmount.toLocaleString()}{" "}
+                  <span className="text-ink-soft line-through">PKR {basePrice.toLocaleString()}</span>
+                </p>
+              )}
+            </div>
+          )}
+
+          {selectedServiceName && (
+            <div>
+              <p className="text-xs font-medium text-ink-soft">In clinic or online?</p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConsultMode("online")}
+                  className={`flex-1 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
+                    consultMode === "online"
+                      ? "border-indigo bg-indigo text-white"
+                      : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+                  }`}
+                >
+                  Online (telemedicine)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConsultMode("in-clinic")}
+                  className={`flex-1 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
+                    consultMode === "in-clinic"
+                      ? "border-indigo bg-indigo text-white"
+                      : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+                  }`}
+                >
+                  In clinic
+                </button>
+              </div>
+            </div>
+          )}
 
           {selectedServiceName && (
             <div>
@@ -282,8 +468,8 @@ function bookingPayload() {
                 <p className="mt-2 text-sm text-ink-soft">Loading slots…</p>
               ) : slotsByDate.length === 0 ? (
                 <p className="mt-2 text-sm text-ink-soft">
-                  No open slots for this service right now — please check back soon or request a
-                  call-back once you continue.
+                  No open {consultMode === "in-clinic" ? "in-clinic" : "online"} slots for this right now —
+                  please check back soon or request a call-back once you continue.
                 </p>
               ) : (
                 <div className="mt-2 space-y-3">
@@ -319,13 +505,20 @@ function bookingPayload() {
             <>
               <div>
                 <select value={mode} onChange={(e) => setMode(e.target.value)} required className="input">
-                  <option value="video">Video consultation</option>
-                  <option value="audio">Audio call</option>
-                  <option value="chat">Chat consultation</option>
-                  <option value="in-person">In-person visit</option>
+                  {consultMode === "in-clinic" ? (
+                    <option value="in-person">In-person visit</option>
+                  ) : (
+                    <>
+                      <option value="video">Video consultation</option>
+                      <option value="audio">Audio call</option>
+                      <option value="chat">Chat consultation</option>
+                    </>
+                  )}
                 </select>
                 <p className="mt-1.5 text-xs text-ink-soft">
-                  Video/audio/chat sessions open on their own at your scheduled time — no separate app needed.
+                  {consultMode === "in-clinic"
+                    ? "Visit the clinic at your scheduled time."
+                    : "Video/audio/chat sessions open on their own at your scheduled time — no separate app needed."}
                 </p>
               </div>
 

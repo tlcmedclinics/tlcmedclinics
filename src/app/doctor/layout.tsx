@@ -8,6 +8,7 @@ import { auth } from "@/lib/firebase/client";
 import { useToast } from "@/contexts/ToastContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useT } from "@/contexts/LanguageContext";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function DoctorLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -37,7 +38,10 @@ export default function DoctorLayout({ children }: { children: React.ReactNode }
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 lg:grid-cols-[220px_1fr]">
         <aside className="flex flex-col justify-between">
           <div>
-            <p className="eyebrow text-indigo">{t("role.doctor")}</p>
+            <div className="flex items-center justify-between">
+              <p className="eyebrow text-indigo">{t("role.doctor")}</p>
+              <NotificationBell />
+            </div>
             {profile?.name && (
               <p className="mt-1 truncate text-sm font-medium text-ink">{profile.name}</p>
             )}

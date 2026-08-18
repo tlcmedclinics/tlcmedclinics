@@ -4,6 +4,7 @@ import { verifyRequest } from "@/lib/auth-server";
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
+import { notify, notifyAllAdmins } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
   const auth = await verifyRequest(req, ["patient"]);
@@ -24,6 +25,8 @@ export async function POST(req: NextRequest) {
     bookingType,
     paymentProvider,
     paymentReference,
+    patientType,
+    sessionType,
   } = body;
 
   if (!service || !slotId || !bookingType) {
@@ -69,6 +72,9 @@ export async function POST(req: NextRequest) {
         status: isPaid ? "confirmed" : "pending",
         amount: Number(amount) || 0,
         couponCode: couponCode || undefined,
+        patientType: patientType === "follow-up" ? "follow-up" : "new",
+        sessionType: sessionType || undefined,
+        consultMode: slot.mode === "in-clinic" ? "in-clinic" : "online",
         bookingType,
         paymentStatus: isPaid ? "paid" : "unpaid",
         paymentProvider: isPaid ? paymentProvider ?? "card" : undefined,
@@ -96,6 +102,38 @@ export async function POST(req: NextRequest) {
       isPaid ? "Paid online — confirmed automatically." : "Wants a call to confirm — please call them back."
     }`,
   }).catch(() => {});
+
+  const when = `${appointment.date} ${appointment.time}`;
+  await Promise.all([
+    notify({
+      userId: appointment.patientId,
+      role: "patient",
+      type: isPaid ? "appointment-confirmed" : "appointment-booked",
+      title: isPaid ? "Appointment confirmed" : "Appointment requested",
+      message: isPaid
+        ? `Your ${appointment.service} appointment on ${when} is confirmed.`
+        : `We received your ${appointment.service} request for ${when} — we'll call to confirm.`,
+      appointmentId: appointment.id,
+    }),
+    appointment.doctorId
+      ? notify({
+          userId: appointment.doctorId,
+          role: "doctor",
+          type: "appointment-booked",
+          title: "New appointment",
+          message: `${appointment.patientName} booked ${appointment.service} on ${when}.`,
+          appointmentId: appointment.id,
+        })
+      : Promise.resolve(),
+    notifyAllAdmins({
+      type: "appointment-booked",
+      title: "New appointment booked",
+      message: `${appointment.patientName} booked ${appointment.service} on ${when}${
+        appointment.doctorName ? ` with Dr. ${appointment.doctorName}` : ""
+      }.`,
+      appointmentId: appointment.id,
+    }),
+  ]);
 
   return NextResponse.json({ ok: true, appointment });
 }
@@ -138,7 +176,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { id, status, doctorId, doctorName, prescription, cancelReason } = await req.json();
+  const { id, status, doctorId, doctorName, prescription, cancelReason, newSlotId } = await req.json();
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
@@ -149,11 +187,98 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Appointment not found" }, { status: 404 });
   }
   const appointment = snap.data() as Appointment & { slotId?: string };
+
+  // Reschedule — admin only. Moves the booking to a different open slot:
+  // frees the old slot, claims the new one, updates date/time, and notifies
+  // patient + doctor + admin. Runs as a transaction so two reschedules (or
+  // a reschedule racing a new booking) can't double-book the new slot.
+  if (newSlotId) {
+    if (auth.role !== "admin") {
+      return NextResponse.json({ error: "Only the clinic can reschedule an appointment" }, { status: 403 });
+    }
+    if (appointment.status === "completed" || appointment.status === "cancelled") {
+      return NextResponse.json({ error: "This appointment can no longer be rescheduled" }, { status: 400 });
+    }
+    const newSlotRef = adminDb.collection("slots").doc(newSlotId);
+    const oldSlotRef = appointment.slotId ? adminDb.collection("slots").doc(appointment.slotId) : null;
+
+    try {
+      await adminDb.runTransaction(async (tx) => {
+        const newSlotSnap = await tx.get(newSlotRef);
+        if (!newSlotSnap.exists) throw new Error("That slot no longer exists.");
+        const newSlot = newSlotSnap.data() as { status: string; date: string; time: string; doctorId: string; doctorName: string; mode?: string };
+        if (newSlot.status !== "available") throw new Error("That slot was just taken — pick another.");
+
+        if (oldSlotRef) {
+          const oldSlotSnap = await tx.get(oldSlotRef);
+          if (oldSlotSnap.exists) tx.update(oldSlotRef, { status: "available", appointmentId: null });
+        }
+        tx.update(newSlotRef, { status: "booked", appointmentId: id });
+        tx.update(ref, {
+          date: newSlot.date,
+          time: newSlot.time,
+          doctorId: newSlot.doctorId,
+          doctorName: newSlot.doctorName,
+          consultMode: newSlot.mode === "in-clinic" ? "in-clinic" : "online",
+          slotId: newSlotId,
+          rescheduledFrom: { date: appointment.date, time: appointment.time, at: new Date().toISOString(), by: auth.role },
+        });
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Could not reschedule this appointment" },
+        { status: 409 }
+      );
+    }
+
+    const updatedSnap = await ref.get();
+    const updated = updatedSnap.data() as Appointment;
+    const when = `${updated.date} ${updated.time}`;
+    await Promise.all([
+      notify({
+        userId: updated.patientId,
+        role: "patient",
+        type: "appointment-rescheduled",
+        title: "Appointment rescheduled",
+        message: `Your ${updated.service} appointment was moved to ${when}.`,
+        appointmentId: updated.id,
+      }),
+      updated.doctorId
+        ? notify({
+            userId: updated.doctorId,
+            role: "doctor",
+            type: "appointment-rescheduled",
+            title: "Appointment rescheduled",
+            message: `${updated.patientName}'s ${updated.service} appointment was moved to ${when}.`,
+            appointmentId: updated.id,
+          })
+        : Promise.resolve(),
+      notifyAllAdmins({
+        type: "appointment-rescheduled",
+        title: "Appointment rescheduled",
+        message: `${updated.patientName}'s ${updated.service} appointment was moved to ${when}.`,
+        appointmentId: updated.id,
+      }),
+    ]);
+
+    return NextResponse.json({ ok: true, appointment: updated });
+  }
+
   if (doctorId !== undefined || doctorName !== undefined) {
     if (auth.role !== "admin") {
       return NextResponse.json({ error: "Only the clinic can assign a doctor" }, { status: 403 });
     }
     await ref.update({ doctorId: doctorId || null, doctorName: doctorName || null });
+    if (doctorId) {
+      await notify({
+        userId: doctorId,
+        role: "doctor",
+        type: "doctor-assigned",
+        title: "New appointment assigned",
+        message: `${appointment.patientName}'s ${appointment.service} appointment on ${appointment.date} ${appointment.time} was assigned to you.`,
+        appointmentId: appointment.id,
+      });
+    }
   }
   if (prescription !== undefined) {
     if (auth.role !== "doctor" || appointment?.doctorId !== auth.uid) {
@@ -188,6 +313,24 @@ export async function PATCH(req: NextRequest) {
           .update({ status: "available", appointmentId: null })
           .catch(() => {});
       }
+      await Promise.all([
+        appointment.doctorId
+          ? notify({
+              userId: appointment.doctorId,
+              role: "doctor",
+              type: "appointment-cancelled",
+              title: "Appointment cancelled",
+              message: `${appointment.patientName} cancelled the ${appointment.service} appointment on ${appointment.date} ${appointment.time}.`,
+              appointmentId: appointment.id,
+            })
+          : Promise.resolve(),
+        notifyAllAdmins({
+          type: "appointment-cancelled",
+          title: "Appointment cancelled",
+          message: `${appointment.patientName} cancelled the ${appointment.service} appointment on ${appointment.date} ${appointment.time}.`,
+          appointmentId: appointment.id,
+        }),
+      ]);
       return NextResponse.json({ ok: true });
     }
 
@@ -207,6 +350,27 @@ export async function PATCH(req: NextRequest) {
         .doc(appointment.slotId)
         .update({ status: "available", appointmentId: null })
         .catch(() => {});
+    }
+    if (status === "cancelled" || status === "confirmed") {
+      await Promise.all([
+        notify({
+          userId: appointment.patientId,
+          role: "patient",
+          type: status === "cancelled" ? "appointment-cancelled" : "appointment-confirmed",
+          title: status === "cancelled" ? "Appointment cancelled" : "Appointment confirmed",
+          message:
+            status === "cancelled"
+              ? `Your ${appointment.service} appointment on ${appointment.date} ${appointment.time} was cancelled.`
+              : `Your ${appointment.service} appointment on ${appointment.date} ${appointment.time} is confirmed.`,
+          appointmentId: appointment.id,
+        }),
+        notifyAllAdmins({
+          type: status === "cancelled" ? "appointment-cancelled" : "appointment-confirmed",
+          title: status === "cancelled" ? "Appointment cancelled" : "Appointment confirmed",
+          message: `${appointment.patientName}'s ${appointment.service} appointment on ${appointment.date} ${appointment.time} was marked ${status} by ${auth.role}.`,
+          appointmentId: appointment.id,
+        }),
+      ]);
     }
   }
 

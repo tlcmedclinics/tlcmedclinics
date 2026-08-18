@@ -15,6 +15,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
+import NotificationBell from "@/components/NotificationBell";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import type { Appointment } from "@/types";
 
@@ -130,12 +131,15 @@ function PatientDashboardContent() {
           <p className="eyebrow text-indigo">Welcome back</p>
           <h1 className="mt-3 h1">{profile?.name}</h1>
         </div>
-        <button
-          onClick={handleLogout}
-          className="shrink-0 rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-crimson hover:text-crimson-deep"
-        >
-          {t("common.logout")}
-        </button>
+        <div className="flex shrink-0 items-center gap-3">
+          <NotificationBell />
+          <button
+            onClick={handleLogout}
+            className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-crimson hover:text-crimson-deep"
+          >
+            {t("common.logout")}
+          </button>
+        </div>
       </div>
 
       {/* Stat cards — makes this actually read as a dashboard */}

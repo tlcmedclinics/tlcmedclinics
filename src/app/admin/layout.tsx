@@ -6,6 +6,7 @@ import { signOut } from "firebase/auth";
 import RequireRole from "@/components/RequireRole";
 import { auth } from "@/lib/firebase/client";
 import { useToast } from "@/contexts/ToastContext";
+import NotificationBell from "@/components/NotificationBell";
 
 const links = [
   { href: "/admin/dashboard", label: "Overview" },
@@ -37,7 +38,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 lg:grid-cols-[200px_1fr]">
         <aside className="flex flex-col justify-between">
           <div>
-            <p className="eyebrow text-indigo">Admin</p>
+            <div className="flex items-center justify-between">
+              <p className="eyebrow text-indigo">Admin</p>
+              <NotificationBell />
+            </div>
             <nav className="mt-4 space-y-1">
               {links.map((link) => (
                 <Link

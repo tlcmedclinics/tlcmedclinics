@@ -80,5 +80,15 @@ service cloud.firestore {
       allow read: if resource.data.published == true || isAdmin();
       allow write: if isAdmin();
     }
+
+    // In-app notifications (bell icon): a user can only read their own —
+    // used for the real-time listener that drives the unread badge.
+    // Notifications are only ever created/updated via the server (Admin
+    // SDK through /api/notifications and /api/appointments), which bypasses
+    // these rules entirely — so no client write path is allowed here.
+    match /notifications/{id} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if false;
+    }
   }
 }

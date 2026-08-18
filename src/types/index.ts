@@ -37,6 +37,20 @@ export type AppointmentStatus =
 
 export type AppointmentMode = "video" | "audio" | "chat" | "in-person";
 
+// Whether this is the patient's first visit (full service + coupon flow) or
+// a returning patient booking a follow-up (regular follow-up / session).
+export type PatientType = "new" | "follow-up";
+
+// Follow-up booking only: which kind of session the patient picked, each
+// with its own duration and price (price lives on the matching Service doc
+// — follow-up "services" are just regular Service docs tagged with the
+// "Follow-up" category so admin manages pricing from the existing panel).
+export type SessionType = "regular-followup" | "session-30" | "session-60";
+
+// Whether the picked slot/doctor consultation happens in the clinic or
+// over telemedicine — set from the slot the patient picked.
+export type ConsultMode = "in-clinic" | "online";
+
 // Session lifecycle for video/chat appointments — separate from AppointmentStatus
 // because "confirmed" just means the booking is held; the session itself only
 // becomes "live" at the scheduled time (or earlier/later if the admin starts
@@ -62,6 +76,13 @@ export interface Appointment {
   status: AppointmentStatus;
   amount: number;
   couponCode?: string;
+  patientType?: PatientType; // "new" | "follow-up" — set from the booking flow's first step
+  sessionType?: SessionType; // follow-up bookings only
+  consultMode?: ConsultMode; // "in-clinic" | "online" — copied from the picked slot
+  // Set whenever admin moves this appointment to a different slot. Kept as
+  // a short history so patient/doctor can see it was rescheduled and why.
+  rescheduledFrom?: { date: string; time: string; at: string; by: UserRole };
+  reminderSentAt?: string; // set once the 24h-before reminder has gone out, so it never repeats
   bookingType: BookingType;
   paymentStatus: "unpaid" | "paid" | "refunded";
   paymentProvider?: "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
@@ -72,6 +93,7 @@ export interface Appointment {
   sessionStartedAt?: string;
   sessionEndedAt?: string;
   notes?: string;
+  slotId?: string; // the slots/{id} doc this booking reserved — freed automatically on cancel
   createdAt: string;
   // Patient's rating of the doctor after a completed session — set once,
   // via /api/appointments/[id]/rate.
@@ -124,6 +146,29 @@ export interface BlogPost {
   published: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Real-time in-app notifications for the bell icon in all three panels.
+// Always created server-side (via src/lib/notifications.ts) so a client can
+// never forge one — the client only ever reads its own and marks them read.
+export type NotificationType =
+  | "appointment-booked"
+  | "appointment-confirmed"
+  | "appointment-rescheduled"
+  | "appointment-cancelled"
+  | "appointment-reminder"
+  | "doctor-assigned";
+
+export interface AppNotification {
+  id: string;
+  userId: string; // recipient — patientId, doctorId, or an admin's uid
+  role: UserRole; // recipient's role, so the bell can be shown per-panel
+  type: NotificationType;
+  title: string;
+  message: string;
+  appointmentId?: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface PaymentRecord {

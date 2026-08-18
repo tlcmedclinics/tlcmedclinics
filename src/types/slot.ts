@@ -10,6 +10,9 @@ export interface Slot {
   doctorName: string;
   /** Optional — leave unset to make the slot valid for any service under this doctor */
   service?: string;
+  /** Whether the doctor sees patients for this slot in the clinic or over telemedicine.
+   *  Optional only for slots created before this field existed — treat missing as "online". */
+  mode?: "in-clinic" | "online";
   /** YYYY-MM-DD */
   date: string;
   /** HH:mm, 24h */

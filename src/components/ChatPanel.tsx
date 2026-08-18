@@ -142,82 +142,87 @@ export default function ChatPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-[90] flex flex-col bg-paper">
-      <div
-        className={`flex items-center justify-between px-4 py-3 sm:px-6 ${
-          hostView ? "bg-indigo-deep text-paper" : "bg-indigo text-paper"
-        }`}
-      >
-        <div className="flex items-center gap-2">
-          {hostView && (
-            <span className="rounded-full bg-paper/15 px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider">
-              {t("chat.hostView")}
-            </span>
-          )}
-          <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-wider text-paper/90">
-            🔒 {t("chat.encrypted")}
-          </span>
-          <p className="text-sm font-medium">
-            {hostView ? `${t("chat.chatWith")} ${patientName}` : t("chat.consultation")}
-          </p>
-        </div>
-        <button
-          onClick={onClose}
-          className="rounded-full border border-paper/30 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:bg-paper/10"
+    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-ink/40 px-0 py-0 sm:px-4 sm:py-6">
+      <div className="flex h-full w-full flex-col overflow-hidden bg-paper sm:h-[85vh] sm:max-h-[720px] sm:w-full sm:max-w-md sm:rounded-2xl sm:shadow-2xl">
+        <div
+          className={`flex shrink-0 items-center justify-between px-4 py-3 ${
+            hostView ? "bg-indigo-deep text-paper" : "bg-indigo text-paper"
+          }`}
         >
-          {t("common.close")}
-        </button>
-      </div>
-
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-6 sm:px-6">
-        {keyError && (
-          <p className="mt-8 text-center text-sm text-crimson-deep">{keyError}</p>
-        )}
-        {!keyError && !key && (
-          <p className="mt-8 text-center text-sm text-ink-soft">{t("chat.unlocking")}</p>
-        )}
-        {key && messages.length === 0 && (
-          <p className="mt-8 text-center text-sm text-ink-soft">{t("chat.empty")}</p>
-        )}
-        {messages.map((m) => {
-          const mine = m.senderId === viewerUid;
-          return (
-            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-              <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
-                  mine ? "bg-indigo text-white" : "bg-mist text-ink"
-                }`}
-              >
-                {m.text}
-              </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs font-semibold">
+              {(hostView ? patientName : t("chat.consultation")).charAt(0).toUpperCase()}
             </div>
-          );
-        })}
-        <div ref={bottomRef} />
-      </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium leading-tight">
+                {hostView ? patientName : t("chat.consultation")}
+              </p>
+              <p className="flex items-center gap-1 text-[0.65rem] text-paper/80">
+                🔒 {t("chat.encrypted")}
+                {hostView && <span className="ml-1">· {t("chat.hostView")}</span>}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="shrink-0 rounded-full border border-paper/30 px-3 py-1.5 text-xs font-medium text-paper transition-colors hover:bg-paper/10"
+          >
+            {t("common.close")}
+          </button>
+        </div>
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          send();
-        }}
-        className="flex items-center gap-3 border-t border-line/70 px-4 py-3 sm:px-6"
-      >
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={t("chat.placeholder")}
-          disabled={!key}
-          className="input flex-1"
-        />
-        <button
-          type="submit"
-          disabled={sending || !text.trim() || !key}
-          className="rounded-full bg-indigo px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
+        <div className="flex-1 space-y-2.5 overflow-y-auto bg-mist/30 px-3 py-4 sm:px-4">
+          {keyError && (
+            <p className="mt-8 text-center text-sm text-crimson-deep">{keyError}</p>
+          )}
+          {!keyError && !key && (
+            <p className="mt-8 text-center text-sm text-ink-soft">{t("chat.unlocking")}</p>
+          )}
+          {key && messages.length === 0 && (
+            <p className="mt-8 text-center text-sm text-ink-soft">{t("chat.empty")}</p>
+          )}
+          {messages.map((m) => {
+            const mine = m.senderId === viewerUid;
+            return (
+              <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`max-w-[78%] rounded-2xl px-3.5 py-2 text-sm leading-relaxed shadow-sm ${
+                    mine
+                      ? "rounded-br-sm bg-indigo text-white"
+                      : "rounded-bl-sm bg-paper text-ink"
+                  }`}
+                >
+                  {m.text}
+                </div>
+              </div>
+            );
+          })}
+          <div ref={bottomRef} />
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send();
+          }}
+          className="flex shrink-0 items-center gap-2 border-t border-line/70 bg-paper px-3 py-2.5 sm:px-4"
         >
-          {t("common.send")}
-        </button>
-      </form>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={t("chat.placeholder")}
+            disabled={!key}
+            className="input flex-1"
+          />
+          <button
+            type="submit"
+            disabled={sending || !text.trim() || !key}
+            className="shrink-0 rounded-full bg-indigo px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
+          >
+            {t("common.send")}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
