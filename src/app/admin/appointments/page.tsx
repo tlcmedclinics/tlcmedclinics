@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
@@ -11,6 +12,8 @@ import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
 import type { Slot } from "@/types/slot";
+
+const PAGE_SIZE = 50;
 
 const statusStyles: Record<AppointmentStatus, string> = {
   pending: "bg-mist text-ink-soft",
@@ -29,6 +32,7 @@ const statusLabel: Record<AppointmentStatus, string> = {
 export default function AdminAppointmentsPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const t = useT();
   const now = useNow();
   const { startSession, endSession, pendingId } = useSessionAction();
 
@@ -37,7 +41,7 @@ export default function AdminAppointmentsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [activePanel, setActivePanel] = useState<
-    | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string }
+    | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
     | { kind: "chat"; threadId: string; patientName: string }
     | null
   >(null);
@@ -45,27 +49,50 @@ export default function AdminAppointmentsPage() {
   const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [savingReschedule, setSavingReschedule] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/appointments");
-      if (!res.ok) throw new Error("Couldn't load appointments");
-      setAppointments(await res.json());
-    } catch {
-      toast.error("Couldn't load appointments. Please refresh.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // The status filter is applied by Firestore now, not by the browser — this
+  // page used to fetch every appointment the clinic had ever taken and filter
+  // the array locally. `before` pages backwards through createdAt.
+  const load = useCallback(
+    async (before?: string) => {
+      const isPaging = Boolean(before);
+      if (isPaging) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        if (filter !== "all") params.set("status", filter);
+        if (before) params.set("before", before);
 
+        const res = await authedFetch(`/api/appointments?${params}`);
+        if (!res.ok) throw new Error("Couldn't load appointments");
+        const page: Appointment[] = await res.json();
+
+        setAppointments((prev) => (isPaging ? [...prev, ...page] : page));
+        setHasMore(page.length === PAGE_SIZE);
+      } catch {
+        toast.error("Couldn't load appointments. Please refresh.");
+      } finally {
+        if (isPaging) setLoadingMore(false);
+        else setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filter]
+  );
+
+  // Refetches whenever the status tab changes.
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  useEffect(() => {
     authedFetch("/api/doctors")
       .then((res) => (res.ok ? res.json() : []))
       .then(setDoctors)
       .catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function assignDoctor(id: string, doctorId: string) {
@@ -173,12 +200,16 @@ export default function AdminAppointmentsPage() {
     const appointment = result.appointment;
     setAppointments((prev) => prev.map((x) => (x.id === a.id ? appointment : x)));
 
-    if (appointment.mode === "video" && appointment.roomUrl) {
+    if (
+      (appointment.mode === "video" || appointment.mode === "audio") &&
+      appointment.roomUrl
+    ) {
       setActivePanel({
         kind: "video",
         roomUrl: appointment.roomUrl,
         joinToken: result.joinToken,
         patientName: appointment.patientName,
+        mode: appointment.mode,
       });
     } else if (appointment.mode === "chat") {
       setActivePanel({ kind: "chat", threadId: appointment.id, patientName: appointment.patientName });
@@ -191,7 +222,6 @@ export default function AdminAppointmentsPage() {
     setAppointments((prev) => prev.map((x) => (x.id === a.id ? result.appointment : x)));
   }
 
-  const visible = filter === "all" ? appointments : appointments.filter((a) => a.status === filter);
 
   return (
     <div className="animate-fade-up">
@@ -221,12 +251,12 @@ export default function AdminAppointmentsPage() {
 
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">Loading…</p>
-      ) : visible.length === 0 ? (
+      ) : appointments.length === 0 ? (
         <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
       ) : (
         <div className="mt-6 space-y-3">
-          {visible.map((a) => {
-            const isOnlineMode = a.mode === "video" || a.mode === "chat";
+          {appointments.map((a) => {
+            const isOnlineMode = a.mode === "video" || a.mode === "audio" || a.mode === "chat";
             const joinable = canJoinSession(a, now);
             const canStartEarly = a.status === "confirmed" && isOnlineMode && a.sessionStatus !== "ended" && !joinable;
             return (
@@ -238,8 +268,28 @@ export default function AdminAppointmentsPage() {
                   <div>
                     <p className="font-medium text-ink">{a.patientName}</p>
                     <p className="text-sm text-ink-soft">
-                      {a.service} · {a.date} {a.time} · {a.mode}
+                      {a.service}
+                      {a.date ? (
+                        <>
+                          {" · "}
+                          <span className="numeric">
+                            {a.date} {a.time}
+                          </span>
+                        </>
+                      ) : null}
+                      {" · "}
+                      {a.mode}
                     </p>
+                    {a.needsDoctor && (
+                      <p className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <span className="pill pill-warning">{t("admin.appointments.needsDoctor")}</span>
+                        {a.preferredWhen && (
+                          <span className="text-xs text-ink-soft">
+                            {t("admin.appointments.preferred")}: {a.preferredWhen}
+                          </span>
+                        )}
+                      </p>
+                    )}
                     <p className="mt-1 text-xs text-ink-soft/80">
                       {a.patientPhone && <span>{a.patientPhone} · </span>}
                       {a.bookingType === "online-payment"
@@ -395,6 +445,8 @@ export default function AdminAppointmentsPage() {
                           ? "Connecting…"
                           : a.mode === "video"
                           ? "Join as host"
+                          : a.mode === "audio"
+                          ? "Join audio call"
                           : "Open chat"}
                       </button>
                       {a.sessionStatus === "live" && (
@@ -415,11 +467,25 @@ export default function AdminAppointmentsPage() {
         </div>
       )}
 
+      {!loading && hasMore && (
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => load(appointments[appointments.length - 1]?.createdAt)}
+            disabled={loadingMore}
+            className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+          >
+            {loadingMore ? "Loading…" : "Load older appointments"}
+          </button>
+        </div>
+      )}
+
       {activePanel?.kind === "video" && (
         <VideoCallModal
           roomUrl={activePanel.roomUrl}
           joinToken={activePanel.joinToken}
           patientName={activePanel.patientName}
+          mode={activePanel.mode}
           hostView
           onClose={() => {
             setActivePanel(null);

@@ -1,17 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import RequireRole from "@/components/RequireRole";
+import Avatar from "@/components/Avatar";
+import PaypalButton from "@/components/PaypalButton";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
-import PaypalButton from "@/components/PaypalButton";
+import { useT } from "@/contexts/LanguageContext";
 import type { Coupon, DoctorProfile, PatientType, Service, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
 
-type Step = "type" | "details" | "payment" | "done-paid" | "done-callback";
+/**
+ * Booking runs doctor-first: service → doctor → time → details → pay.
+ *
+ * The patient chooses a person before a time, because who they see matters
+ * more than when. That also means the slot list is always one doctor's real
+ * availability rather than a pooled list the patient has to decode.
+ *
+ * If no doctor covering the chosen service has an open slot, the flow doesn't
+ * dead-end — the patient sends a request and the clinic assigns someone.
+ */
+
+type Step = "type" | "service" | "doctor" | "time" | "details" | "payment" | "done";
 type ConsultMode = "online" | "in-clinic";
+type Outcome = "paid" | "callback" | "requested";
 
 type Details = {
   service: string;
@@ -29,10 +42,9 @@ type Details = {
   sessionType?: SessionType;
 };
 
-// Follow-up bookings are just regular Service docs tagged under a
-// "Follow-up" category from the admin panel — that reuses the existing
-// service pricing UI instead of a separate config screen. This just
-// recognizes which services belong in which branch of the flow.
+// Follow-up bookings are regular Service docs tagged under a "Follow-up"
+// category from the admin panel — that reuses the existing pricing UI instead
+// of a separate config screen.
 function isFollowUpService(s: Service) {
   return /follow|session/i.test(s.category) || /follow|session/i.test(s.name);
 }
@@ -43,115 +55,200 @@ function guessSessionType(s: Service): SessionType {
   return "regular-followup";
 }
 
+/**
+ * Does this doctor cover this service?
+ *
+ * The clinic doesn't hard-link doctors to services by id, so this is a
+ * best-effort match on the doctor's specialization against the service's name
+ * and category. `services` is checked first for when that link does get added.
+ */
+function coversService(doctor: DoctorProfile, service: Service) {
+  const listed = (doctor as DoctorProfile & { services?: string[] }).services;
+  if (Array.isArray(listed) && listed.length > 0) {
+    return listed.includes(service.id) || listed.includes(service.name);
+  }
+  const spec = (doctor.specialization ?? "").toLowerCase().trim();
+  if (!spec) return false;
+  const name = service.name.toLowerCase();
+  const category = service.category.toLowerCase();
+  return (
+    spec.includes(name) ||
+    spec.includes(category) ||
+    name.includes(spec) ||
+    category.includes(spec)
+  );
+}
+
+function StepBar({ step }: { step: Step }) {
+  const t = useT();
+  const steps: { key: Step; labelKey: string }[] = [
+    { key: "service", labelKey: "book.step.service" },
+    { key: "doctor", labelKey: "book.step.doctor" },
+    { key: "time", labelKey: "book.step.time" },
+    { key: "payment", labelKey: "book.step.confirm" },
+  ];
+  const order: Step[] = ["type", "service", "doctor", "time", "details", "payment"];
+  const currentIndex = order.indexOf(step);
+
+  return (
+    <ol className="mt-6 flex items-center gap-1.5 text-[0.7rem] font-medium text-ink-soft">
+      {steps.map((s, i) => {
+        const reached = currentIndex >= order.indexOf(s.key);
+        return (
+          <li key={s.key} className="flex items-center gap-1.5">
+            {i > 0 && <span className="h-px w-4 bg-line sm:w-6" />}
+            <span className={reached ? "text-indigo" : ""}>{t(s.labelKey)}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function BookAppointmentContent() {
   const router = useRouter();
   const { profile } = useAuth();
   const toast = useToast();
-  const [services, setServices] = useState<Service[]>([]);
-  const [loadingServices, setLoadingServices] = useState(true);
-  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
-  const [loadingDoctors, setLoadingDoctors] = useState(true);
-  const [selectedServiceName, setSelectedServiceName] = useState("");
+  const t = useT();
 
-  const [patientType, setPatientType] = useState<PatientType | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
+  const [loadingLists, setLoadingLists] = useState(true);
+
+  const [step, setStep] = useState<Step>("type");
+  const [outcome, setOutcome] = useState<Outcome>("paid");
+  const [patientType, setPatientType] = useState<PatientType>("new");
+  const [selectedServiceName, setSelectedServiceName] = useState("");
+  const [selectedDoctorId, setSelectedDoctorId] = useState("");
   const [consultMode, setConsultMode] = useState<ConsultMode>("online");
+  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [couponCode, setCouponCode] = useState("");
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
   const [couponError, setCouponError] = useState("");
 
-  const [slots, setSlots] = useState<Slot[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
-  const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
-
   const [mode, setMode] = useState("video");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [preferredWhen, setPreferredWhen] = useState("");
 
-  const [step, setStep] = useState<Step>("type");
   const [details, setDetails] = useState<Details | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetch("/api/services")
-      .then((res) => res.json())
-      .then(setServices)
-      .finally(() => setLoadingServices(false));
-
-    authedFetch("/api/doctors")
-      .then((res) => (res.ok ? res.json() : []))
-      .then(setDoctors)
-      .finally(() => setLoadingDoctors(false));
+    Promise.all([
+      fetch("/api/services").then((r) => (r.ok ? r.json() : [])),
+      authedFetch("/api/doctors").then((r) => (r.ok ? r.json() : [])),
+    ])
+      .then(([s, d]) => {
+        setServices(s);
+        setDoctors(d);
+      })
+      .catch(() => toast.error(t("error.loadFailed")))
+      .finally(() => setLoadingLists(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     setPhone((p) => p || profile?.phone || "");
   }, [profile]);
 
-  const newPatientServices = services.filter((s) => !isFollowUpService(s));
-  const followUpServices = services.filter(isFollowUpService);
-  const visibleServices = patientType === "follow-up" ? followUpServices : newPatientServices;
+  const visibleServices = useMemo(
+    () =>
+      patientType === "follow-up"
+        ? services.filter(isFollowUpService)
+        : services.filter((s) => !isFollowUpService(s)),
+    [services, patientType]
+  );
 
-  const selectedService = services.find((s) => s.name === selectedServiceName);
+  const selectedService = useMemo(
+    () => services.find((s) => s.name === selectedServiceName),
+    [services, selectedServiceName]
+  );
 
   const basePrice = selectedService?.price ?? 0;
-  const discountedAmount = (() => {
+  const discountedAmount = useMemo(() => {
     if (!appliedCoupon || patientType !== "new") return basePrice;
     if (appliedCoupon.discountType === "percent") {
       return Math.max(0, Math.round(basePrice * (1 - appliedCoupon.discountValue / 100)));
     }
     return Math.max(0, basePrice - appliedCoupon.discountValue);
-  })();
+  }, [appliedCoupon, patientType, basePrice]);
 
-  // Doctors whose specialization mentions this service's name or category —
-  // the clinic doesn't hard-link doctors to services by id, so this is a
-  // best-effort text match. Falls back to every active doctor when nothing
-  // matches yet, so booking never dead-ends on an empty list.
-  const matchingDoctors = (() => {
+  // Every doctor who could take this service, whether or not they have slots.
+  // Falls back to all active doctors when specializations don't match anything,
+  // so a clinic that hasn't filled them in still works.
+  const matchingDoctors = useMemo(() => {
     if (!selectedService) return [];
-    const needle1 = selectedService.name.toLowerCase();
-    const needle2 = selectedService.category.toLowerCase();
-    const matched = doctors.filter((d) => {
-      const spec = (d.specialization ?? "").toLowerCase();
-      return spec.includes(needle1) || spec.includes(needle2) || needle1.includes(spec) || needle2.includes(spec);
-    });
-    return matched.length > 0 ? matched : doctors;
-  })();
+    const active = doctors.filter((d) => d.active && d.approvalStatus === "approved");
+    const matched = active.filter((d) => coversService(d, selectedService));
+    return matched.length > 0 ? matched : active;
+  }, [doctors, selectedService]);
 
-  // Load available slots for whichever doctors match this service, filtered
-  // by whether the patient wants an in-clinic or online (telemedicine)
-  // consultation — each doctor's own availability/mode is set from the
-  // admin/doctor slots panel, so patients only ever see real openings.
+  // Load open slots once a service is chosen. One request for the service,
+  // grouped per doctor below — cheaper than a request per doctor card.
   useEffect(() => {
+    setSelectedDoctorId("");
     setSelectedSlot(null);
-    if (!selectedServiceName || loadingDoctors) {
+    if (!selectedServiceName) {
       setSlots([]);
       return;
     }
     setLoadingSlots(true);
     authedFetch(
-      `/api/slots?onlyAvailable=true&service=${encodeURIComponent(selectedServiceName)}&mode=${consultMode}`
+      `/api/slots?onlyAvailable=true&service=${encodeURIComponent(selectedServiceName)}`
     )
       .then((res) => (res.ok ? res.json() : []))
-      .then((all: Slot[]) => {
-        const matchingIds = new Set(matchingDoctors.map((d) => d.uid));
-        setSlots(all.filter((s) => matchingIds.has(s.doctorId)));
-      })
+      .then(setSlots)
       .catch(() => setSlots([]))
       .finally(() => setLoadingSlots(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedServiceName, loadingDoctors, doctors, consultMode]);
+  }, [selectedServiceName]);
 
-  const slotsByDate = (() => {
-    const grouped = new Map<string, Slot[]>();
+  /** doctorId → their open slots, in time order. */
+  const slotsByDoctor = useMemo(() => {
+    const map = new Map<string, Slot[]>();
     for (const s of slots) {
-      const arr = grouped.get(s.date) ?? [];
-      arr.push(s);
-      grouped.set(s.date, arr);
+      const list = map.get(s.doctorId) ?? [];
+      list.push(s);
+      map.set(s.doctorId, list);
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    }
+    return map;
+  }, [slots]);
+
+  /** Only doctors the patient can actually book right now. */
+  const bookableDoctors = useMemo(
+    () => matchingDoctors.filter((d) => (slotsByDoctor.get(d.uid)?.length ?? 0) > 0),
+    [matchingDoctors, slotsByDoctor]
+  );
+
+  const selectedDoctor = doctors.find((d) => d.uid === selectedDoctorId);
+
+  // The chosen doctor's slots for the chosen consultation mode, grouped by day.
+  const slotsByDate = useMemo(() => {
+    const mine = (slotsByDoctor.get(selectedDoctorId) ?? []).filter(
+      (s) => (s.mode ?? "online") === consultMode
+    );
+    const grouped = new Map<string, Slot[]>();
+    for (const s of mine) {
+      const list = grouped.get(s.date) ?? [];
+      list.push(s);
+      grouped.set(s.date, list);
     }
     return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
-  })();
+  }, [slotsByDoctor, selectedDoctorId, consultMode]);
+
+  /** Which modes this doctor actually offers — don't show an empty toggle. */
+  const availableModes = useMemo(() => {
+    const mine = slotsByDoctor.get(selectedDoctorId) ?? [];
+    return new Set(mine.map((s) => (s.mode ?? "online") as ConsultMode));
+  }, [slotsByDoctor, selectedDoctorId]);
 
   async function applyCoupon() {
     if (!couponCode.trim()) return;
@@ -162,27 +259,46 @@ function BookAppointmentContent() {
       const data = await res.json();
       if (!res.ok || !data.valid) {
         setAppliedCoupon(null);
-        setCouponError(data.error ?? "This coupon isn't valid right now.");
+        setCouponError(data.error ?? t("book.couponInvalid"));
         return;
       }
       setAppliedCoupon(data.coupon as Coupon);
-      toast.success("Coupon applied.");
+      toast.success(t("book.couponApplied"));
     } catch {
       setAppliedCoupon(null);
-      setCouponError("Couldn't check that coupon. Please try again.");
+      setCouponError(t("error.network"));
     } finally {
       setApplyingCoupon(false);
     }
   }
 
+  function pickDoctor(uid: string) {
+    setSelectedDoctorId(uid);
+    setSelectedSlot(null);
+    const modes = new Set(
+      (slotsByDoctor.get(uid) ?? []).map((s) => (s.mode ?? "online") as ConsultMode)
+    );
+    // Land on a mode this doctor actually offers rather than an empty list.
+    setConsultMode(modes.has("online") ? "online" : "in-clinic");
+    setStep("time");
+  }
+
+  function confirmTime() {
+    if (!selectedSlot || !selectedDoctor) {
+      toast.error(t("book.pickSlotFirst"));
+      return;
+    }
+    setStep("details");
+  }
+
   function handleDetailsSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!selectedSlot) {
-      toast.error("Pick an available slot first.");
+      toast.error(t("book.pickSlotFirst"));
       return;
     }
     if (!phone.trim()) {
-      toast.error("Add a phone number.");
+      toast.error(t("book.addPhone"));
       return;
     }
     setDetails({
@@ -197,15 +313,15 @@ function BookAppointmentContent() {
       doctorId: selectedSlot.doctorId,
       doctorName: selectedSlot.doctorName,
       couponCode: patientType === "new" && appliedCoupon ? appliedCoupon.code : undefined,
-      patientType: patientType ?? "new",
-      sessionType: patientType === "follow-up" && selectedService ? guessSessionType(selectedService) : undefined,
+      patientType,
+      sessionType:
+        patientType === "follow-up" && selectedService
+          ? guessSessionType(selectedService)
+          : undefined,
     });
     setStep("payment");
   }
 
-  // Call-back bookings skip payment entirely — the appointment is created
-  // right away, unpaid, for the clinic to confirm by phone. It still holds
-  // the chosen slot immediately so nobody else can take it.
   async function requestCallback() {
     if (!details) return;
     setSubmitting(true);
@@ -227,31 +343,65 @@ function BookAppointmentContent() {
           bookingType: "call-back",
         }),
       });
-
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error ?? "Could not book appointment");
+        throw new Error(data.error ?? t("common.somethingWrong"));
       }
-
-      toast.success("Call-back requested.");
-      setStep("done-callback");
+      setOutcome("callback");
+      setStep("done");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-      // Most likely someone else took the slot in the meantime — send the
-      // patient back to pick another one instead of dead-ending.
-      setStep("details");
+      toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
+      // Most likely someone took the slot in the meantime — send them back to
+      // pick another rather than dead-ending.
+      setStep("time");
       setDetails(null);
     } finally {
       setSubmitting(false);
     }
   }
 
-  // Booking payload shared by both the Stripe and PayPal endpoints — the
-  // server stashes it in a pendingBookings doc and only creates the real
-  // appointment once payment actually clears.
+  /** No doctor had availability — ask the clinic to assign one. */
+  async function requestDoctor() {
+    if (!phone.trim()) {
+      toast.error(t("book.addPhone"));
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await authedFetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          patientName: profile?.name,
+          patientPhone: phone,
+          service: selectedServiceName,
+          mode: consultMode === "in-clinic" ? "in-person" : "video",
+          notes,
+          amount: patientType === "new" ? discountedAmount : basePrice,
+          patientType,
+          sessionType:
+            patientType === "follow-up" && selectedService
+              ? guessSessionType(selectedService)
+              : undefined,
+          preferredWhen,
+          bookingType: "doctor-request",
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error ?? t("common.somethingWrong"));
+      }
+      setOutcome("requested");
+      setStep("done");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   function bookingPayload() {
     if (!details) return null;
-
     return {
       patientName: profile?.name,
       patientPhone: details.phone,
@@ -279,132 +429,137 @@ function BookAppointmentContent() {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Could not start checkout");
+      if (!res.ok || !data.url) throw new Error(data.error ?? t("common.somethingWrong"));
       window.location.href = data.url;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not start checkout. Please try again.");
+      toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
       setSubmitting(false);
     }
   }
 
-  if (step === "done-paid" || step === "done-callback") {
+  /* ------------------------------- done ------------------------------- */
+
+  if (step === "done") {
+    const copy = {
+      paid: { title: t("book.booked"), body: t("book.bookedHint") },
+      callback: { title: t("book.callBackRequested"), body: t("book.callBackRequestedHint") },
+      requested: { title: t("book.requestSent"), body: t("book.requestSentHint") },
+    }[outcome];
+
     return (
-      <div className="mx-auto max-w-lg px-6 py-20 text-center animate-fade-up">
+      <div className="mx-auto max-w-lg py-10 text-center animate-fade-up">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-indigo/10">
           <svg viewBox="0 0 24 24" className="h-8 w-8 text-indigo" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <p className="mt-6 h2 text-ink">
-          {step === "done-paid" ? "Appointment booked!" : "Call-back requested"}
-        </p>
-        <p className="mt-2 text-sm text-ink-soft">
-          {step === "done-paid"
-            ? "Your payment was received and your slot is confirmed. You'll get a notification here and by email — the clinic and your doctor have been notified too."
-            : "Our team will call you shortly to confirm your appointment."}
-        </p>
-        <button
-          onClick={() => router.push("/patient/dashboard")}
-          className="mt-6 rounded-full bg-indigo px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-indigo-deep"
-        >
-          Back to dashboard
+        <p className="mt-6 h2 text-ink">{copy.title}</p>
+        <p className="mt-2 text-sm text-ink-soft">{copy.body}</p>
+        <button onClick={() => router.push("/patient/dashboard")} className="btn-indigo mt-6">
+          {t("book.backToDashboard")}
         </button>
       </div>
     );
   }
 
+  /* ------------------------------- flow ------------------------------- */
+
   return (
-    <div className="mx-auto max-w-lg px-6 py-14 animate-fade-up">
-      <h1 className="h1">Book an Appointment</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Pick your slot, then either pay online to confirm instantly, or ask us to call
-        you back.
-      </p>
+    <div className="mx-auto max-w-2xl animate-fade-up">
+      <h1 className="h1">{t("book.title")}</h1>
+      <p className="lede mt-1">{t("book.subtitle")}</p>
+      {step !== "type" && <StepBar step={step} />}
 
-      <div className="mt-6 flex items-center gap-2 text-xs font-medium text-ink-soft">
-        <span className={step === "type" ? "text-indigo" : ""}>1. Visit type</span>
-        <span className="h-px w-6 bg-line" />
-        <span className={step === "details" ? "text-indigo" : ""}>2. Details</span>
-        <span className="h-px w-6 bg-line" />
-        <span className={step === "payment" ? "text-indigo" : ""}>3. Confirm</span>
-      </div>
-
+      {/* 1 — visit type */}
       {step === "type" && (
-        <div className="mt-8 space-y-3">
-          <button
-            type="button"
-            onClick={() => {
-              setPatientType("new");
-              setSelectedServiceName("");
-              setStep("details");
-            }}
-            className="w-full rounded-2xl border border-line/70 p-5 text-left transition-colors hover:border-indigo"
-          >
-            <p className="font-medium text-ink">New patient</p>
-            <p className="mt-1 text-xs text-ink-soft">
-              First visit — choose a service, apply a coupon if you have one, then pick your doctor.
-            </p>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setPatientType("follow-up");
-              setSelectedServiceName("");
-              setStep("details");
-            }}
-            className="w-full rounded-2xl border border-line/70 p-5 text-left transition-colors hover:border-indigo"
-          >
-            <p className="font-medium text-ink">Follow-up</p>
-            <p className="mt-1 text-xs text-ink-soft">
-              Already a patient — book a regular follow-up (15 min) or a longer session (30/60 min).
-            </p>
-          </button>
+        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+          {(["new", "follow-up"] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                setPatientType(type);
+                setSelectedServiceName("");
+                setStep("service");
+              }}
+              className="card card-pad card-hover text-start"
+            >
+              <p className="h4 text-ink">
+                {t(type === "new" ? "book.newPatient" : "book.followUp")}
+              </p>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
+                {t(type === "new" ? "book.newPatientHint" : "book.followUpHint")}
+              </p>
+            </button>
+          ))}
         </div>
       )}
 
-      {step === "details" && (
-        <form onSubmit={handleDetailsSubmit} className="mt-8 space-y-5">
-          <button
-            type="button"
-            onClick={() => setStep("type")}
-            className="text-xs font-medium text-indigo hover:text-indigo-deep"
-          >
-            ← Change visit type
+      {/* 2 — service */}
+      {step === "service" && (
+        <div className="mt-6 space-y-4">
+          <button type="button" onClick={() => setStep("type")} className="text-xs font-semibold text-indigo">
+            ← {t("book.changeVisitType")}
           </button>
 
-          <select
-            required
-            className="input"
-            value={selectedServiceName}
-            onChange={(e) => {
-              setSelectedServiceName(e.target.value);
-              setAppliedCoupon(null);
-              setCouponCode("");
-              setCouponError("");
-            }}
-            disabled={loadingServices}
-          >
-            <option value="" disabled>
-              {loadingServices
-                ? "Loading services…"
-                : patientType === "follow-up"
-                ? "Select follow-up type"
-                : "Select a service"}
-            </option>
-            {visibleServices.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name}
-                {typeof s.price === "number" ? ` — PKR ${s.price.toLocaleString()}` : ""}
-              </option>
-            ))}
-          </select>
+          {loadingLists ? (
+            <p className="text-sm text-ink-soft">{t("book.loadingServices")}</p>
+          ) : visibleServices.length === 0 ? (
+            <p className="text-sm text-ink-soft">{t("book.noServices")}</p>
+          ) : (
+            <div className="grid gap-2.5">
+              {visibleServices.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedServiceName(s.name);
+                    setAppliedCoupon(null);
+                    setCouponCode("");
+                    setCouponError("");
+                    setStep("doctor");
+                  }}
+                  className="card card-pad card-hover flex items-center justify-between gap-4 text-start"
+                >
+                  <span>
+                    <span className="block font-semibold text-ink">{s.name}</span>
+                    {s.short && (
+                      <span className="mt-0.5 block text-xs text-ink-soft">{s.short}</span>
+                    )}
+                  </span>
+                  {typeof s.price === "number" && (
+                    <span className="numeric shrink-0 text-sm text-ink-soft">
+                      PKR {s.price.toLocaleString()}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
-          {patientType === "new" && selectedServiceName && (
-            <div>
-              <div className="flex gap-2">
+      {/* 3 — doctor */}
+      {step === "doctor" && (
+        <div className="mt-6 space-y-4">
+          <button type="button" onClick={() => setStep("service")} className="text-xs font-semibold text-indigo">
+            ← {t("book.changeService")}
+          </button>
+
+          <div>
+            <h2 className="h3 text-ink">{t("book.chooseDoctor")}</h2>
+            <p className="mt-1 text-xs text-ink-soft">
+              {t("book.chooseDoctorHint", { service: selectedServiceName })}
+            </p>
+          </div>
+
+          {patientType === "new" && (
+            <div className="card card-pad">
+              <span className="label">{t("book.coupon")}</span>
+              <div className="mt-1.5 flex gap-2">
                 <input
                   className="input flex-1"
-                  placeholder="Coupon code (optional)"
+                  placeholder={t("book.coupon")}
                   value={couponCode}
                   onChange={(e) => {
                     setCouponCode(e.target.value);
@@ -416,183 +571,304 @@ function BookAppointmentContent() {
                   type="button"
                   onClick={applyCoupon}
                   disabled={applyingCoupon || !couponCode.trim()}
-                  className="rounded-full border border-line px-4 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+                  className="btn-outline btn-sm"
                 >
-                  {applyingCoupon ? "Checking…" : "Apply"}
+                  {applyingCoupon ? t("book.checking") : t("book.apply")}
                 </button>
               </div>
               {couponError && <p className="mt-1.5 text-xs text-crimson-deep">{couponError}</p>}
               {appliedCoupon && (
                 <p className="mt-1.5 text-xs text-indigo">
-                  {appliedCoupon.code} applied — PKR {discountedAmount.toLocaleString()}{" "}
-                  <span className="text-ink-soft line-through">PKR {basePrice.toLocaleString()}</span>
+                  {appliedCoupon.code} —{" "}
+                  <span className="numeric">PKR {discountedAmount.toLocaleString()}</span>{" "}
+                  <span className="numeric text-ink-soft line-through">
+                    PKR {basePrice.toLocaleString()}
+                  </span>
                 </p>
               )}
             </div>
           )}
 
-          {selectedServiceName && (
-            <div>
-              <p className="text-xs font-medium text-ink-soft">In clinic or online?</p>
-              <div className="mt-2 flex gap-2">
+          {loadingSlots ? (
+            <p className="text-sm text-ink-soft">{t("common.loading")}</p>
+          ) : bookableDoctors.length > 0 ? (
+            <div className="grid gap-2.5">
+              {bookableDoctors.map((d) => {
+                const next = slotsByDoctor.get(d.uid)?.[0];
+                const count = slotsByDoctor.get(d.uid)?.length ?? 0;
+                return (
+                  <button
+                    key={d.uid}
+                    type="button"
+                    onClick={() => pickDoctor(d.uid)}
+                    className="card card-pad card-hover flex items-start gap-3.5 text-start"
+                  >
+                    <Avatar name={d.name} photoURL={d.photoURL} size="lg" />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-ink">
+                          Dr. {d.name.replace(/^Dr\.?\s*/i, "")}
+                        </span>
+                        {d.online && (
+                          <span className="pill pill-success">
+                            <span className="h-1.5 w-1.5 rounded-full bg-success" />
+                            {t("presence.online")}
+                          </span>
+                        )}
+                      </span>
+                      {d.specialization && (
+                        <span className="mt-0.5 block text-xs text-ink-soft">{d.specialization}</span>
+                      )}
+                      {d.bio && (
+                        <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-ink-soft/90">
+                          {d.bio}
+                        </span>
+                      )}
+                      {next && (
+                        <span className="mt-2 block text-xs font-semibold text-indigo">
+                          {t("book.nextAvailable")}{" "}
+                          <span className="numeric">
+                            {next.date} · {next.time}
+                          </span>
+                          <span className="ms-1.5 font-normal text-ink-soft">
+                            ({t("book.slotsOpen", { count })})
+                          </span>
+                        </span>
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="card card-pad border-warning/30 bg-warning-soft/60">
+              <p className="h4 text-ink">{t("book.noDoctorTitle")}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">
+                {t("book.noDoctorHint")}
+              </p>
+              <div className="mt-4 space-y-3">
+                <label className="field">
+                  <span className="label">{t("book.preferredWhen")}</span>
+                  <input
+                    className="input"
+                    value={preferredWhen}
+                    onChange={(e) => setPreferredWhen(e.target.value)}
+                    placeholder={t("book.preferredWhenPlaceholder")}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">{t("settings.phone")}</span>
+                  <input
+                    className="input numeric"
+                    type="tel"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="03XX-XXXXXXX"
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">{t("book.notes")}</span>
+                  <textarea
+                    className="input resize-none"
+                    rows={2}
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder={t("book.notesPlaceholder")}
+                  />
+                </label>
                 <button
                   type="button"
-                  onClick={() => setConsultMode("online")}
-                  className={`flex-1 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
-                    consultMode === "online"
-                      ? "border-indigo bg-indigo text-white"
-                      : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
-                  }`}
+                  onClick={requestDoctor}
+                  disabled={submitting}
+                  className="btn-indigo w-full"
                 >
-                  Online (telemedicine)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConsultMode("in-clinic")}
-                  className={`flex-1 rounded-full border px-3.5 py-2 text-xs font-medium transition-colors ${
-                    consultMode === "in-clinic"
-                      ? "border-indigo bg-indigo text-white"
-                      : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
-                  }`}
-                >
-                  In clinic
+                  {submitting ? t("book.sending") : t("book.requestDoctor")}
                 </button>
               </div>
             </div>
           )}
+        </div>
+      )}
 
-          {selectedServiceName && (
-            <div>
-              <p className="text-xs font-medium text-ink-soft">Available slots</p>
-              {loadingSlots ? (
-                <p className="mt-2 text-sm text-ink-soft">Loading slots…</p>
-              ) : slotsByDate.length === 0 ? (
-                <p className="mt-2 text-sm text-ink-soft">
-                  No open {consultMode === "in-clinic" ? "in-clinic" : "online"} slots for this right now —
-                  please check back soon or request a call-back once you continue.
-                </p>
-              ) : (
-                <div className="mt-2 space-y-3">
-                  {slotsByDate.map(([date, daySlots]) => (
-                    <div key={date}>
-                      <p className="text-xs font-semibold text-ink">{date}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-2">
-                        {daySlots
-                          .sort((a, b) => a.time.localeCompare(b.time))
-                          .map((s) => (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => setSelectedSlot(s)}
-                              className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
-                                selectedSlot?.id === s.id
-                                  ? "border-indigo bg-indigo text-white"
-                                  : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
-                              }`}
-                            >
-                              {s.time} · Dr. {s.doctorName.replace(/^Dr\.?\s*/i, "")}
-                            </button>
-                          ))}
-                      </div>
+      {/* 4 — time */}
+      {step === "time" && selectedDoctor && (
+        <div className="mt-6 space-y-5">
+          <button type="button" onClick={() => setStep("doctor")} className="text-xs font-semibold text-indigo">
+            ← {t("book.changeDoctor")}
+          </button>
+
+          <div className="card card-pad flex items-center gap-3.5">
+            <Avatar name={selectedDoctor.name} photoURL={selectedDoctor.photoURL} size="lg" />
+            <span className="min-w-0">
+              <span className="block font-semibold text-ink">
+                Dr. {selectedDoctor.name.replace(/^Dr\.?\s*/i, "")}
+              </span>
+              {selectedDoctor.specialization && (
+                <span className="block text-xs text-ink-soft">{selectedDoctor.specialization}</span>
+              )}
+            </span>
+          </div>
+
+          <div>
+            <p className="label">{t("book.clinicOrOnline")}</p>
+            <div className="mt-2 flex gap-2">
+              {(["online", "in-clinic"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={!availableModes.has(m)}
+                  onClick={() => {
+                    setConsultMode(m);
+                    setSelectedSlot(null);
+                    setMode(m === "in-clinic" ? "in-person" : "video");
+                  }}
+                  className={`flex-1 rounded-[var(--radius-pill)] border px-3.5 py-2 text-xs font-semibold transition-colors disabled:opacity-40 ${
+                    consultMode === m
+                      ? "border-indigo bg-indigo text-white"
+                      : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+                  }`}
+                >
+                  {t(m === "online" ? "mode.online" : "mode.inClinic")}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="label">{t("book.availableSlots")}</p>
+            {slotsByDate.length === 0 ? (
+              <p className="mt-2 text-sm text-ink-soft">{t("book.noSlotsThisMode")}</p>
+            ) : (
+              <div className="mt-2 space-y-3">
+                {slotsByDate.map(([date, daySlots]) => (
+                  <div key={date}>
+                    <p className="numeric text-xs font-semibold text-ink">{date}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-2">
+                      {daySlots.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSelectedSlot(s)}
+                          className={`numeric rounded-[var(--radius-pill)] border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                            selectedSlot?.id === s.id
+                              ? "border-indigo bg-indigo text-white"
+                              : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+                          }`}
+                        >
+                          {s.time}
+                        </button>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {selectedSlot && (
-            <>
-              <div>
-                <select value={mode} onChange={(e) => setMode(e.target.value)} required className="input">
-                  {consultMode === "in-clinic" ? (
-                    <option value="in-person">In-person visit</option>
-                  ) : (
-                    <>
-                      <option value="video">Video consultation</option>
-                      <option value="audio">Audio call</option>
-                      <option value="chat">Chat consultation</option>
-                    </>
-                  )}
-                </select>
-                <p className="mt-1.5 text-xs text-ink-soft">
-                  {consultMode === "in-clinic"
-                    ? "Visit the clinic at your scheduled time."
-                    : "Video/audio/chat sessions open on their own at your scheduled time — no separate app needed."}
-                </p>
+                  </div>
+                ))}
               </div>
-
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Phone number (03XX-XXXXXXX)"
-                className="input"
-              />
-
-              <textarea
-                rows={3}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Anything the clinic should know (optional)"
-                className="input resize-none"
-              />
-            </>
-          )}
+            )}
+          </div>
 
           <button
-            type="submit"
-            disabled={loadingServices || !selectedSlot}
-            className="w-full rounded-full bg-crimson px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-crimson-deep disabled:opacity-60"
+            type="button"
+            onClick={confirmTime}
+            disabled={!selectedSlot}
+            className="btn-primary w-full"
           >
-            Continue
+            {t("book.continue")}
+          </button>
+        </div>
+      )}
+
+      {/* 5 — details */}
+      {step === "details" && selectedSlot && (
+        <form onSubmit={handleDetailsSubmit} className="mt-6 space-y-4">
+          <button type="button" onClick={() => setStep("time")} className="text-xs font-semibold text-indigo">
+            ← {t("book.changeTime")}
+          </button>
+
+          {consultMode === "online" && (
+            <label className="field">
+              <span className="label">{t("book.howToMeet")}</span>
+              <select value={mode} onChange={(e) => setMode(e.target.value)} className="input">
+                <option value="video">{t("mode.video")}</option>
+                <option value="audio">{t("mode.audio")}</option>
+                <option value="chat">{t("mode.chat")}</option>
+              </select>
+            </label>
+          )}
+
+          <label className="field">
+            <span className="label">{t("settings.phone")}</span>
+            <input
+              type="tel"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="03XX-XXXXXXX"
+              className="input numeric"
+            />
+          </label>
+
+          <label className="field">
+            <span className="label">{t("book.notes")}</span>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder={t("book.notesPlaceholder")}
+              className="input resize-none"
+            />
+          </label>
+
+          <button type="submit" className="btn-primary w-full">
+            {t("book.continue")}
           </button>
         </form>
       )}
 
+      {/* 6 — payment */}
       {step === "payment" && details && (
-        <div className="mt-8 space-y-6">
-          <div className="rounded-2xl border border-line/70 bg-paper-dim/40 p-5 text-sm text-ink-soft">
-            <p className="font-medium text-ink">{details.service}</p>
+        <div className="mt-6 space-y-5">
+          <div className="card card-pad text-sm text-ink-soft">
+            <p className="font-semibold text-ink">{details.service}</p>
             {details.doctorName && (
               <p className="mt-1 text-ink">Dr. {details.doctorName.replace(/^Dr\.?\s*/i, "")}</p>
             )}
-            <p className="mt-1">
-              {details.date} · {details.time} · {details.mode}
+            <p className="numeric mt-1">
+              {details.date} · {details.time}
             </p>
+            <p className="mt-0.5">{t(`mode.${details.mode === "in-person" ? "inPerson" : details.mode}`)}</p>
             {details.amount > 0 && (
-              <p className="mt-1 font-mono text-ink">PKR {details.amount.toLocaleString()}</p>
+              <p className="numeric mt-1 font-semibold text-ink">
+                PKR {details.amount.toLocaleString()}
+              </p>
             )}
             <button
               type="button"
               onClick={() => setStep("details")}
-              className="mt-2 text-xs font-medium text-indigo hover:text-indigo-deep"
+              className="mt-2 text-xs font-semibold text-indigo"
             >
-              Edit details
+              {t("book.editDetails")}
             </button>
           </div>
 
-          <div className="rounded-2xl border border-indigo/20 p-5 sm:p-6">
-            <p className="h4 text-ink">Pay online now</p>
-            <p className="mt-1 text-xs text-ink-soft">
-              Your slot is confirmed instantly once payment goes through.
-            </p>
+          <div className="card card-pad border-indigo/20">
+            <p className="h4 text-ink">{t("book.payNow")}</p>
+            <p className="mt-1 text-xs text-ink-soft">{t("book.payNowHint")}</p>
 
             <button
               type="button"
               disabled={submitting}
               onClick={handleStripeCheckout}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-indigo px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
+              className="btn-indigo mt-5 w-full"
             >
               {submitting
-                ? "Redirecting…"
-                : `Pay${details.amount > 0 ? ` PKR ${details.amount.toLocaleString()}` : ""} with card`}
+                ? t("book.redirecting")
+                : `${t("book.payWithCard")}${
+                    details.amount > 0 ? ` · PKR ${details.amount.toLocaleString()}` : ""
+                  }`}
             </button>
 
             <div className="my-4 flex items-center gap-3 text-xs text-ink-soft">
               <span className="h-px flex-1 bg-line" />
-              or
+              {t("book.or")}
               <span className="h-px flex-1 bg-line" />
             </div>
 
@@ -602,31 +878,23 @@ function BookAppointmentContent() {
               disabled={submitting}
               onBusy={setSubmitting}
               onSuccess={() => {
-                toast.success("Appointment booked!");
-                setStep("done-paid");
+                setOutcome("paid");
+                setStep("done");
               }}
               onError={(msg) => toast.error(msg)}
             />
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-ink-soft">
-            <span className="h-px flex-1 bg-line" />
-            or
-            <span className="h-px flex-1 bg-line" />
-          </div>
-
-          <div className="rounded-2xl border border-line/70 p-5 sm:p-6">
-            <p className="h4 text-ink">Prefer to discuss on a call?</p>
-            <p className="mt-1 text-xs text-ink-soft">
-              We&apos;ll hold your requested slot and call you back to confirm — no payment needed now.
-            </p>
+          <div className="card card-pad">
+            <p className="h4 text-ink">{t("book.callBackTitle")}</p>
+            <p className="mt-1 text-xs text-ink-soft">{t("book.callBackHint")}</p>
             <button
               type="button"
               disabled={submitting}
               onClick={requestCallback}
-              className="mt-4 w-full rounded-full border border-line px-7 py-3.5 text-sm font-medium text-ink transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+              className="btn-outline mt-4 w-full"
             >
-              {submitting ? "Sending…" : "Request a Call-back"}
+              {submitting ? t("book.sending") : t("book.requestCallBack")}
             </button>
           </div>
         </div>
@@ -636,9 +904,6 @@ function BookAppointmentContent() {
 }
 
 export default function BookAppointmentPage() {
-  return (
-    <RequireRole role="patient">
-      <BookAppointmentContent />
-    </RequireRole>
-  );
+  // Auth + role gating and page chrome come from app/patient/layout.tsx.
+  return <BookAppointmentContent />;
 }

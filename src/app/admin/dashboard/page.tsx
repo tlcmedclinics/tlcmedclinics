@@ -1,42 +1,64 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
-import type { Appointment } from "@/types";
+import { authedFetch } from "@/lib/authed-fetch";
+import { useToast } from "@/contexts/ToastContext";
+
+type Counts = {
+  patients: number;
+  appointments: number;
+  callBacks: number;
+  services: number;
+  blogs: number;
+};
+
+type Analytics = {
+  paidRevenue: number;
+  refunded: number;
+  completed: number;
+  avgRating: number | null;
+  doctorRows: { name: string; completed: number; avgRating: number | null }[];
+};
+
+const EMPTY_COUNTS: Counts = {
+  patients: 0,
+  appointments: 0,
+  callBacks: 0,
+  services: 0,
+  blogs: 0,
+};
+
+const EMPTY_ANALYTICS: Analytics = {
+  paidRevenue: 0,
+  refunded: 0,
+  completed: 0,
+  avgRating: null,
+  doctorRows: [],
+};
 
 export default function AdminOverviewPage() {
-  const [counts, setCounts] = useState({
-    patients: 0,
-    appointments: 0,
-    callBacks: 0,
-    services: 0,
-    blogs: 0,
-  });
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const toast = useToast();
+  const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
+  const [analytics, setAnalytics] = useState<Analytics>(EMPTY_ANALYTICS);
 
+  // One request, computed server-side with count() aggregations. This page
+  // used to hold five live listeners open — including one on the whole
+  // `appointments` collection — and rebuild the rollup in the browser, so it
+  // downloaded every appointment the clinic had ever taken just to show five
+  // numbers.
   useEffect(() => {
-    const unsubs = [
-      onSnapshot(query(collection(db, "users"), where("role", "==", "patient")), (s) =>
-        setCounts((c) => ({ ...c, patients: s.size }))
-      ),
-      onSnapshot(collection(db, "appointments"), (s) => {
-        setCounts((c) => ({ ...c, appointments: s.size }));
-        setAppointments(s.docs.map((d) => d.data() as Appointment));
-      }),
-      onSnapshot(
-        query(collection(db, "appointments"), where("status", "==", "pending")),
-        (s) => setCounts((c) => ({ ...c, callBacks: s.size }))
-      ),
-      onSnapshot(collection(db, "services"), (s) =>
-        setCounts((c) => ({ ...c, services: s.size }))
-      ),
-      onSnapshot(collection(db, "blogs"), (s) =>
-        setCounts((c) => ({ ...c, blogs: s.size }))
-      ),
-    ];
-    return () => unsubs.forEach((u) => u());
+    authedFetch("/api/appointments/stats")
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("stats"))))
+      .then((data) => {
+        setCounts(data.counts);
+        setAnalytics(data.analytics);
+        // A figure that couldn't be computed comes back as 0 rather than
+        // failing the page; this says why, so it isn't mistaken for real data.
+        if (data.indexHint) toast.error(data.indexHint);
+      })
+      .catch(() => toast.error("Couldn't load the overview. Please refresh."));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const cards = [
@@ -51,38 +73,6 @@ export default function AdminOverviewPage() {
     { label: "Services listed", value: counts.services, href: "/admin/services" },
     { label: "Blog posts", value: counts.blogs, href: "/admin/blogs" },
   ];
-
-  const analytics = useMemo(() => {
-    const paidRevenue = appointments
-      .filter((a) => a.paymentStatus === "paid")
-      .reduce((sum, a) => sum + (a.amount || 0), 0);
-    const refunded = appointments
-      .filter((a) => a.paymentStatus === "refunded")
-      .reduce((sum, a) => sum + (a.amount || 0), 0);
-    const completed = appointments.filter((a) => a.status === "completed").length;
-    const rated = appointments.filter((a) => a.rating);
-    const avgRating = rated.length
-      ? rated.reduce((sum, a) => sum + (a.rating || 0), 0) / rated.length
-      : null;
-
-    const byDoctor = new Map<string, { name: string; completed: number; ratings: number[] }>();
-    for (const a of appointments) {
-      if (!a.doctorId) continue;
-      const entry = byDoctor.get(a.doctorId) ?? { name: a.doctorName || "Unknown", completed: 0, ratings: [] };
-      if (a.status === "completed") entry.completed += 1;
-      if (a.rating) entry.ratings.push(a.rating);
-      byDoctor.set(a.doctorId, entry);
-    }
-    const doctorRows = Array.from(byDoctor.values())
-      .map((d) => ({
-        name: d.name,
-        completed: d.completed,
-        avgRating: d.ratings.length ? d.ratings.reduce((s, r) => s + r, 0) / d.ratings.length : null,
-      }))
-      .sort((a, b) => b.completed - a.completed);
-
-    return { paidRevenue, refunded, completed, avgRating, doctorRows };
-  }, [appointments]);
 
   return (
     <div className="animate-fade-up">
@@ -113,7 +103,8 @@ export default function AdminOverviewPage() {
         })}
       </div>
 
-      <h2 className="mt-10 h3 text-ink">Revenue & outcomes</h2>
+      <h2 className="mt-10 h3 text-ink">Revenue &amp; outcomes</h2>
+      <p className="mt-1 text-xs text-ink-soft">Last 12 months.</p>
       <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-line/70 p-6">
           <p className="h1">PKR {analytics.paidRevenue.toLocaleString()}</p>

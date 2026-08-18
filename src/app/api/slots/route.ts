@@ -3,11 +3,19 @@ import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Slot } from "@/types/slot";
 
-// GET /api/slots?doctorId=&date=&service=&onlyAvailable=true
+const MAX_SLOTS = 1000;
+
+// GET /api/slots?doctorId=&date=&from=&to=&service=&onlyAvailable=true
 // Any authenticated user can read — patients need this to see what's
-// bookable, admin needs it to manage. We deliberately avoid orderBy() here
-// (sorting happens in JS below) so this doesn't need a Firestore composite
-// index just to filter by doctor/date/service together.
+// bookable, admin needs it to manage.
+//
+// Bounded to today onwards by default. Slots are created per doctor, per day,
+// per time, so the collection grows by hundreds a month and never shrinks;
+// without a lower bound this returned every slot ever created, including
+// long-past ones that nobody can book. Pass an explicit `from` (YYYY-MM-DD) to
+// look further back, or `date` for a single day.
+//
+// `service` and `mode` are still matched in JS below — see the note there.
 export async function GET(req: NextRequest) {
   const auth = await verifyRequest(req);
   if ("error" in auth) {
@@ -20,14 +28,26 @@ export async function GET(req: NextRequest) {
   const service = searchParams.get("service");
   const onlyAvailable = searchParams.get("onlyAvailable") === "true";
   const mode = searchParams.get("mode"); // "in-clinic" | "online"
+  const from = searchParams.get("from");
+  const to = searchParams.get("to");
 
   try {
     let query: FirebaseFirestore.Query = adminDb.collection("slots");
     if (doctorId) query = query.where("doctorId", "==", doctorId);
-    if (date) query = query.where("date", "==", date);
     if (onlyAvailable) query = query.where("status", "==", "available");
 
-    const snap = await query.get();
+    if (date) {
+      // A single explicit day — equality, no range needed.
+      query = query.where("date", "==", date);
+    } else {
+      query = query.where("date", ">=", from || new Date().toISOString().slice(0, 10));
+      if (to) query = query.where("date", "<=", to);
+      // Firestore requires the range field to be ordered first; ordering by
+      // date here also means the JS sort below only has to settle times.
+      query = query.orderBy("date", "asc");
+    }
+
+    const snap = await query.limit(MAX_SLOTS).get();
     let slots = snap.docs.map((d) => d.data() as Slot);
 
     // service is matched in JS, not Firestore — a slot with no `service`

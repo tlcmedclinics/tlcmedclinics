@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
+import { isMissingIndexError, missingIndexMessage } from "@/lib/firestore-errors";
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
@@ -27,11 +28,20 @@ export async function POST(req: NextRequest) {
     paymentReference,
     patientType,
     sessionType,
+    preferredWhen,
   } = body;
 
-  if (!service || !slotId || !bookingType) {
+  if (!service || !bookingType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
+
+  // A doctor-request has no slot by definition — nobody was available to book.
+  // Every other booking type must hold one.
+  const isDoctorRequest = bookingType === "doctor-request";
+  if (!isDoctorRequest && !slotId) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
   const isPaid = bookingType === "online-payment" && Boolean(paymentReference);
 
   if (bookingType === "online-payment" && !isPaid) {
@@ -42,9 +52,68 @@ export async function POST(req: NextRequest) {
   }
 
   const appointmentRef = adminDb.collection("appointments").doc();
-  const slotRef = adminDb.collection("slots").doc(slotId);
 
   let appointment: Appointment;
+
+  if (isDoctorRequest) {
+    // No transaction needed: there's no slot to contend for. The clinic picks
+    // both the doctor and the time, so this is a request record, not a hold.
+    appointment = {
+      id: appointmentRef.id,
+      patientId: auth.uid,
+      patientName: patientName ?? "",
+      patientPhone: patientPhone ?? undefined,
+      service,
+      mode: mode ?? "video",
+      date: "",
+      time: "",
+      status: "pending",
+      amount: Number(amount) || 0,
+      couponCode: couponCode || undefined,
+      patientType: patientType === "follow-up" ? "follow-up" : "new",
+      sessionType: sessionType || undefined,
+      bookingType: "doctor-request",
+      paymentStatus: "unpaid",
+      notes: notes || undefined,
+      needsDoctor: true,
+      preferredWhen: typeof preferredWhen === "string" ? preferredWhen.slice(0, 300) : undefined,
+      createdAt: new Date().toISOString(),
+    } as Appointment;
+
+    try {
+      await appointmentRef.set(appointment);
+    } catch (err) {
+      console.error("[POST /api/appointments doctor-request]", err);
+      return NextResponse.json({ error: "Could not save your request" }, { status: 500 });
+    }
+
+    sendMail({
+      subject: "Appointment request — no doctor available",
+      text: `${appointment.patientName} (${patientPhone ?? "no phone"}) requested ${appointment.service}. Preferred: ${appointment.preferredWhen || "not specified"}. No doctor covering this service had an open slot — please assign one.`,
+    }).catch(() => {});
+
+    await Promise.all([
+      notify({
+        userId: appointment.patientId,
+        role: "patient",
+        type: "appointment-booked",
+        title: "Request received",
+        message: `We received your ${appointment.service} request. The clinic will assign a doctor and confirm your time shortly.`,
+        appointmentId: appointment.id,
+      }),
+      notifyAllAdmins({
+        type: "appointment-booked",
+        title: "Needs a doctor",
+        message: `${appointment.patientName} requested ${appointment.service} but no doctor had an open slot. Preferred: ${appointment.preferredWhen || "not specified"}.`,
+        appointmentId: appointment.id,
+      }),
+    ]);
+
+    return NextResponse.json({ ok: true, appointment });
+  }
+
+  const slotRef = adminDb.collection("slots").doc(slotId);
+
   try {
     appointment = await adminDb.runTransaction(async (tx) => {
       const slotSnap = await tx.get(slotRef);
@@ -138,34 +207,67 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, appointment });
 }
 
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 500;
+
+// GET /api/appointments?status=&patientId=&date=&limit=&before=
+//
+// Always scoped to the caller: a patient only ever sees their own bookings, a
+// doctor only the ones assigned to them, admin sees everything. Filtering,
+// ordering and paging all happen in Firestore rather than in JS — this used to
+// fetch the entire collection on every call, which grew without bound as the
+// clinic booked more appointments.
+//
+// `before` is a cursor: pass the `createdAt` of the last row you already have
+// to fetch the next page. See firestore.indexes.json for the composite index
+// each filter combination needs.
 export async function GET(req: NextRequest) {
   const auth = await verifyRequest(req);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get("status");
+  const patientId = searchParams.get("patientId");
+  const date = searchParams.get("date");
+  const before = searchParams.get("before");
+  const limit = Math.min(
+    Math.max(Number(searchParams.get("limit")) || DEFAULT_LIMIT, 1),
+    MAX_LIMIT
+  );
+
   try {
     let query: FirebaseFirestore.Query = adminDb.collection("appointments");
 
+    // Role scoping comes first — this is the security boundary, not a filter.
     if (auth.role === "patient") {
       query = query.where("patientId", "==", auth.uid);
     } else if (auth.role === "doctor") {
       query = query.where("doctorId", "==", auth.uid);
-    } else {
-      query = query.orderBy("createdAt", "desc");
+      // A doctor may narrow to one of *their* patients; the doctorId filter
+      // above still applies, so this can't reach another doctor's records.
+      if (patientId) query = query.where("patientId", "==", patientId);
+    } else if (patientId) {
+      query = query.where("patientId", "==", patientId);
     }
 
-    const snap = await query.get();
+    if (status) query = query.where("status", "==", status);
+    if (date) query = query.where("date", "==", date);
+
+    query = query.orderBy("createdAt", "desc");
+    if (before) query = query.startAfter(before);
+
+    const snap = await query.limit(limit).get();
     const appointments = snap.docs.map((d) => d.data() as Appointment);
-
-    if (auth.role !== "admin") {
-      appointments.sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""));
-    }
 
     return NextResponse.json(appointments);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to load appointments";
     console.error("[GET /api/appointments]", err);
+    if (isMissingIndexError(err)) {
+      return NextResponse.json({ error: missingIndexMessage(err) }, { status: 503 });
+    }
+    const message = err instanceof Error ? err.message : "Failed to load appointments";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -221,6 +323,9 @@ export async function PATCH(req: NextRequest) {
           doctorName: newSlot.doctorName,
           consultMode: newSlot.mode === "in-clinic" ? "in-clinic" : "online",
           slotId: newSlotId,
+          // Scheduling it into a real slot is what resolves a "needs a doctor"
+          // request — the patient now has both a doctor and a time.
+          needsDoctor: false,
           rescheduledFrom: { date: appointment.date, time: appointment.time, at: new Date().toISOString(), by: auth.role },
         });
       });

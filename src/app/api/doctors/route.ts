@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth, adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
+import { isOnline } from "@/lib/presence";
 import type { DoctorProfile } from "@/types";
 
 // Doctors are created by admin only (never self-registered) — this mirrors
@@ -57,7 +58,16 @@ export async function GET(req: NextRequest) {
   }
 
   const snap = await adminDb.collection("users").where("role", "==", "doctor").get();
-  let doctors = snap.docs.map((d) => d.data() as DoctorProfile);
+  const now = Date.now();
+
+  // `online` is computed from the heartbeat here rather than read from the
+  // document, so a doctor whose session ended without a clean goodbye stops
+  // showing as available once the window lapses. `lastSeenAt` itself never
+  // leaves the server — patients have no business knowing the exact minute.
+  let doctors = snap.docs.map((d) => {
+    const { lastSeenAt, ...doctor } = d.data() as DoctorProfile;
+    return { ...doctor, online: isOnline({ lastSeenAt, presenceVisible: doctor.presenceVisible }, now) };
+  }) as DoctorProfile[];
 
   // Patients only get to see doctors they could actually be booked with —
   // approved, active ones — and never their email/contact details.
@@ -95,15 +105,16 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { uid, active, online, approvalStatus } = await req.json();
+  const { uid, active, approvalStatus } = await req.json();
 
-  // A doctor may only flip their own presence status.
+  // Doctors have nothing to change here any more: presence is automatic (see
+  // lib/presence.ts) and their own profile/preferences go through
+  // PATCH /api/profile. Everything below this point is admin-only.
   if (auth.role === "doctor") {
-    if (uid !== auth.uid || typeof online !== "boolean" || active !== undefined) {
-      return NextResponse.json({ error: "Doctors can only update their own presence status" }, { status: 403 });
-    }
-    await adminDb.collection("users").doc(uid).update({ online });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { error: "Doctors update their own profile from Settings" },
+      { status: 403 }
+    );
   }
 
   if (!uid) {

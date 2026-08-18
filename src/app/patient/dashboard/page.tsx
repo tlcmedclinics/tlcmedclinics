@@ -3,19 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { signOut } from "firebase/auth";
-import RequireRole from "@/components/RequireRole";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import RatingStars from "@/components/RatingStars";
 import { authedFetch } from "@/lib/authed-fetch";
-import { auth } from "@/lib/firebase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
-import NotificationBell from "@/components/NotificationBell";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import type { Appointment } from "@/types";
 
@@ -43,7 +39,7 @@ function PatientDashboardContent() {
   >(null);
 
   function load() {
-    authedFetch("/api/appointments")
+    authedFetch("/api/appointments?limit=100")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Couldn't load appointments"))))
       .then(setAppointments)
       .catch(() => toast.error("Couldn't load your appointments. Pull to refresh or try again."))
@@ -54,16 +50,6 @@ function PatientDashboardContent() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  async function handleLogout() {
-    try {
-      await signOut(auth);
-      toast.success("Logged out.");
-      router.push("/login");
-    } catch {
-      toast.error("Couldn't log out. Please try again.");
-    }
-  }
 
   async function handleCancel(a: Appointment) {
     if (!confirm("Cancel this appointment? If you already paid, the clinic will process your refund.")) return;
@@ -125,20 +111,11 @@ function PatientDashboardContent() {
   }, [appointments, todayIso]);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-14 animate-fade-up">
+    <div className="animate-fade-up">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="eyebrow text-indigo">Welcome back</p>
           <h1 className="mt-3 h1">{profile?.name}</h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-3">
-          <NotificationBell />
-          <button
-            onClick={handleLogout}
-            className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-crimson hover:text-crimson-deep"
-          >
-            {t("common.logout")}
-          </button>
         </div>
       </div>
 
@@ -294,9 +271,6 @@ function PatientDashboardContent() {
 }
 
 export default function PatientDashboardPage() {
-  return (
-    <RequireRole role="patient">
-      <PatientDashboardContent />
-    </RequireRole>
-  );
+  // Auth + role gating and page chrome come from app/patient/layout.tsx.
+  return <PatientDashboardContent />;
 }

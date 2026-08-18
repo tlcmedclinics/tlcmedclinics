@@ -13,56 +13,75 @@ export default function DoctorDashboardPage() {
   const toast = useToast();
   const t = useT();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [counts, setCounts] = useState({ upcoming: 0, uniquePatients: 0, completed: 0 });
   const [loading, setLoading] = useState(true);
-  const [onlineOverride, setOnlineOverride] = useState<boolean | null>(null);
-  const [togglingOnline, setTogglingOnline] = useState(false);
-  const online = onlineOverride ?? (profile && "online" in profile ? Boolean(profile.online) : false);
 
-  useEffect(() => {
-    authedFetch("/api/appointments")
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then(setAppointments)
-      .catch(() => toast.error("Couldn't load your schedule. Please refresh."))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function toggleOnline() {
-    if (!profile) return;
-    const next = !online;
-    setTogglingOnline(true);
-    try {
-      const res = await authedFetch("/api/doctors", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ uid: profile.uid, online: next }),
-      });
-      if (!res.ok) throw new Error();
-      setOnlineOverride(next);
-    } catch {
-      toast.error("Couldn't update your status. Please try again.");
-    } finally {
-      setTogglingOnline(false);
-    }
-  }
+  // Presence is automatic now (lib/use-presence.ts, wired up in AppShell).
+  // This screen only reports whether the doctor chose to show it.
+  const presenceVisible =
+    !profile || !("presenceVisible" in profile) || profile.presenceVisible !== false;
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  const stats = useMemo(() => {
-    const todays = appointments.filter((a) => a.date === todayIso && a.status !== "cancelled");
-    const upcoming = appointments.filter(
-      (a) => a.date >= todayIso && a.status === "confirmed"
-    );
-    const uniquePatients = new Set(appointments.map((a) => a.patientId)).size;
-    const completed = appointments.filter((a) => a.status === "completed").length;
-    return { todays, upcoming, uniquePatients, completed };
-  }, [appointments, todayIso]);
+  // Two narrow requests instead of one unbounded one: today's rows for the
+  // schedule list, and count() aggregations for the tiles. This used to
+  // download the doctor's entire appointment history to render both.
+  //
+  // They're settled independently so one failing doesn't blank the other, and
+  // a missing Firestore index reports itself specifically instead of hiding
+  // behind a generic "couldn't load".
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const [todaysRes, statsRes] = await Promise.allSettled([
+        authedFetch(`/api/appointments?date=${todayIso}&limit=100`),
+        authedFetch("/api/appointments/stats"),
+      ]);
+      if (cancelled) return;
+
+      let problem: string | null = null;
+
+      if (todaysRes.status === "fulfilled" && todaysRes.value.ok) {
+        setAppointments(await todaysRes.value.json());
+      } else if (todaysRes.status === "fulfilled") {
+        const data = await todaysRes.value.json().catch(() => ({}));
+        problem = data.error ?? "Couldn't load today's schedule.";
+      } else {
+        problem = "Couldn't load today's schedule.";
+      }
+
+      if (statsRes.status === "fulfilled" && statsRes.value.ok) {
+        const stats = await statsRes.value.json();
+        setCounts(stats.counts);
+        if (stats.indexHint) problem = problem ?? stats.indexHint;
+      } else if (!problem) {
+        problem = "Couldn't load your dashboard totals.";
+      }
+
+      if (cancelled) return;
+      if (problem) toast.error(problem);
+      setLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // `appointments` now only ever holds today's rows; cancelled ones are still
+  // hidden from the schedule.
+  const todays = useMemo(
+    () => appointments.filter((a) => a.status !== "cancelled"),
+    [appointments]
+  );
 
   const cards = [
-    { label: "Today's sessions", value: stats.todays.length },
-    { label: "Upcoming confirmed", value: stats.upcoming.length },
-    { label: "My patients", value: stats.uniquePatients },
-    { label: "Completed sessions", value: stats.completed },
+    { label: "Today's sessions", value: todays.length },
+    { label: "Upcoming confirmed", value: counts.upcoming },
+    { label: "My patients", value: counts.uniquePatients },
+    { label: "Completed sessions", value: counts.completed },
   ];
 
   return (
@@ -74,18 +93,17 @@ export default function DoctorDashboardPage() {
       </h1>
       <p className="mt-2 text-sm text-ink-soft">{t("doctor.dashboard.subtitle")}</p>
 
-      <button
-        onClick={toggleOnline}
-        disabled={togglingOnline}
-        className={`mt-4 inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium transition-colors ${
-          online
-            ? "border-teal-600/30 bg-teal-50 text-teal-800"
-            : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
-        }`}
-      >
-        <span className={`h-2 w-2 rounded-full ${online ? "bg-teal-600" : "bg-ink-soft/50"}`} />
-        {online ? "You're visible as online to patients" : "You're offline — tap to go online"}
-      </button>
+      <p className="mt-4 inline-flex flex-wrap items-center gap-2 rounded-[var(--radius-pill)] border border-line px-4 py-2 text-xs font-medium text-ink-soft">
+        <span
+          className={`h-2 w-2 rounded-full ${
+            presenceVisible ? "animate-pulse-dot bg-success" : "bg-ink-soft/40"
+          }`}
+        />
+        {presenceVisible ? t("presence.online") : t("presence.hidden")}
+        <Link href="/doctor/settings" className="font-semibold text-indigo hover:text-indigo-deep">
+          {t("common.settings")}
+        </Link>
+      </p>
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {cards.map((c) => (
@@ -108,13 +126,13 @@ export default function DoctorDashboardPage() {
 
       {loading ? (
         <p className="mt-6 text-sm text-ink-soft">{t("common.loading")}</p>
-      ) : stats.todays.length === 0 ? (
+      ) : todays.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
           <p className="text-sm text-ink-soft">Nothing on the schedule for today.</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
-          {stats.todays.map((a) => (
+          {todays.map((a) => (
             <div
               key={a.id}
               className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/70 p-5"

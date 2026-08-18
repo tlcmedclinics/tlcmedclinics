@@ -8,6 +8,17 @@ export interface UserProfile {
   phone?: string;
   photoURL?: string; // Cloudinary URL
   createdAt: string;
+
+  // ---- Preferences ----
+  // Stored on the user doc rather than localStorage so they follow the person
+  // from their phone to the clinic desktop. All optional: undefined means
+  // "not set yet", and every reader treats that as the sensible default.
+  /** Preferred UI language. Falls back to whatever the browser last used. */
+  locale?: "en" | "ur";
+  /** Chime when a notification arrives. Defaults to on. */
+  notificationSound?: boolean;
+  /** Tone when a chat message is sent/received. Defaults to on. */
+  messageSound?: boolean;
 }
 
 export interface PatientProfile extends UserProfile {
@@ -21,7 +32,18 @@ export interface DoctorProfile extends UserProfile {
   specialization?: string;
   bio?: string;
   active: boolean; // admin can suspend a doctor without deleting the account
-  online?: boolean; // doctor-controlled presence toggle, shown to patients when picking a doctor
+
+  // ---- Presence ----
+  // Online status is derived, not stored: the app stamps `lastSeenAt` while the
+  // doctor has it open, and `isOnline()` in lib/presence.ts decides from that.
+  // There is deliberately no manual "I'm online" switch — a doctor who forgets
+  // to flip it off shows as available all night.
+  /** Last heartbeat from an active session. Written by PATCH /api/profile. */
+  lastSeenAt?: string;
+  /** Opt-out from Settings: when false the doctor always reads as offline. */
+  presenceVisible?: boolean;
+  /** Computed by GET /api/doctors for the client — never written to Firestore. */
+  online?: boolean;
   // Self-registered doctors start "pending" and are invisible to patients /
   // cannot log into the doctor dashboard until an admin approves them.
   // Doctors created directly by admin (scripts/create-doctor, admin panel)
@@ -60,7 +82,9 @@ export type SessionStatus = "not_started" | "live" | "ended";
 // How the appointment was secured:
 // "online-payment" -> paid instantly through the booking form, auto-confirmed
 // "call-back"       -> patient asked the clinic to call and confirm instead
-export type BookingType = "online-payment" | "call-back";
+// "doctor-request" is booked without a slot: the patient wanted a service no
+// available doctor covers, so the clinic assigns someone and schedules it.
+export type BookingType = "online-payment" | "call-back" | "doctor-request";
 
 export interface Appointment {
   id: string;
@@ -94,6 +118,14 @@ export interface Appointment {
   sessionEndedAt?: string;
   notes?: string;
   slotId?: string; // the slots/{id} doc this booking reserved — freed automatically on cancel
+
+  // Set on a "doctor-request" booking: no slot was held because no doctor
+  // covering this service had availability. Admin assigns a doctor and
+  // reschedules it into a real slot, which clears the flag.
+  needsDoctor?: boolean;
+  /** What the patient asked for, in their own words — admin schedules around it. */
+  preferredWhen?: string;
+
   createdAt: string;
   // Patient's rating of the doctor after a completed session — set once,
   // via /api/appointments/[id]/rate.

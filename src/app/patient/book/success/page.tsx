@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import RequireRole from "@/components/RequireRole";
 import { authedFetch } from "@/lib/authed-fetch";
 
 type State = "verifying" | "done" | "error";
@@ -39,7 +38,7 @@ function StripeReturnContent() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-lg px-6 py-20 text-center animate-fade-up">
+    <div className="mx-auto max-w-lg py-10 text-center animate-fade-up">
       {state === "verifying" && (
         <>
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-indigo/30 border-t-indigo" />
@@ -88,10 +87,8 @@ function StripeReturnContent() {
 
 export default function StripeReturnPage() {
   return (
-    <RequireRole role="patient">
-      <Suspense fallback={null}>
-        <StripeReturnContent />
-      </Suspense>
-    </RequireRole>
+    <Suspense fallback={null}>
+      <StripeReturnContent />
+    </Suspense>
   );
 }

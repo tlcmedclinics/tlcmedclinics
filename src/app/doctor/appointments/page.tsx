@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -11,6 +11,8 @@ import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import type { Appointment, AppointmentStatus } from "@/types";
+
+const PAGE_SIZE = 50;
 
 const statusStyles: Record<AppointmentStatus, string> = {
   pending: "bg-mist text-ink-soft",
@@ -29,29 +31,48 @@ export default function DoctorAppointmentsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [activePanel, setActivePanel] = useState<
     | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
     | { kind: "chat"; threadId: string; patientName: string }
     | null
   >(null);
 
-  async function load() {
-    setLoading(true);
-    try {
-      const res = await authedFetch("/api/appointments");
-      if (!res.ok) throw new Error();
-      setAppointments(await res.json());
-    } catch {
-      toast.error("Couldn't load appointments. Please refresh.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Firestore applies the status filter and the page limit; this used to pull
+  // the doctor's whole appointment history and filter it in the browser.
+  const load = useCallback(
+    async (before?: string) => {
+      const isPaging = Boolean(before);
+      if (isPaging) setLoadingMore(true);
+      else setLoading(true);
+      try {
+        const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        if (filter !== "all") params.set("status", filter);
+        if (before) params.set("before", before);
 
+        const res = await authedFetch(`/api/appointments?${params}`);
+        if (!res.ok) throw new Error();
+        const page: Appointment[] = await res.json();
+
+        setAppointments((prev) => (isPaging ? [...prev, ...page] : page));
+        setHasMore(page.length === PAGE_SIZE);
+      } catch {
+        toast.error("Couldn't load appointments. Please refresh.");
+      } finally {
+        if (isPaging) setLoadingMore(false);
+        else setLoading(false);
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filter]
+  );
+
+  // Refetches whenever the status tab changes.
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filter]);
 
   async function updateStatus(id: string, status: AppointmentStatus) {
     try {
@@ -108,7 +129,6 @@ export default function DoctorAppointmentsPage() {
     }
   }
 
-  const visible = filter === "all" ? appointments : appointments.filter((a) => a.status === filter);
 
   return (
     <div className="animate-fade-up">
@@ -133,11 +153,11 @@ export default function DoctorAppointmentsPage() {
 
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">{t("common.loading")}</p>
-      ) : visible.length === 0 ? (
+      ) : appointments.length === 0 ? (
         <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
       ) : (
         <div className="mt-6 space-y-3">
-          {visible.map((a) => {
+          {appointments.map((a) => {
             const isOnlineMode = a.mode === "video" || a.mode === "audio" || a.mode === "chat";
             const joinable = canJoinSession(a, now);
             return (
@@ -228,6 +248,19 @@ export default function DoctorAppointmentsPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {!loading && hasMore && (
+        <div className="mt-6 flex justify-center">
+          <button
+            type="button"
+            onClick={() => load(appointments[appointments.length - 1]?.createdAt)}
+            disabled={loadingMore}
+            className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
+          >
+            {loadingMore ? "Loading…" : "Load older appointments"}
+          </button>
         </div>
       )}
 

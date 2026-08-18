@@ -1,23 +1,43 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/client";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
+import { useT } from "@/contexts/LanguageContext";
+import { playNotificationChime } from "@/lib/notification-sound";
 import type { AppNotification } from "@/types";
 
 // Renders a bell icon with a live unread badge — updates in real time as
-// new notifications land in Firestore (no polling). Drop this into any
-// panel layout/header; it no-ops until `profile` is loaded.
+// new notifications land in Firestore (no polling), and chimes when one
+// arrives. Drop this into any panel layout/header; it no-ops until `profile`
+// is loaded.
 export default function NotificationBell() {
   const { profile } = useAuth();
+  const t = useT();
   const [items, setItems] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  // Ids present the last time we looked. The very first snapshot seeds this
+  // without chiming — otherwise every page load would replay the backlog.
+  const seenIds = useRef<Set<string> | null>(null);
+  // The sound preference now lives on the user's profile (Settings) so it
+  // follows them across devices. Read through a ref so the snapshot handler
+  // always sees the current value without re-subscribing.
+  const soundOn = profile?.notificationSound !== false;
+  const soundOnRef = useRef(soundOn);
+
+  useEffect(() => {
+    soundOnRef.current = soundOn;
+  }, [soundOn]);
 
   useEffect(() => {
     if (!profile?.uid) return;
+    // A new subscription (different user) starts a fresh baseline.
+    seenIds.current = null;
+
     const q = query(
       collection(db, "notifications"),
       where("userId", "==", profile.uid),
@@ -25,7 +45,16 @@ export default function NotificationBell() {
       limit(30)
     );
     const unsub = onSnapshot(q, (snap) => {
-      setItems(snap.docs.map((d) => d.data() as AppNotification));
+      const next = snap.docs.map((d) => d.data() as AppNotification);
+      setItems(next);
+
+      const ids = new Set(next.map((n) => n.id));
+      const previous = seenIds.current;
+      seenIds.current = ids;
+
+      if (!previous) return; // first snapshot — seed only, stay quiet
+      const hasArrival = next.some((n) => !previous.has(n.id) && !n.read);
+      if (hasArrival && soundOnRef.current) playNotificationChime();
     });
     return () => unsub();
   }, [profile?.uid]);
@@ -78,8 +107,14 @@ export default function NotificationBell() {
 
       {open && (
         <div className="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] rounded-2xl border border-line/70 bg-paper shadow-lg">
-          <div className="border-b border-line/70 px-4 py-3">
+          <div className="flex items-center justify-between border-b border-line/70 px-4 py-3">
             <p className="text-sm font-semibold text-ink">Notifications</p>
+            <Link
+              href={`/${profile.role}/settings`}
+              className="rounded-full border border-line px-2.5 py-1 text-[0.65rem] font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
+            >
+              {t("common.settings")}
+            </Link>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {items.length === 0 ? (

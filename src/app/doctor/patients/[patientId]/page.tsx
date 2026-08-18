@@ -20,21 +20,22 @@ export default function DoctorPatientDetailPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Scoped to this one patient server-side (the route still enforces that the
+  // appointment is assigned to the calling doctor). This used to fetch every
+  // appointment the doctor had ever had and filter down to one person here.
   useEffect(() => {
-    authedFetch("/api/appointments")
+    if (!patientId) return;
+    authedFetch(`/api/appointments?patientId=${encodeURIComponent(patientId)}&limit=200`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setAppointments)
       .catch(() => toast.error("Couldn't load this patient. Please refresh."))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [patientId]);
 
   const history = useMemo(
-    () =>
-      appointments
-        .filter((a) => a.patientId === patientId)
-        .sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1)),
-    [appointments, patientId]
+    () => [...appointments].sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1)),
+    [appointments]
   );
 
   const patient = history[0];

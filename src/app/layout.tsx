@@ -1,38 +1,44 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
-import { Newsreader, Plus_Jakarta_Sans } from "next/font/google";
+import { Manrope, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import WhatsAppButton from "@/components/WhatsAppButton";
+import SiteChrome from "@/components/SiteChrome";
 import Toaster from "@/components/Toaster";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
-// Display face: an editorial serif with real optical weight for headings —
-// warmer and more distinctive than a default system serif.
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
+// One Latin family across the whole app. Manrope carries headings at 800 and
+// body text at 400–600, so hierarchy comes from weight and size rather than
+// from mixing a serif with a sans — which reads cleaner in dense panel UI and
+// means one less font to load.
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  style: ["normal", "italic"],
-  weight: ["400", "500", "600"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
-// Body face: a clean, slightly warm grotesk — reads well at small sizes in
-// dense app screens (dashboards, forms, chat) as well as marketing copy.
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-plus-jakarta",
-  subsets: ["latin"],
+// Urdu is set in Nastaliq, the calligraphic style Pakistani readers expect —
+// the Latin faces above have no Urdu glyphs at all, so without this the whole
+// Urdu translation would fall back to a system font. Its metrics are very
+// different from Latin type, which is why globals.css treats it separately.
+const nastaliq = Noto_Nastaliq_Urdu({
+  variable: "--font-nastaliq",
+  subsets: ["arabic"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
+// Kept for numerals, times, prices and IDs — tabular figures stop numbers
+// jittering as they update, and they stay Latin inside Urdu text.
 const plexMono = localFont({
   variable: "--font-plex-mono",
   src: [
     { path: "./fonts/IBMPlexMono-Regular.ttf", weight: "400" },
     { path: "./fonts/IBMPlexMono-Medium.ttf", weight: "500" },
   ],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -41,20 +47,29 @@ export const metadata: Metadata = {
     "TLC Med Clinics offers US-standard vein care, skin care, and mental health treatment in Lahore, Pakistan — in person and by telemedicine.",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#fbfaf8",
+  width: "device-width",
+  initialScale: 1,
+  // The app shell has its own scroll containers; letting the page zoom past
+  // this on mobile breaks the fixed bottom nav.
+  maximumScale: 5,
+};
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
+    // lang/dir are set here for the first paint and then kept in sync by
+    // LanguageProvider once the saved locale is read from localStorage.
     <html
       lang="en"
-      className={`${newsreader.variable} ${plusJakarta.variable} ${plexMono.variable} h-full antialiased`}
+      dir="ltr"
+      className={`${manrope.variable} ${nastaliq.variable} ${plexMono.variable} h-full`}
     >
-      <body className="min-h-full flex flex-col bg-paper text-ink">
+      <body className="min-h-full bg-paper text-ink">
         <LanguageProvider>
           <ToastProvider>
             <AuthProvider>
-              <Header />
-              <main className="flex-1">{children}</main>
-              <Footer />
-              <WhatsAppButton />
+              <SiteChrome>{children}</SiteChrome>
               <Toaster />
             </AuthProvider>
           </ToastProvider>

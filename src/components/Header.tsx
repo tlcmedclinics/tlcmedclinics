@@ -4,7 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { navLinks, site } from "@/data/site";
 import { useAuth } from "@/contexts/AuthContext";
+import Avatar from "@/components/Avatar";
 import LanguageToggle from "@/components/LanguageToggle";
+import { useT } from "@/contexts/LanguageContext";
 
 const dashboardPath: Record<string, string> = {
   patient: "/patient/dashboard",
@@ -14,6 +16,7 @@ const dashboardPath: Record<string, string> = {
 
 export default function Header() {
   const { user, profile, loading } = useAuth();
+  const t = useT();
 
   return (
     <header className="sticky top-0 z-50 border-b border-line/70 bg-paper/90 backdrop-blur">
@@ -44,7 +47,7 @@ export default function Header() {
               href={link.href}
               className="text-sm text-ink-soft transition-colors hover:text-indigo-deep"
             >
-              {link.label}
+              {t(link.labelKey)}
             </Link>
           ))}
         </nav>
@@ -53,7 +56,7 @@ export default function Header() {
           <LanguageToggle />
           <a
             href={`tel:${site.phone}`}
-            className="hidden font-mono text-sm text-ink-soft lg:inline"
+            className="numeric hidden text-sm text-ink-soft lg:inline"
           >
             {site.phone}
           </a>
@@ -62,20 +65,15 @@ export default function Header() {
             <>
               {profile.role === "patient" && (
                 <Link href="/patient/book" className="btn-primary !px-5 !py-2.5">
-                  Book Appointment
+                  {t("nav.book")}
                 </Link>
               )}
               <Link
                 href={dashboardPath[profile.role] ?? "/"}
-                title="My Dashboard"
-                className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-indigo text-sm font-semibold text-white transition-opacity hover:opacity-85"
+                title={t("nav.dashboard")}
+                className="transition-opacity hover:opacity-85"
               >
-                {profile.photoURL ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profile.photoURL} alt={profile.name} className="h-full w-full object-cover" />
-                ) : (
-                  (profile.name?.trim()?.[0] ?? "?").toUpperCase()
-                )}
+                <Avatar name={profile.name} photoURL={profile.photoURL} size="lg" />
               </Link>
             </>
           ) : (
@@ -83,7 +81,7 @@ export default function Header() {
               href="/login"
               className="btn-outline !hidden !px-5 !py-2.5 sm:!inline-flex"
             >
-              Login
+              {t("nav.login")}
             </Link>
           )}
         </div>

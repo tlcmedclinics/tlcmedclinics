@@ -71,8 +71,12 @@ export async function POST(
       sessionStartedAt: appointment.sessionStartedAt ?? new Date().toISOString(),
     };
 
+    // An "audio" booking gets a room with the camera disabled outright, not a
+    // video room people are asked to keep muted.
+    const audioOnly = appointment.mode === "audio";
+
     if ((appointment.mode === "video" || appointment.mode === "audio") && !appointment.roomUrl) {
-      updates.roomUrl = await createDailyRoom(appointment.id);
+      updates.roomUrl = await createDailyRoom(appointment.id, audioOnly);
     }
     if (appointment.mode === "chat" && !appointment.chatThreadId) {
       updates.chatThreadId = appointment.id;
@@ -86,7 +90,8 @@ export async function POST(
       joinToken = await createDailyToken(
         roomUrl,
         isHost ? appointment.doctorName || "Clinic" : appointment.patientName || "Patient",
-        isHost
+        isHost,
+        audioOnly
       );
     }
 

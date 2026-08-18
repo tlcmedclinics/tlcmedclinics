@@ -22,8 +22,11 @@ export default function DoctorPatientsPage() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Bounded to the doctor's 500 most recent bookings. The summary below is
+  // ordered by last-seen, so if a doctor ever passes that many the rows that
+  // fall off are the least recently seen patients.
   useEffect(() => {
-    authedFetch("/api/appointments")
+    authedFetch("/api/appointments?limit=500")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setAppointments)
       .catch(() => toast.error("Couldn't load your patients. Please refresh."))

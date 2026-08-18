@@ -137,10 +137,12 @@ export const faqs: Faq[] = [
   },
 ];
 
+// `labelKey` resolves through the i18n dictionary rather than being a literal,
+// so the public header translates with the rest of the site.
 export const navLinks = [
-  { href: "/", label: "Home" },
-  { href: "/services", label: "Services" },
-  { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
-  { href: "/contact", label: "Contact" },
+  { href: "/", labelKey: "nav.home" },
+  { href: "/services", labelKey: "nav.services" },
+  { href: "/about", labelKey: "nav.about" },
+  { href: "/blog", labelKey: "nav.blog" },
+  { href: "/contact", labelKey: "nav.contact" },
 ];
