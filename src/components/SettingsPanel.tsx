@@ -193,7 +193,10 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
 
   /* ------------------------------ sections ------------------------------ */
 
-  function renderSection(id: SectionId) {
+  // Arrow const, not a hoisted `function`: a hoisted declaration is
+  // considered callable before the null guard above, so TypeScript would
+  // not narrow `profile` inside it.
+  const renderSection = (id: SectionId) => {
     switch (id) {
       case "profile":
         return (
@@ -356,7 +359,7 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
           </div>
         );
     }
-  }
+  };
 
   const list = (
     <ul className="space-y-1">
