@@ -300,6 +300,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "chat.endSession": "End session",
     "chat.backToAppointments": "Back to appointments",
     "chat.sessionEnded": "This session has ended.",
+    "chat.jumpToLatest": "Latest",
 
     /* ---------- video / audio ---------- */
     "video.title": "Video consultation",
@@ -757,7 +758,8 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "chat.sendError": "پیغام نہیں بھیجا جا سکا۔ دوبارہ کوشش کریں۔",
     "chat.endSession": "سیشن ختم کریں",
     "chat.backToAppointments": "اپائنٹمنٹس پر واپس",
-    "chat.sessionEnded": "یہ سیشن ختم ہو چکا ہے۔",
+    "chat.sessionEnded": "یہ نشست ختم ہو چکی ہے۔",
+    "chat.jumpToLatest": "تازہ ترین",
 
     /* ---------- video / audio ---------- */
     "video.title": "ویڈیو مشاورت",
