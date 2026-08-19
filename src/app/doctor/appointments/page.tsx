@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { SearchInput } from "@/components/ListControls";
 import LoadErrorNotice from "@/components/LoadErrorNotice";
 import { authedFetch } from "@/lib/authed-fetch";
 import { isIndexError, readApiError } from "@/lib/api-error";
+import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
@@ -13,6 +14,8 @@ import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
+import PrescriptionEditor from "@/components/PrescriptionEditor";
+import FollowUpScheduler from "@/components/FollowUpScheduler";
 import type { Appointment, AppointmentStatus } from "@/types";
 
 const PAGE_SIZE = 50;
@@ -36,13 +39,24 @@ export default function DoctorAppointmentsPage() {
   const now = useNow();
   const { startSession, endSession, pendingId } = useSessionAction();
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | AppointmentStatus>("all");
   const [search, setSearch] = useState("");
   const [loadError, setLoadError] = useState<{ message: string; setup: boolean } | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  // Rows beyond the live window, pulled on demand. History doesn't change, so
+  // there's nothing to subscribe to down there.
+  const [older, setOlder] = useState<Appointment[]>([]);
+
+  // The newest page is a live subscription, so a booking or a status change
+  // shows up without the doctor reloading. Searching widens the window, and
+  // that wider set comes over REST instead.
+  const searching = search.trim().length > 0;
+  const live = useLiveAppointments({
+    status: filter,
+    pageSize: PAGE_SIZE,
+    enabled: !searching,
+  });
   const [activePanel, setActivePanel] = useState<
     | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
     | { kind: "chat"; threadId: string; patientName: string }
@@ -54,8 +68,7 @@ export default function DoctorAppointmentsPage() {
   const load = useCallback(
     async (before?: string) => {
       const isPaging = Boolean(before);
-      if (isPaging) setLoadingMore(true);
-      else setLoading(true);
+      setLoadingMore(true);
       try {
         const params = new URLSearchParams({
           limit: String(search.trim() ? SEARCH_WINDOW : PAGE_SIZE),
@@ -70,31 +83,39 @@ export default function DoctorAppointmentsPage() {
           // Surfacing that beats "please refresh", which never helps here.
           const message = await readApiError(res, t("error.loadFailed"));
           setLoadError({ message, setup: isIndexError(res.status, message) });
-          if (!isPaging) setAppointments([]);
+          if (!isPaging) setOlder([]);
           return;
         }
         const page: Appointment[] = await res.json();
 
         setLoadError(null);
-        setAppointments((prev) => (isPaging ? [...prev, ...page] : page));
+        // A non-paging load only happens while searching — otherwise the live
+        // subscription is already showing the newest rows.
+        if (isPaging) setOlder((prev) => [...prev, ...page]);
+        else setOlder(page);
         setHasMore(!search.trim() && page.length === PAGE_SIZE);
       } catch {
         setLoadError({ message: t("error.network"), setup: false });
       } finally {
-        if (isPaging) setLoadingMore(false);
-        else setLoading(false);
+        setLoadingMore(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [filter, search]
   );
 
-  // Refetches when the status tab changes, and when a search starts or ends.
+  // REST is only needed while searching — the live subscription covers the
+  // default view, so changing tabs doesn't refetch anything.
   useEffect(() => {
-    const id = setTimeout(() => load(), search ? 300 : 0);
+    if (!searching) {
+      setOlder([]);
+      setHasMore(false);
+      return;
+    }
+    const id = setTimeout(() => load(), 300);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search]);
+  }, [filter, search, searching]);
 
   async function updateStatus(id: string, status: AppointmentStatus) {
     try {
@@ -136,21 +157,27 @@ export default function DoctorAppointmentsPage() {
     setAppointments((prev) => prev.map((x) => (x.id === a.id ? result.appointment : x)));
   }
 
-  async function savePrescription(id: string, prescription: string) {
-    try {
-      const res = await authedFetch("/api/appointments", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, prescription }),
-      });
-      if (!res.ok) throw new Error();
-      toast.success("Prescription saved.");
-      setAppointments((prev) => prev.map((x) => (x.id === id ? { ...x, prescription } : x)));
-    } catch {
-      toast.error("Couldn't save the prescription. Please try again.");
-    }
-  }
 
+
+  // Live rows first, then anything paged in below them. The map keeps a row
+  // that appears in both (a live update to something already paged) from
+  // rendering twice, and lets the live copy win.
+  const appointments = useMemo(() => {
+    const byId = new Map<string, Appointment>();
+    for (const a of older) byId.set(a.id, a);
+    for (const a of live.appointments) byId.set(a.id, a);
+    return Array.from(byId.values()).sort((a, b) =>
+      (b.createdAt ?? "").localeCompare(a.createdAt ?? "")
+    );
+  }, [live.appointments, older]);
+
+  const loading = searching ? loadingMore : live.loading;
+
+  // Optimistic patches from the row actions still need somewhere to land.
+  function setAppointments(update: (prev: Appointment[]) => Appointment[]) {
+    setOlder((prev) => update(prev));
+    live.setAppointments((prev) => update(prev));
+  }
 
   const needle = search.trim().toLowerCase();
   const visible = needle
@@ -288,9 +315,21 @@ export default function DoctorAppointmentsPage() {
                     )}
                     <PrescriptionEditor
                       appointment={a}
-                      onSave={async (text) => {
-                        await savePrescription(a.id, text);
-                      }}
+                      onSaved={(patch) =>
+                        setAppointments((prev) =>
+                          prev.map((x) => (x.id === a.id ? { ...x, ...patch } : x))
+                        )
+                      }
+                    />
+                    <FollowUpScheduler
+                      appointment={a}
+                      onScheduled={(followUp) =>
+                        setAppointments((prev) =>
+                          prev.map((x) =>
+                            x.id === a.id ? { ...x, followUpAppointmentId: followUp.id } : x
+                          )
+                        )
+                      }
                     />
                   </>
                 )}
@@ -343,53 +382,3 @@ export default function DoctorAppointmentsPage() {
   );
 }
 
-function PrescriptionEditor({
-  appointment,
-  onSave,
-}: {
-  appointment: Appointment;
-  onSave: (text: string) => Promise<void>;
-}) {
-  const [text, setText] = useState(appointment.prescription ?? "");
-  const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(!appointment.prescription);
-
-  if (!editing) {
-    return (
-      <div className="mt-3 rounded-xl border border-teal-600/20 bg-teal-50 p-4">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-teal-800">Prescription</p>
-          <button onClick={() => setEditing(true)} className="text-xs font-medium text-indigo hover:text-indigo-deep">
-            Edit
-          </button>
-        </div>
-        <p className="mt-1 whitespace-pre-line text-sm text-teal-900">{appointment.prescription}</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-3 rounded-xl border border-line/70 p-4">
-      <p className="text-xs font-medium text-ink">Prescription for this patient</p>
-      <textarea
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={3}
-        placeholder="Medicine, dosage, and instructions…"
-        className="input mt-2 resize-none text-sm"
-      />
-      <button
-        disabled={saving || !text.trim()}
-        onClick={async () => {
-          setSaving(true);
-          await onSave(text.trim());
-          setSaving(false);
-          setEditing(false);
-        }}
-        className="mt-2 rounded-full bg-teal-700 px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-teal-800 disabled:opacity-60"
-      >
-        {saving ? "Saving…" : "Save prescription"}
-      </button>
-    </div>
-  );
-}

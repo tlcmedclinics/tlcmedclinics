@@ -1,126 +1,88 @@
 "use client";
 
-import {
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
-  type ConfirmationResult,
-} from "firebase/auth";
+import { signInWithCustomToken } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 
+// Re-exported so existing imports keep working; the implementation is shared
+// with the server (see lib/phone-format.ts).
+export { toE164, formatPhone } from "@/lib/phone-format";
+
 /**
- * Phone sign-in helpers.
+ * Phone sign-in, delivered by Twilio.
  *
- * Some patients don't have an email address at all, so a phone number is a
- * first-class way into the app — not a fallback. Firebase sends the OTP
- * itself, so there's no SMS provider to configure here.
+ * The browser never sees the code or decides whether it was right: it asks the
+ * server to send one, then hands back what the user typed. The server checks
+ * it with Twilio and only then mints a Firebase custom token. Firebase remains
+ * the identity system; Twilio just proves the person holds the number.
  *
- * Firebase requires a reCAPTCHA challenge before it will send a code. We use
- * the invisible variant so it never interrupts the user unless Firebase
- * decides the traffic looks automated.
+ * This replaced Firebase Phone Auth, which needed an invisible reCAPTCHA in
+ * the page and its own provider setup. Nothing here touches reCAPTCHA.
  */
 
-/** Pakistan, since that's where the clinic is. Numbers are stored in E.164. */
-const DEFAULT_COUNTRY_CODE = "+92";
-
-/**
- * "0310-040-4444" → "+923100404444".
- *
- * Patients type their number the way they'd say it; Firebase only accepts
- * E.164. An already-international number is passed through untouched.
- */
-export function toE164(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-
-  if (trimmed.startsWith("+")) {
-    const digits = trimmed.slice(1).replace(/\D/g, "");
-    return digits.length >= 8 ? `+${digits}` : null;
-  }
-
-  const digits = trimmed.replace(/\D/g, "");
-  if (!digits) return null;
-
-  // Local format: 03XX XXXXXXX → drop the trunk 0 and prefix the country code.
-  if (digits.startsWith("0")) {
-    const national = digits.slice(1);
-    return national.length >= 9 ? `${DEFAULT_COUNTRY_CODE}${national}` : null;
-  }
-  // Already includes the country code without the plus.
-  if (digits.startsWith("92")) return `+${digits}`;
-  // Bare national number.
-  return digits.length >= 9 ? `${DEFAULT_COUNTRY_CODE}${digits}` : null;
+/** The API returns i18n keys, so a failure can be shown in the user's language. */
+async function readError(res: Response): Promise<{ key: string; retryAfterSeconds?: number }> {
+  const data = await res.json().catch(() => ({}));
+  const key = typeof data?.error === "string" ? data.error : "common.somethingWrong";
+  return { key, retryAfterSeconds: data?.retryAfterSeconds };
 }
 
-/** Display form for a stored E.164 number: +923100404444 → 0310 040 4444 */
-export function formatPhone(e164?: string | null): string {
-  if (!e164) return "";
-  const digits = e164.replace(/\D/g, "");
-  const national = digits.startsWith("92") ? digits.slice(2) : digits;
-  if (national.length < 10) return e164;
-  return `0${national.slice(0, 3)} ${national.slice(3, 6)} ${national.slice(6)}`;
-}
-
-// Firebase attaches the verifier to a specific DOM node and refuses to
-// re-render into one it already owns, so the instance is kept per container
-// and torn down explicitly when the form unmounts.
-let verifier: RecaptchaVerifier | null = null;
-let verifierContainerId: string | null = null;
-
-function getVerifier(containerId: string): RecaptchaVerifier {
-  if (verifier && verifierContainerId === containerId) return verifier;
-  clearRecaptcha();
-  verifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" });
-  verifierContainerId = containerId;
-  return verifier;
-}
-
-/** Tear the challenge down — call this when the form unmounts. */
-export function clearRecaptcha() {
-  try {
-    verifier?.clear();
-  } catch {
-    // Already gone (fast refresh, double unmount) — nothing to do.
+export class PhoneAuthError extends Error {
+  /** An i18n key, not display text. */
+  readonly key: string;
+  readonly retryAfterSeconds?: number;
+  constructor(key: string, retryAfterSeconds?: number) {
+    super(key);
+    this.key = key;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
-  verifier = null;
-  verifierContainerId = null;
+}
+
+/** Asks the server to text a code to this number. */
+export async function requestCode(phone: string): Promise<void> {
+  const res = await fetch("/api/auth/phone/start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone }),
+  });
+  if (!res.ok) {
+    const { key, retryAfterSeconds } = await readError(res);
+    throw new PhoneAuthError(key, retryAfterSeconds);
+  }
 }
 
 /**
- * Sends the OTP. Returns the confirmation handle the caller passes back to
- * `confirmCode` along with whatever the user typed.
+ * Submits the code. On success the user is signed in to Firebase and the
+ * returned credential's uid can be used immediately.
  */
-export async function sendOtp(
-  phone: string,
-  containerId: string
-): Promise<ConfirmationResult> {
-  const e164 = toE164(phone);
-  if (!e164) throw new Error("INVALID_PHONE");
-  return signInWithPhoneNumber(auth, e164, getVerifier(containerId));
-}
-
-/** Completes sign-in. Throws if the code is wrong or expired. */
-export async function confirmCode(confirmation: ConfirmationResult, code: string) {
-  const cleaned = code.replace(/\D/g, "");
-  if (cleaned.length < 6) throw new Error("INVALID_CODE");
-  return confirmation.confirm(cleaned);
+export async function submitCode(phone: string, code: string) {
+  const res = await fetch("/api/auth/phone/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, code }),
+  });
+  if (!res.ok) {
+    const { key, retryAfterSeconds } = await readError(res);
+    throw new PhoneAuthError(key, retryAfterSeconds);
+  }
+  const { token } = await res.json();
+  return signInWithCustomToken(auth, token);
 }
 
 /**
- * Firebase's error codes are not user-facing. Map the ones a patient can
- * actually hit to i18n keys; anything else falls through to a generic message.
+ * Turns any thrown error into something the form can render: an i18n key, plus
+ * how long to wait when the server asked us to back off.
  */
-export function phoneErrorKey(err: unknown): string {
-  const code =
-    (err as { code?: string })?.code ?? (err as { message?: string })?.message ?? "";
-  if (code.includes("INVALID_PHONE") || code.includes("invalid-phone-number")) {
-    return "auth.invalidPhone";
+export function phoneErrorInfo(err: unknown): {
+  key: string;
+  retryAfterSeconds?: number;
+} {
+  if (err && typeof err === "object" && "key" in err) {
+    const e = err as { key?: unknown; retryAfterSeconds?: unknown };
+    return {
+      key: typeof e.key === "string" ? e.key : "common.somethingWrong",
+      retryAfterSeconds:
+        typeof e.retryAfterSeconds === "number" ? e.retryAfterSeconds : undefined,
+    };
   }
-  if (code.includes("INVALID_CODE") || code.includes("invalid-verification-code")) {
-    return "auth.invalidCode";
-  }
-  if (code.includes("code-expired")) return "auth.codeExpired";
-  if (code.includes("too-many-requests")) return "auth.tooManyRequests";
-  if (code.includes("quota-exceeded")) return "auth.smsQuota";
-  if (code.includes("operation-not-allowed")) return "auth.phoneNotEnabled";
-  return "common.somethingWrong";
+  return { key: "common.somethingWrong" };
 }

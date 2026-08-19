@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
-import type { ConfirmationResult } from "firebase/auth";
 import { db } from "@/lib/firebase/client";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
-import { clearRecaptcha, confirmCode, phoneErrorKey, sendOtp } from "@/lib/phone-auth";
+import { phoneErrorInfo, requestCode, submitCode } from "@/lib/phone-auth";
 import type { UserProfile } from "@/types";
 
 const dashboardPath: Record<string, string> = {
@@ -18,22 +17,17 @@ const dashboardPath: Record<string, string> = {
 };
 
 /**
- * Phone + OTP sign-in, shared by the login and register pages.
+ * Phone + code sign-in, shared by the login and register pages.
  *
- * `mode` only changes what happens after the code is verified: signing in
- * routes an existing user to their dashboard, while registering also asks for
- * a name and creates the profile. The verification itself is identical, so a
- * patient who taps "register" but already has an account is signed in rather
- * than being told off.
+ * `mode` only changes what happens after the number is verified: signing in
+ * routes an existing user to their dashboard, registering also asks for a name
+ * and creates the profile. Verification itself is identical, so someone who
+ * taps "create account" but already has one is simply signed in.
  */
 export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const toast = useToast();
   const t = useT();
-
-  // Firebase renders its invisible challenge into this node, so the id has to
-  // be unique per mounted form.
-  const recaptchaId = `recaptcha-${useId().replace(/:/g, "")}`;
 
   const [stage, setStage] = useState<"phone" | "code" | "name">("phone");
   const [phone, setPhone] = useState("");
@@ -41,47 +35,54 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [resendIn, setResendIn] = useState(0);
-  const confirmationRef = useRef<ConfirmationResult | null>(null);
+  const codeRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => clearRecaptcha(), []);
-
-  // Firebase rate-limits SMS hard, so don't let people hammer "resend".
+  // Every SMS costs money and lands on someone's phone, so the server enforces
+  // a gap between sends. Mirroring it here keeps the button honest rather than
+  // letting people tap into a rejection.
   useEffect(() => {
     if (resendIn <= 0) return;
     const id = setTimeout(() => setResendIn((n) => n - 1), 1000);
     return () => clearTimeout(id);
   }, [resendIn]);
 
-  async function requestCode() {
+  useEffect(() => {
+    if (stage === "code") codeRef.current?.focus();
+  }, [stage]);
+
+  function reportError(err: unknown) {
+    const { key, retryAfterSeconds } = phoneErrorInfo(err);
+    toast.error(t(key));
+    // The server tells us how long it wants us to wait; honour it so the
+    // button isn't offering an action that will just be rejected.
+    if (retryAfterSeconds) setResendIn(retryAfterSeconds);
+  }
+
+  async function sendCode() {
     if (!phone.trim()) {
       toast.error(t("auth.enterPhone"));
       return;
     }
     setBusy(true);
     try {
-      confirmationRef.current = await sendOtp(phone, recaptchaId);
+      await requestCode(phone);
       setStage("code");
       setResendIn(45);
       toast.success(t("auth.codeSent"));
     } catch (err) {
-      toast.error(t(phoneErrorKey(err)));
-      // A failed attempt leaves the challenge in a bad state; next try gets a
-      // fresh one.
-      clearRecaptcha();
+      reportError(err);
     } finally {
       setBusy(false);
     }
   }
 
-  async function verifyCode() {
-    const confirmation = confirmationRef.current;
-    if (!confirmation) return;
+  async function verify() {
     setBusy(true);
     try {
-      const cred = await confirmCode(confirmation, code);
+      const cred = await submitCode(phone, code);
 
-      // The Firestore profile — not Firebase Auth — is what decides whether
-      // this is a returning user, because that's where the role lives.
+      // The Firestore profile — not the Firebase user — is what says whether
+      // this person has finished signing up, because that's where the role is.
       const snap = await getDoc(doc(db, "users", cred.user.uid));
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
@@ -90,15 +91,10 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
         return;
       }
 
-      if (mode === "login") {
-        // Verified number, but nobody has ever finished signing up with it.
-        setStage("name");
-        toast.info(t("auth.finishSignup"));
-        return;
-      }
+      if (mode === "login") toast.info(t("auth.finishSignup"));
       setStage("name");
     } catch (err) {
-      toast.error(t(phoneErrorKey(err)));
+      reportError(err);
     } finally {
       setBusy(false);
     }
@@ -145,13 +141,23 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
               autoComplete="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendCode()}
               placeholder="03XX-XXXXXXX"
               className="input numeric"
             />
             <span className="field-hint">{t("auth.phoneHint")}</span>
           </label>
-          <button type="button" onClick={requestCode} disabled={busy} className="btn-indigo w-full">
-            {busy ? t("auth.sending") : t("auth.sendCode")}
+          <button
+            type="button"
+            onClick={sendCode}
+            disabled={busy || resendIn > 0}
+            className="btn-indigo w-full"
+          >
+            {busy
+              ? t("auth.sending")
+              : resendIn > 0
+              ? t("auth.resendIn", { seconds: resendIn })
+              : t("auth.sendCode")}
           </button>
         </>
       )}
@@ -161,17 +167,24 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
           <label className="field">
             <span className="label">{t("auth.codeLabel")}</span>
             <input
+              ref={codeRef}
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && code.length >= 4 && verify()}
               placeholder="______"
               className="input numeric text-center text-lg tracking-[0.4em]"
             />
             <span className="field-hint">{t("auth.codeHint", { phone })}</span>
           </label>
-          <button type="button" onClick={verifyCode} disabled={busy} className="btn-indigo w-full">
+          <button
+            type="button"
+            onClick={verify}
+            disabled={busy || code.length < 4}
+            className="btn-indigo w-full"
+          >
             {busy ? t("auth.verifying") : t("auth.verify")}
           </button>
           <div className="flex items-center justify-between text-xs">
@@ -187,13 +200,11 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
             </button>
             <button
               type="button"
-              onClick={requestCode}
+              onClick={sendCode}
               disabled={busy || resendIn > 0}
               className="font-semibold text-indigo disabled:text-ink-soft"
             >
-              {resendIn > 0
-                ? t("auth.resendIn", { seconds: resendIn })
-                : t("auth.resendCode")}
+              {resendIn > 0 ? t("auth.resendIn", { seconds: resendIn }) : t("auth.resendCode")}
             </button>
           </div>
         </>
@@ -206,20 +217,23 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && finishSignup()}
               maxLength={80}
               autoComplete="name"
               className="input"
             />
             <span className="field-hint">{t("auth.nameHint")}</span>
           </label>
-          <button type="button" onClick={finishSignup} disabled={busy} className="btn-indigo w-full">
+          <button
+            type="button"
+            onClick={finishSignup}
+            disabled={busy}
+            className="btn-indigo w-full"
+          >
             {busy ? t("common.saving") : t("auth.createAccount")}
           </button>
         </>
       )}
-
-      {/* Firebase mounts the invisible reCAPTCHA challenge here. */}
-      <div id={recaptchaId} />
     </div>
   );
 }

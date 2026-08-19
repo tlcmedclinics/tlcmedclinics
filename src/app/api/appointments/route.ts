@@ -278,7 +278,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { id, status, doctorId, doctorName, prescription, cancelReason, newSlotId } = await req.json();
+  const { id, status, doctorId, doctorName, prescription, prescriptionImages, cancelReason, newSlotId } =
+    await req.json();
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
@@ -389,7 +390,17 @@ export async function PATCH(req: NextRequest) {
     if (auth.role !== "doctor" || appointment?.doctorId !== auth.uid) {
       return NextResponse.json({ error: "Only the treating doctor can add a prescription" }, { status: 403 });
     }
-    await ref.update({ prescription, prescribedAt: new Date().toISOString() });
+    // Images are optional and travel with the prescription — a photographed
+    // slip or lab form is often the whole prescription in practice.
+    const images = Array.isArray(prescriptionImages)
+      ? prescriptionImages.filter((u: unknown): u is string => typeof u === "string").slice(0, 6)
+      : undefined;
+
+    await ref.update({
+      prescription,
+      prescribedAt: new Date().toISOString(),
+      ...(images ? { prescriptionImages: images } : {}),
+    });
   }
 
   if (status) {

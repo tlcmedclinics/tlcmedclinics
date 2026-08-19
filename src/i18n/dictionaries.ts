@@ -176,6 +176,9 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "auth.tooManyRequests": "Too many attempts. Please wait a few minutes.",
     "auth.smsQuota": "We can't send codes right now. Please try email instead.",
     "auth.phoneNotEnabled": "Phone sign-in isn't switched on for this site yet.",
+    "auth.smsNotConfigured": "Phone sign-in isn't set up yet. Please use email for now.",
+    "auth.smsFailed": "We couldn't send the code. Please try again, or use email.",
+    "auth.resendTooSoon": "Please wait a moment before asking for another code.",
 
     "notifications.title": "Notifications",
     "notifications.empty": "No notifications yet.",
@@ -468,6 +471,26 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "admin.appointments.awaitingRefund": "Awaiting refund",
 
     /* ---------- security ---------- */
+    "prescription.title": "Prescription",
+    "prescription.placeholder": "Medicine, dosage, and instructions…",
+    "prescription.save": "Save prescription",
+    "prescription.saved": "Prescription saved.",
+    "prescription.empty": "Add some text or a photo first.",
+    "prescription.takePhoto": "Take a photo",
+    "prescription.attachImage": "Attach image",
+    "prescription.imageAlt": "Prescription photo",
+    "prescription.uploadFailed": "Couldn't upload that image. Please try again.",
+    "prescription.maxImages": "You can attach up to {{max}} images.",
+
+    "followUp.schedule": "Book next appointment",
+    "followUp.title": "Book the next appointment",
+    "followUp.hint": "Pick one of your open times. The patient is told straight away.",
+    "followUp.note": "Note for the patient",
+    "followUp.notePlaceholder": "e.g. bring your lab results",
+    "followUp.noSlots": "You have no open times — add some on the Slots page first.",
+    "followUp.booked": "Next appointment booked — the patient has been notified.",
+    "followUp.alreadyScheduled": "Next appointment already booked from this visit.",
+
     "security.badge": "Secured with per-session encryption",
 
     /* ---------- errors ---------- */
@@ -635,6 +658,9 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "auth.tooManyRequests": "بہت زیادہ کوششیں۔ چند منٹ بعد کوشش کریں۔",
     "auth.smsQuota": "اس وقت کوڈ نہیں بھیجا جا سکتا۔ ای میل سے کوشش کریں۔",
     "auth.phoneNotEnabled": "اس سائٹ پر فون سے داخلہ ابھی فعال نہیں ہے۔",
+    "auth.smsNotConfigured": "فون سے داخلہ ابھی ترتیب نہیں دیا گیا۔ فی الحال ای میل استعمال کریں۔",
+    "auth.smsFailed": "کوڈ نہیں بھیجا جا سکا۔ دوبارہ کوشش کریں یا ای میل استعمال کریں۔",
+    "auth.resendTooSoon": "نیا کوڈ منگوانے سے پہلے تھوڑا انتظار کریں۔",
 
     "notifications.title": "اطلاعات",
     "notifications.empty": "ابھی کوئی اطلاع نہیں۔",
@@ -925,6 +951,26 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "admin.appointments.awaitingRefund": "رقم کی واپسی باقی",
 
     /* ---------- security ---------- */
+    "prescription.title": "نسخہ",
+    "prescription.placeholder": "دوا، مقدار اور ہدایات…",
+    "prescription.save": "نسخہ محفوظ کریں",
+    "prescription.saved": "نسخہ محفوظ ہو گیا۔",
+    "prescription.empty": "پہلے کچھ لکھیں یا تصویر لگائیں۔",
+    "prescription.takePhoto": "تصویر بنائیں",
+    "prescription.attachImage": "تصویر لگائیں",
+    "prescription.imageAlt": "نسخے کی تصویر",
+    "prescription.uploadFailed": "تصویر اپ لوڈ نہیں ہو سکی۔ دوبارہ کوشش کریں۔",
+    "prescription.maxImages": "زیادہ سے زیادہ {{max}} تصاویر لگائی جا سکتی ہیں۔",
+
+    "followUp.schedule": "اگلی ملاقات طے کریں",
+    "followUp.title": "اگلی ملاقات طے کریں",
+    "followUp.hint": "اپنے خالی اوقات میں سے کوئی منتخب کریں۔ مریض کو فوراً اطلاع دے دی جائے گی۔",
+    "followUp.note": "مریض کے لیے ہدایت",
+    "followUp.notePlaceholder": "مثلاً اپنی لیب رپورٹس ساتھ لائیں",
+    "followUp.noSlots": "آپ کے پاس کوئی وقت خالی نہیں — پہلے اوقات والے صفحے سے شامل کریں۔",
+    "followUp.booked": "اگلی ملاقات طے ہو گئی — مریض کو اطلاع دے دی گئی۔",
+    "followUp.alreadyScheduled": "اس ملاقات سے اگلی ملاقات پہلے ہی طے ہو چکی ہے۔",
+
     "security.badge": "ہر سیشن کی انکرپشن سے محفوظ",
 
     /* ---------- errors ---------- */

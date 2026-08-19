@@ -140,6 +140,15 @@ export interface Appointment {
   // Doctor's e-prescription for this appointment, shown to the patient once saved.
   prescription?: string;
   prescribedAt?: string;
+  /** Photos attached to the prescription — a written slip, a lab form, a scan. */
+  prescriptionImages?: string[];
+
+  // ---- Follow-up chain ----
+  // Set on the ORIGINAL visit once the doctor books the next one from it, and
+  // on the new appointment pointing back. Lets either side show "this was
+  // scheduled at your last visit" without a second query.
+  followUpAppointmentId?: string;
+  followUpOf?: string;
   // Set when a confirmed appointment is cancelled — by whoever cancelled it.
   cancelledBy?: "patient" | "doctor" | "admin";
   cancelReason?: string;

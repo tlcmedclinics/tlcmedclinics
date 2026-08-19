@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import RatingStars from "@/components/RatingStars";
 import { authedFetch } from "@/lib/authed-fetch";
+import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
@@ -30,26 +31,20 @@ function PatientDashboardContent() {
   const now = useNow();
   const { startSession, pendingId } = useSessionAction();
 
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activePanel, setActivePanel] = useState<
     | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
     | { kind: "chat"; threadId: string; patientName: string }
     | null
   >(null);
 
-  function load() {
-    authedFetch("/api/appointments?limit=100")
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Couldn't load appointments"))))
-      .then(setAppointments)
-      .catch(() => toast.error("Couldn't load your appointments. Pull to refresh or try again."))
-      .finally(() => setLoading(false));
-  }
+  // Live, so a status change, a prescription, or a follow-up the doctor just
+  // booked appears without the patient reloading the page.
+  const { appointments, loading, setAppointments } = useLiveAppointments({ pageSize: 100 });
 
-  useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Kept for the places that still act on a single row optimistically.
+  function load() {
+    /* no-op: the snapshot listener keeps this list current */
+  }
 
   async function handleCancel(a: Appointment) {
     if (!confirm("Cancel this appointment? If you already paid, the clinic will process your refund.")) return;
@@ -220,10 +215,28 @@ function PatientDashboardContent() {
                   <p className="mt-2 text-xs text-ink-soft">Reason: {a.cancelReason}</p>
                 )}
 
-                {a.status === "completed" && a.prescription && (
-                  <div className="mt-3 rounded-xl border border-teal-600/20 bg-teal-50 p-4">
-                    <p className="text-xs font-medium text-teal-800">Prescription from your doctor</p>
-                    <p className="mt-1 whitespace-pre-line text-sm text-teal-900">{a.prescription}</p>
+                {a.status === "completed" && (a.prescription || a.prescriptionImages?.length) && (
+                  <div className="mt-3 rounded-[var(--radius-sm)] border border-success/20 bg-success-soft p-4">
+                    <p className="text-xs font-semibold text-success">
+                      {t("patient.dashboard.prescription")}
+                    </p>
+                    {a.prescription && (
+                      <p className="mt-1 whitespace-pre-line text-sm text-ink">{a.prescription}</p>
+                    )}
+                    {a.prescriptionImages?.length ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {a.prescriptionImages.map((url) => (
+                          <a key={url} href={url} target="_blank" rel="noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt={t("prescription.imageAlt")}
+                              className="h-24 w-24 rounded-[var(--radius-sm)] border border-line object-cover"
+                            />
+                          </a>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 )}
 
