@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { EmptyState, Pagination, SearchInput } from "@/components/ListControls";
 import { authedFetch } from "@/lib/authed-fetch";
+import { usePagedList } from "@/lib/use-paged-list";
+import { useT } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
 import type { DoctorProfile, Service } from "@/types";
 import type { Slot } from "@/types/slot";
 
 export default function AdminSlotsPage() {
+  const t = useT();
   const toast = useToast();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
@@ -144,8 +148,17 @@ export default function AdminSlotsPage() {
       arr.push(s);
       grouped.set(s.date, arr);
     }
-    return Array.from(grouped.entries());
+    // Days ascending — the route already returns today onwards.
+    return Array.from(grouped.entries()).sort(([a], [b]) => a.localeCompare(b));
   }, [slots, doctorFilter]);
+
+  // Paged a day at a time: a day is the unit an admin actually works with,
+  // and it keeps each page a predictable height.
+  const list = usePagedList(
+    visible,
+    ([date, daySlots]) => [date, ...daySlots.map((s) => `${s.doctorName} ${s.time} ${s.service ?? ""}`)],
+    3
+  );
 
   return (
     <div className="animate-fade-up">
@@ -245,14 +258,20 @@ export default function AdminSlotsPage() {
         </div>
       </form>
 
-      <div className="mt-8 flex items-center gap-2">
-        <label className="text-xs font-medium text-ink-soft">Filter by doctor</label>
+      <div className="mt-8 flex flex-wrap items-center gap-3">
+        <SearchInput
+          value={list.query}
+          onChange={list.setQuery}
+          placeholder={t("admin.slots.search")}
+          className="w-full max-w-xs"
+        />
         <select
           className="input w-auto py-1.5 text-xs"
+          aria-label={t("admin.slots.filterByDoctor")}
           value={doctorFilter}
           onChange={(e) => setDoctorFilter(e.target.value)}
         >
-          <option value="">All doctors</option>
+          <option value="">{t("admin.slots.allDoctors")}</option>
           {doctors.map((d) => (
             <option key={d.uid} value={d.uid}>
               {d.name}
@@ -263,15 +282,18 @@ export default function AdminSlotsPage() {
 
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">Loading…</p>
+      ) : list.isEmptyResult ? (
+        <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
       ) : visible.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">No slots yet — add some above.</p>
+        <EmptyState title={t("admin.slots.none")} hint={t("admin.slots.noneHint")} />
       ) : (
+        <>
         <div className="mt-6 space-y-6">
-          {visible.map(([date, daySlots]) => (
+          {list.items.map(([date, daySlots]) => (
             <div key={date}>
               <h2 className="text-sm font-semibold text-ink">{date}</h2>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                {daySlots
+                {[...daySlots]
                   .sort((a, b) => a.time.localeCompare(b.time))
                   .map((s) => (
                     <div
@@ -320,6 +342,13 @@ export default function AdminSlotsPage() {
             </div>
           ))}
         </div>
+        <Pagination
+          page={list.page}
+          pageCount={list.pageCount}
+          total={list.total}
+          onChange={list.setPage}
+        />
+        </>
       )}
     </div>
   );

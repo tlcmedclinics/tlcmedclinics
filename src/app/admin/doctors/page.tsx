@@ -1,11 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EmptyState, Pagination, SearchInput } from "@/components/ListControls";
 import { authedFetch } from "@/lib/authed-fetch";
+import { usePagedList } from "@/lib/use-paged-list";
+import { useT } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
 import type { DoctorProfile } from "@/types";
 
 export default function AdminDoctorsPage() {
+  const t = useT();
   const toast = useToast();
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,6 +90,14 @@ export default function AdminDoctorsPage() {
 
   const pending = doctors.filter((d) => d.approvalStatus === "pending");
   const decided = doctors.filter((d) => d.approvalStatus !== "pending");
+
+  // Pending requests are few and need acting on, so they always show in full.
+  // The full roster is the list that grows, so search and paging apply there.
+  const list = usePagedList(
+    decided,
+    (d) => [d.name, d.email, d.specialization, d.phone],
+    6
+  );
 
   return (
     <div className="animate-fade-up">
@@ -204,11 +216,20 @@ export default function AdminDoctorsPage() {
 
           <div className="mt-8">
             {pending.length > 0 && <h2 className="text-sm font-semibold text-ink">All doctors</h2>}
-            {decided.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-soft">No doctors yet — add the first one above.</p>
+            <div className="mt-3 max-w-sm">
+              <SearchInput
+                value={list.query}
+                onChange={list.setQuery}
+                placeholder={t("admin.doctors.search")}
+              />
+            </div>
+            {list.isEmptyResult ? (
+              <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
+            ) : decided.length === 0 ? (
+              <EmptyState title={t("admin.doctors.none")} />
             ) : (
               <div className="mt-3 space-y-3">
-                {decided.map((d) => (
+                {list.items.map((d) => (
                   <div
                     key={d.uid}
                     className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line/70 p-5"
@@ -246,6 +267,12 @@ export default function AdminDoctorsPage() {
                 ))}
               </div>
             )}
+            <Pagination
+              page={list.page}
+              pageCount={list.pageCount}
+              total={list.total}
+              onChange={list.setPage}
+            />
           </div>
         </>
       )}

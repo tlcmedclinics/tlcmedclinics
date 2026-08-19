@@ -71,10 +71,6 @@
    Base
    ============================================================ */
 
-* {
-  min-width: 0; /* stops flex/grid children from refusing to shrink */
-}
-
 html {
   -webkit-text-size-adjust: 100%;
 }
@@ -83,8 +79,15 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-synthesis-weight: none;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Long service names, emails and URLs shouldn't punch out of their card on a
+   narrow screen. `anywhere` only breaks when there's no better opportunity, so
+   ordinary prose still wraps at spaces. */
+h1, h2, h3, h4, p, span, a, li, td, th, label, button {
+  overflow-wrap: anywhere;
 }
 
 ::selection {
@@ -132,270 +135,273 @@ html[lang="ur"] .numeric {
   transform: scaleX(-1);
 }
 
-/* ============================================================
-   Typography scale
-   One scale across the whole app. Marketing pages use the hero
-   sizes; in-app screens use the functional ones.
-   ============================================================ */
+@layer components {
+  /* ============================================================
+     Typography scale
+     One scale across the whole app. Marketing pages use the hero
+     sizes; in-app screens use the functional ones.
+     ============================================================ */
 
-.h1-hero {
-  font-family: var(--font-display);
-  color: var(--ink);
-  font-size: 2.125rem;
-  font-weight: 800;
-  line-height: 1.12;
-  letter-spacing: -0.025em;
-}
-@media (min-width: 640px) {
-  .h1-hero { font-size: 3.25rem; }
-}
+  .h1-hero {
+    font-family: var(--font-display);
+    color: var(--ink);
+    font-size: 2.125rem;
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+  }
+  @media (min-width: 640px) {
+    .h1-hero { font-size: 3.25rem; }
+  }
 
-.h1 {
-  font-family: var(--font-display);
-  color: var(--ink);
-  font-size: 1.75rem;
-  font-weight: 800;
-  line-height: 1.18;
-  letter-spacing: -0.02em;
-}
-@media (min-width: 640px) {
-  .h1 { font-size: 2rem; }
-}
+  .h1 {
+    font-family: var(--font-display);
+    color: var(--ink);
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+  }
+  @media (min-width: 640px) {
+    .h1 { font-size: 2rem; }
+  }
 
-.h2 {
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-}
-@media (min-width: 640px) {
-  .h2 { font-size: 1.5rem; }
-}
+  .h2 {
+    font-family: var(--font-display);
+    font-size: 1.375rem;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+  }
+  @media (min-width: 640px) {
+    .h2 { font-size: 1.5rem; }
+  }
 
-.h3 {
-  font-family: var(--font-display);
-  font-size: 1.125rem;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.01em;
+  .h3 {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+
+  .h4 {
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .lede {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--ink-soft);
+  }
+
+  .eyebrow {
+    font-family: var(--font-mono);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .stat-number {
+    font-family: var(--font-display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ink-soft);
+  }
+
+  /* ============================================================
+     Forms
+     ============================================================ */
+
+  .input {
+    width: 100%;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--line);
+    background: var(--paper);
+    padding: 0.65rem 0.85rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input::placeholder {
+    color: color-mix(in srgb, var(--ink-soft) 65%, transparent);
+  }
+  .input:focus-visible {
+    border-color: var(--indigo);
+    box-shadow: 0 0 0 3px rgba(54, 47, 143, 0.12);
+  }
+  .input:disabled {
+    background: var(--paper-dim);
+    color: var(--ink-soft);
+    cursor: not-allowed;
+  }
+
+  /* Native selects need the arrow moved to the correct side in RTL. */
+  [dir="rtl"] select.input {
+    background-position: left 0.6rem center;
+  }
+
+  .field {
+    display: block;
+  }
+  .field > .label {
+    display: block;
+    margin-bottom: 0.35rem;
+  }
+  .field-hint {
+    margin-top: 0.35rem;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  /* ============================================================
+     Buttons
+     ============================================================ */
+
+  .btn-primary,
+  .btn-indigo,
+  .btn-outline,
+  .btn-ghost,
+  .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+    padding: 0.65rem 1.5rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, box-shadow 0.15s ease,
+      border-color 0.15s ease, color 0.15s ease;
+  }
+  .btn-primary:disabled,
+  .btn-indigo:disabled,
+  .btn-outline:disabled,
+  .btn-ghost:disabled,
+  .btn-danger:disabled {
+    opacity: 0.55;
+    box-shadow: none;
+    cursor: not-allowed;
+  }
+
+  .btn-primary { background: var(--crimson); color: white; }
+  .btn-primary:hover:not(:disabled) { background: var(--crimson-deep); box-shadow: var(--shadow-crimson); }
+
+  .btn-indigo { background: var(--indigo); color: var(--paper); }
+  .btn-indigo:hover:not(:disabled) { background: var(--indigo-deep); box-shadow: var(--shadow-soft); }
+
+  .btn-outline { border: 1px solid var(--line); color: var(--ink); background: transparent; }
+  .btn-outline:hover:not(:disabled) { border-color: var(--indigo); color: var(--indigo); }
+
+  .btn-ghost { border: 1px solid rgba(54, 47, 143, 0.3); color: var(--indigo); background: transparent; }
+  .btn-ghost:hover:not(:disabled) { background: var(--indigo); color: white; }
+
+  .btn-danger { border: 1px solid var(--line); color: var(--ink-soft); background: transparent; }
+  .btn-danger:hover:not(:disabled) { border-color: var(--crimson); color: var(--crimson-deep); }
+
+  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.78rem; }
+
+  /* ============================================================
+     Surfaces
+     ============================================================ */
+
+  .card {
+    border-radius: var(--radius-card);
+    border: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  .card-pad { padding: 1.25rem; }
+  @media (min-width: 640px) {
+    .card-pad { padding: 1.5rem; }
+  }
+
+  .surface-card {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--line);
+    background: var(--paper);
+    box-shadow: var(--shadow-card);
+  }
+
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Status pills — one definition instead of per-page colour strings. */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: var(--radius-pill);
+    padding: 0.2rem 0.65rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .pill-neutral { background: var(--mist); color: var(--ink-soft); }
+  .pill-indigo { background: rgba(54, 47, 143, 0.1); color: var(--indigo); }
+  .pill-success { background: var(--success-soft); color: var(--success); }
+  .pill-warning { background: var(--warning-soft); color: var(--warning); }
+  .pill-danger { background: var(--danger-soft); color: var(--danger); }
+
+  /* ============================================================
+     App shell
+     Sidebar + top bar used by the patient, doctor and admin panels.
+     ============================================================ */
+
+  .shell-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    border-radius: var(--radius-sm);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--ink-soft);
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+  .shell-nav-link:hover { background: var(--mist); color: var(--ink); }
+  .shell-nav-link[data-active="true"] {
+    background: var(--indigo);
+    color: white;
+    font-weight: 600;
+  }
+
+  .shell-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+  .shell-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+  .shell-scroll::-webkit-scrollbar-thumb {
+    background: var(--line);
+    border-radius: var(--radius-pill);
+  }
+
+  /* Respect the phone's home-indicator / notch area. */
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
 }
-
-.h4 {
-  font-family: var(--font-display);
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1.35;
-}
-
-.lede {
-  font-size: 0.95rem;
-  line-height: 1.65;
-  color: var(--ink-soft);
-}
-
-.eyebrow {
-  font-family: var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.7rem;
-  font-weight: 500;
-}
-
-.stat-number {
-  font-family: var(--font-display);
-  font-size: 1.75rem;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
-}
-
-.label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-/* ============================================================
-   Forms
-   ============================================================ */
-
-.input {
-  width: 100%;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  padding: 0.65rem 0.85rem;
-  font-size: 0.9rem;
-  font-family: inherit;
-  color: var(--ink);
-  outline: none;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-.input::placeholder {
-  color: color-mix(in srgb, var(--ink-soft) 65%, transparent);
-}
-.input:focus-visible {
-  border-color: var(--indigo);
-  box-shadow: 0 0 0 3px rgba(54, 47, 143, 0.12);
-}
-.input:disabled {
-  background: var(--paper-dim);
-  color: var(--ink-soft);
-  cursor: not-allowed;
-}
-
-/* Native selects need the arrow moved to the correct side in RTL. */
-[dir="rtl"] select.input {
-  background-position: left 0.6rem center;
-}
-
-.field {
-  display: block;
-}
-.field > .label {
-  display: block;
-  margin-bottom: 0.35rem;
-}
-.field-hint {
-  margin-top: 0.35rem;
-  font-size: 0.72rem;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-
-/* ============================================================
-   Buttons
-   ============================================================ */
-
-.btn-primary,
-.btn-indigo,
-.btn-outline,
-.btn-ghost,
-.btn-danger {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.875rem;
-  font-weight: 600;
-  font-family: inherit;
-  padding: 0.65rem 1.5rem;
-  cursor: pointer;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease,
-    border-color 0.15s ease, color 0.15s ease;
-}
-.btn-primary:disabled,
-.btn-indigo:disabled,
-.btn-outline:disabled,
-.btn-ghost:disabled,
-.btn-danger:disabled {
-  opacity: 0.55;
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-.btn-primary { background: var(--crimson); color: white; }
-.btn-primary:hover:not(:disabled) { background: var(--crimson-deep); box-shadow: var(--shadow-crimson); }
-
-.btn-indigo { background: var(--indigo); color: var(--paper); }
-.btn-indigo:hover:not(:disabled) { background: var(--indigo-deep); box-shadow: var(--shadow-soft); }
-
-.btn-outline { border: 1px solid var(--line); color: var(--ink); background: transparent; }
-.btn-outline:hover:not(:disabled) { border-color: var(--indigo); color: var(--indigo); }
-
-.btn-ghost { border: 1px solid rgba(54, 47, 143, 0.3); color: var(--indigo); background: transparent; }
-.btn-ghost:hover:not(:disabled) { background: var(--indigo); color: white; }
-
-.btn-danger { border: 1px solid var(--line); color: var(--ink-soft); background: transparent; }
-.btn-danger:hover:not(:disabled) { border-color: var(--crimson); color: var(--crimson-deep); }
-
-.btn-sm { padding: 0.4rem 0.9rem; font-size: 0.78rem; }
-
-/* ============================================================
-   Surfaces
-   ============================================================ */
-
-.card {
-  border-radius: var(--radius-card);
-  border: 1px solid var(--line);
-  background: var(--paper);
-}
-
-.card-pad { padding: 1.25rem; }
-@media (min-width: 640px) {
-  .card-pad { padding: 1.5rem; }
-}
-
-.surface-card {
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--line);
-  background: var(--paper);
-  box-shadow: var(--shadow-card);
-}
-
-.card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-soft);
-}
-
-/* Status pills — one definition instead of per-page colour strings. */
-.pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  border-radius: var(--radius-pill);
-  padding: 0.2rem 0.65rem;
-  font-size: 0.72rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.pill-neutral { background: var(--mist); color: var(--ink-soft); }
-.pill-indigo { background: rgba(54, 47, 143, 0.1); color: var(--indigo); }
-.pill-success { background: var(--success-soft); color: var(--success); }
-.pill-warning { background: var(--warning-soft); color: var(--warning); }
-.pill-danger { background: var(--danger-soft); color: var(--danger); }
-
-/* ============================================================
-   App shell
-   Sidebar + top bar used by the patient, doctor and admin panels.
-   ============================================================ */
-
-.shell-nav-link {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--ink-soft);
-  transition: background-color 0.15s ease, color 0.15s ease;
-}
-.shell-nav-link:hover { background: var(--mist); color: var(--ink); }
-.shell-nav-link[data-active="true"] {
-  background: var(--indigo);
-  color: white;
-  font-weight: 600;
-}
-
-.shell-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: var(--line) transparent;
-}
-.shell-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
-.shell-scroll::-webkit-scrollbar-thumb {
-  background: var(--line);
-  border-radius: var(--radius-pill);
-}
-
-/* Respect the phone's home-indicator / notch area. */
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
 /* ============================================================
    Motion

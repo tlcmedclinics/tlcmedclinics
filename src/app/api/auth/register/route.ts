@@ -6,7 +6,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { uid, name, email, phone, role, specialization, bio } = body;
 
-  if (!uid || !name || !email) {
+  // Email is optional now — a patient may have signed up with a phone number
+  // instead. One of the two must exist, which Firebase Auth already enforces
+  // by the time an account has a uid.
+  if (!uid || !name) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
@@ -27,7 +30,7 @@ export async function POST(req: NextRequest) {
       uid,
       role: "doctor",
       name,
-      email,
+      email: email || undefined,
       phone: phone || undefined,
       specialization: specialization || undefined,
       bio: bio || undefined,
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
     uid,
     role: "patient",
     name,
-    email,
+    email: email || undefined,
     phone: phone || undefined,
     createdAt: new Date().toISOString(),
   };

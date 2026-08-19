@@ -60,6 +60,18 @@ export async function PATCH(req: NextRequest) {
   const phone = clamp(body.phone, 40);
   if (phone !== undefined) updates.phone = phone || null;
 
+  // Someone who signed up by phone can add an email later (and vice versa).
+  // This only records it for contact/notifications — it does not become a
+  // sign-in method, which would need Firebase credential linking and a
+  // fresh re-authentication.
+  const email = clamp(body.email, 160);
+  if (email !== undefined) {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: "That email doesn't look right" }, { status: 400 });
+    }
+    updates.email = email ? email.toLowerCase() : null;
+  }
+
   if (typeof body.photoURL === "string") {
     updates.photoURL = body.photoURL.trim() || null;
   }

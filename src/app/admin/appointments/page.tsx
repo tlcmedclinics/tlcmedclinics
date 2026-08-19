@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { SearchInput } from "@/components/ListControls";
+import LoadErrorNotice from "@/components/LoadErrorNotice";
 import { authedFetch } from "@/lib/authed-fetch";
+import { isIndexError, readApiError } from "@/lib/api-error";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
@@ -14,6 +17,11 @@ import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
 import type { Slot } from "@/types/slot";
 
 const PAGE_SIZE = 50;
+
+// Searching swaps paging for a wider single fetch, so a name match isn't
+// limited to whichever page happens to be loaded. Still bounded — the route
+// caps at 500 — so it can't regress to fetching the whole collection.
+const SEARCH_WINDOW = 500;
 
 const statusStyles: Record<AppointmentStatus, string> = {
   pending: "bg-mist text-ink-soft",
@@ -49,6 +57,8 @@ export default function AdminAppointmentsPage() {
   const [rescheduleSlots, setRescheduleSlots] = useState<Slot[]>([]);
   const [loadingRescheduleSlots, setLoadingRescheduleSlots] = useState(false);
   const [savingReschedule, setSavingReschedule] = useState(false);
+  const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState<{ message: string; setup: boolean } | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
 
@@ -61,32 +71,44 @@ export default function AdminAppointmentsPage() {
       if (isPaging) setLoadingMore(true);
       else setLoading(true);
       try {
-        const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
+        const params = new URLSearchParams({
+          limit: String(search.trim() ? SEARCH_WINDOW : PAGE_SIZE),
+        });
         if (filter !== "all") params.set("status", filter);
         if (before) params.set("before", before);
 
         const res = await authedFetch(`/api/appointments?${params}`);
-        if (!res.ok) throw new Error("Couldn't load appointments");
+        if (!res.ok) {
+          // The route says something specific — a missing composite index
+          // comes back as a 503 naming the index and linking the console.
+          // Surfacing that beats "please refresh", which never helps here.
+          const message = await readApiError(res, t("error.loadFailed"));
+          setLoadError({ message, setup: isIndexError(res.status, message) });
+          if (!isPaging) setAppointments([]);
+          return;
+        }
         const page: Appointment[] = await res.json();
 
+        setLoadError(null);
         setAppointments((prev) => (isPaging ? [...prev, ...page] : page));
-        setHasMore(page.length === PAGE_SIZE);
+        setHasMore(!search.trim() && page.length === PAGE_SIZE);
       } catch {
-        toast.error("Couldn't load appointments. Please refresh.");
+        setLoadError({ message: t("error.network"), setup: false });
       } finally {
         if (isPaging) setLoadingMore(false);
         else setLoading(false);
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [filter]
+    [filter, search]
   );
 
-  // Refetches whenever the status tab changes.
+  // Refetches when the status tab changes, and when a search starts or ends.
   useEffect(() => {
-    load();
+    const id = setTimeout(() => load(), search ? 300 : 0);
+    return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, search]);
 
   useEffect(() => {
     authedFetch("/api/doctors")
@@ -223,6 +245,17 @@ export default function AdminAppointmentsPage() {
   }
 
 
+  const needle = search.trim().toLowerCase();
+  const visible = needle
+    ? appointments.filter((a) =>
+        [a.patientName, a.patientPhone, a.service, a.doctorName, a.date]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(needle)
+      )
+    : appointments;
+
   return (
     <div className="animate-fade-up">
       <h1 className="h1">Appointments</h1>
@@ -233,7 +266,15 @@ export default function AdminAppointmentsPage() {
         early or late from here.
       </p>
 
-      <div className="mt-6 flex flex-wrap gap-2">
+      <div className="mt-6 max-w-sm">
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder={t("appointments.search")}
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
         {(["all", "pending", "confirmed", "completed", "cancelled"] as const).map((f) => (
           <button
             key={f}
@@ -249,13 +290,21 @@ export default function AdminAppointmentsPage() {
         ))}
       </div>
 
+      {loadError && (
+        <LoadErrorNotice
+          message={loadError.message}
+          isSetupIssue={loadError.setup}
+          onRetry={() => load()}
+        />
+      )}
+
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">Loading…</p>
-      ) : appointments.length === 0 ? (
+      ) : visible.length === 0 ? (
         <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
       ) : (
         <div className="mt-6 space-y-3">
-          {appointments.map((a) => {
+          {visible.map((a) => {
             const isOnlineMode = a.mode === "video" || a.mode === "audio" || a.mode === "chat";
             const joinable = canJoinSession(a, now);
             const canStartEarly = a.status === "confirmed" && isOnlineMode && a.sessionStatus !== "ended" && !joinable;
@@ -471,7 +520,7 @@ export default function AdminAppointmentsPage() {
         <div className="mt-6 flex justify-center">
           <button
             type="button"
-            onClick={() => load(appointments[appointments.length - 1]?.createdAt)}
+            onClick={() => load(visible[visible.length - 1]?.createdAt)}
             disabled={loadingMore}
             className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
           >

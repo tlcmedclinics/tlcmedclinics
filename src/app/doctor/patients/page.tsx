@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { EmptyState, Pagination, SearchInput } from "@/components/ListControls";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
+import { usePagedList } from "@/lib/use-paged-list";
 import type { Appointment } from "@/types";
 
 type PatientSummary = {
@@ -29,7 +31,7 @@ export default function DoctorPatientsPage() {
     authedFetch("/api/appointments?limit=500")
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setAppointments)
-      .catch(() => toast.error("Couldn't load your patients. Please refresh."))
+      .catch(() => toast.error(t("error.loadFailed")))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -61,22 +63,35 @@ export default function DoctorPatientsPage() {
     return Array.from(byPatient.values()).sort((a, b) => (a.lastSeen < b.lastSeen ? 1 : -1));
   }, [appointments]);
 
+  const list = usePagedList(
+    patients,
+    (p) => [p.patientName, p.patientPhone, p.lastSeen],
+    6
+  );
+
   return (
     <div className="animate-fade-up">
       <h1 className="h1">{t("doctor.patients.title")}</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Everyone you&apos;ve been assigned by the clinic, based on their booking history with you.
-      </p>
+      <p className="lede mt-1">{t("doctor.patients.subtitle")}</p>
+
+      <div className="mt-6 max-w-sm">
+        <SearchInput
+          value={list.query}
+          onChange={list.setQuery}
+          placeholder={t("doctor.patients.search")}
+        />
+      </div>
 
       {loading ? (
         <p className="mt-8 text-sm text-ink-soft">{t("common.loading")}</p>
+      ) : list.isEmptyResult ? (
+        <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
       ) : patients.length === 0 ? (
-        <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
-          <p className="text-sm text-ink-soft">No patients assigned to you yet.</p>
-        </div>
+        <EmptyState title={t("doctor.patients.none")} />
       ) : (
+        <>
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
-          {patients.map((p) => (
+          {list.items.map((p) => (
             <Link
               key={p.patientId}
               href={`/doctor/patients/${p.patientId}`}
@@ -85,18 +100,25 @@ export default function DoctorPatientsPage() {
               <p className="font-medium text-ink">{p.patientName}</p>
               {p.patientPhone && <p className="text-xs text-ink-soft">{p.patientPhone}</p>}
               <div className="mt-3 flex items-center justify-between text-xs text-ink-soft">
-                <span>{p.totalSessions} session{p.totalSessions !== 1 ? "s" : ""}</span>
-                <span>Last seen {p.lastSeen}</span>
+                <span className="numeric">{p.totalSessions} {t("doctor.patients.sessions")}</span>
+                <span>{t("doctor.patients.lastSeen")} <span className="numeric">{p.lastSeen}</span></span>
               </div>
               {p.nextUpcoming && (
                 <p className="mt-2 rounded-lg bg-indigo/10 px-3 py-1.5 text-xs font-medium text-indigo">
-                  Next: {p.nextUpcoming.date} at {p.nextUpcoming.time}
+                  {t("patient.dashboard.nextUp")}: <span className="numeric">{p.nextUpcoming.date} · {p.nextUpcoming.time}</span>
                 </p>
               )}
-              <p className="mt-3 text-xs font-medium text-indigo">View patient details →</p>
+              <p className="mt-3 text-xs font-medium text-indigo">{t("doctor.patients.viewDetails")} →</p>
             </Link>
           ))}
         </div>
+        <Pagination
+          page={list.page}
+          pageCount={list.pageCount}
+          total={list.total}
+          onChange={list.setPage}
+        />
+        </>
       )}
     </div>
   );

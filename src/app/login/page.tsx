@@ -10,8 +10,10 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/client";
+import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 import type { UserProfile } from "@/types";
 
 function EyeIcon({ open }: { open: boolean }) {
@@ -53,6 +55,8 @@ const dashboardPath: Record<string, string> = {
 export default function LoginPage() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
+  const [method, setMethod] = useState<"email" | "phone">("email");
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -73,7 +77,7 @@ export default function LoginPage() {
       const snap = await getDoc(doc(db, "users", cred.user.uid));
       const profile = snap.data() as UserProfile | undefined;
 
-      toast.success("Logged in.");
+      toast.success(t("auth.signedIn"));
       router.push(dashboardPath[profile?.role ?? "patient"] ?? "/patient/dashboard");
     } catch (err) {
       const message =
@@ -107,13 +111,13 @@ export default function LoginPage() {
         });
         if (!res.ok) throw new Error("Couldn't finish setting up your account");
         await cred.user.getIdToken(true);
-        toast.success("Account created — welcome!");
+        toast.success(t("auth.accountCreated"));
         router.push("/patient/dashboard");
         return;
       }
 
       const profile = snap.data() as UserProfile;
-      toast.success("Logged in.");
+      toast.success(t("auth.signedIn"));
       router.push(dashboardPath[profile.role] ?? "/patient/dashboard");
     } catch (err) {
       const message =
@@ -126,24 +130,50 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-md px-6 py-16 animate-fade-up">
-      <p className="eyebrow text-indigo">Welcome back</p>
-      <h1 className="mt-3 h1-hero">Log In</h1>
+      <p className="eyebrow text-indigo">{t("auth.welcomeBack")}</p>
+      <h1 className="mt-3 h1-hero">{t("nav.login")}</h1>
       <VitalsLine className="mt-5 h-3 w-40" />
 
-      <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-        <input name="email" type="email" required placeholder="Email" className="input" />
+      {/* Email and phone are both first-class ways in — some patients have no
+          email address at all. */}
+      <div className="mt-7 flex gap-2">
+        {(["email", "phone"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMethod(m)}
+            aria-pressed={method === m}
+            className={`flex-1 rounded-[var(--radius-pill)] border px-4 py-2 text-xs font-semibold transition-colors ${
+              method === m
+                ? "border-indigo bg-indigo text-white"
+                : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+            }`}
+          >
+            {t(m === "email" ? "auth.withEmail" : "auth.withPhone")}
+          </button>
+        ))}
+      </div>
+
+      {method === "phone" ? (
+        <div className="mt-6">
+          <PhoneAuthForm mode="login" />
+        </div>
+      ) : (
+      <>
+      <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+        <input name="email" type="email" required placeholder={t("settings.email")} autoComplete="email" className="input" />
         <div className="relative">
           <input
             name="password"
             type={showPassword ? "text" : "password"}
             required
-            placeholder="Password"
+            placeholder={t("auth.password")}
             className="input pr-11"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-indigo"
           >
             <EyeIcon open={showPassword} />
@@ -155,13 +185,13 @@ export default function LoginPage() {
           disabled={submitting || googleSubmitting}
           className="w-full rounded-full bg-indigo px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
         >
-          {submitting ? "Logging in…" : "Log In"}
+          {submitting ? t("auth.loggingIn") : t("nav.login")}
         </button>
       </form>
 
       <div className="mt-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-line/70" />
-        <span className="text-xs text-ink-soft">or</span>
+        <span className="text-xs text-ink-soft">{t("book.or")}</span>
         <div className="h-px flex-1 bg-line/70" />
       </div>
 
@@ -172,13 +202,15 @@ export default function LoginPage() {
         className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-full border border-line px-7 py-3.5 text-sm font-medium text-ink transition-colors hover:border-indigo disabled:opacity-60"
       >
         <GoogleIcon />
-        {googleSubmitting ? "Connecting…" : "Continue with Google"}
+        {googleSubmitting ? t("video.connecting") : t("auth.continueWithGoogle")}
       </button>
+      </>
+      )}
 
       <p className="mt-6 text-center text-sm text-ink-soft">
-        Don&apos;t have an account?{" "}
-        <Link href="/register" className="font-medium text-indigo hover:text-indigo-deep">
-          Create one
+        {t("auth.noAccount")}{" "}
+        <Link href="/register" className="font-semibold text-indigo hover:text-indigo-deep">
+          {t("nav.register")}
         </Link>
       </p>
     </div>

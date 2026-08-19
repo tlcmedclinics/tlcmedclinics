@@ -10,8 +10,10 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 
 type Role = "patient" | "doctor";
 
@@ -48,6 +50,8 @@ function GoogleIcon() {
 export default function RegisterPage() {
   const router = useRouter();
   const toast = useToast();
+  const t = useT();
+  const [method, setMethod] = useState<"email" | "phone">("email");
   const [role, setRole] = useState<Role>("patient");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -150,13 +154,11 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-lg px-6 py-16 animate-fade-up">
-      <p className="eyebrow text-indigo">Create account</p>
-      <h1 className="mt-3 h1-hero">Join TLC Med Clinics</h1>
+      <p className="eyebrow text-indigo">{t("auth.createAccountEyebrow")}</p>
+      <h1 className="mt-3 h1-hero">{t("auth.joinTitle")}</h1>
       <VitalsLine className="mt-5 h-3 w-40" />
       <p className="mt-4 text-sm text-ink-soft">
-        {role === "patient"
-          ? "Create a patient account to book appointments, pay online, and track your visit history."
-          : "Apply for a doctor account. The clinic reviews every request before it goes live."}
+        {t(role === "patient" ? "auth.patientIntro" : "auth.doctorIntro")}
       </p>
 
       <div className="mt-7 grid grid-cols-2 gap-2 rounded-full border border-line/70 p-1">
@@ -164,20 +166,51 @@ export default function RegisterPage() {
           <button
             key={r}
             type="button"
-            onClick={() => setRole(r)}
-            className={`rounded-full py-2.5 text-sm font-medium capitalize transition-colors ${
+            onClick={() => {
+              setRole(r);
+              // Doctor applications need the full form (specialization, bio),
+              // so phone-only signup is a patient path.
+              if (r === "doctor") setMethod("email");
+            }}
+            className={`rounded-full py-2.5 text-sm font-medium transition-colors ${
               role === r ? "bg-indigo text-white" : "text-ink-soft hover:text-indigo"
             }`}
           >
-            {r === "patient" ? "I'm a patient" : "I'm a doctor"}
+            {t(r === "patient" ? "auth.imPatient" : "auth.imDoctor")}
           </button>
         ))}
       </div>
 
+      {role === "patient" && (
+        <div className="mt-4 flex gap-2">
+          {(["email", "phone"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMethod(m)}
+              aria-pressed={method === m}
+              className={`flex-1 rounded-[var(--radius-pill)] border px-4 py-2 text-xs font-semibold transition-colors ${
+                method === m
+                  ? "border-indigo bg-indigo text-white"
+                  : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
+              }`}
+            >
+              {t(m === "email" ? "auth.withEmail" : "auth.withPhone")}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {method === "phone" && role === "patient" ? (
+        <div className="mt-6">
+          <PhoneAuthForm mode="register" />
+        </div>
+      ) : (
+      <>
       <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-        <input name="name" required placeholder="Full name" className="input" />
-        <input name="email" type="email" required placeholder="Email" className="input" />
-        <input name="phone" required placeholder="Phone number" className="input" />
+        <input name="name" required placeholder={t("settings.name")} autoComplete="name" className="input" />
+        <input name="email" type="email" required placeholder={t("settings.email")} autoComplete="email" className="input" />
+        <input name="phone" required placeholder={t("settings.phone")} autoComplete="tel" className="input numeric" />
         {role === "doctor" && (
           <input
             name="specialization"
@@ -248,13 +281,15 @@ export default function RegisterPage() {
         className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-full border border-line px-7 py-3.5 text-sm font-medium text-ink transition-colors hover:border-indigo disabled:opacity-60"
       >
         <GoogleIcon />
-        {googleSubmitting ? "Connecting…" : `Continue with Google as ${role === "patient" ? "patient" : "doctor"}`}
+        {googleSubmitting ? t("video.connecting") : t("auth.continueWithGoogle")}
       </button>
+      </>
+      )}
 
       <p className="mt-6 text-center text-sm text-ink-soft">
-        Already have an account?{" "}
-        <Link href="/login" className="font-medium text-indigo hover:text-indigo-deep">
-          Log in
+        {t("auth.haveAccount")}{" "}
+        <Link href="/login" className="font-semibold text-indigo hover:text-indigo-deep">
+          {t("nav.login")}
         </Link>
       </p>
     </div>

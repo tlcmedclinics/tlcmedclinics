@@ -4,8 +4,13 @@ export interface UserProfile {
   uid: string;
   role: UserRole;
   name: string;
-  email: string;
+  // Both identities are optional: a patient can sign up with an email, a
+  // phone number, or both, and add the missing one later from Settings. The
+  // account is identified by `uid` — never assume either field is present.
+  email?: string;
   phone?: string;
+  /** True once the number has been through Firebase's OTP check. */
+  phoneVerified?: boolean;
   photoURL?: string; // Cloudinary URL
   createdAt: string;
 

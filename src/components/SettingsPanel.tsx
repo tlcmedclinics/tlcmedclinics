@@ -7,46 +7,55 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useLanguage, useT } from "@/contexts/LanguageContext";
 import { playNotificationChime } from "@/lib/notification-sound";
+import { formatPhone } from "@/lib/phone-auth";
 import { LOCALES, type Locale } from "@/i18n/dictionaries";
 import type { DoctorProfile, UserRole } from "@/types";
 
 /**
- * One settings screen for every role. Patients see profile + preferences;
- * doctors additionally get their public bio and the presence opt-out. Keeping
- * it in one component means a preference added here appears in all three
- * panels at once instead of drifting between three near-identical pages.
+ * Settings, split into modules the way a messaging app does it: a list of
+ * sections, each opening its own panel. One long scrolling form buried the
+ * language switch and the sound toggles below the profile fields.
+ *
+ * Two-pane on desktop, list → panel → back on mobile. Same component for all
+ * three roles; a preference added here shows up in every panel at once.
  */
 
-function Section({
-  title,
-  hint,
-  children,
-}: {
-  title: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="card card-pad">
-      <h2 className="h3 text-ink">{title}</h2>
-      {hint && <p className="mt-1 text-xs text-ink-soft">{hint}</p>}
-      <div className="mt-5 space-y-4">{children}</div>
-    </section>
-  );
-}
+type SectionId = "profile" | "account" | "notifications" | "language" | "privacy";
+
+type Draft = {
+  name: string;
+  phone: string;
+  email: string;
+  specialization: string;
+  bio: string;
+  photoURL: string;
+  presenceVisible: boolean;
+  notificationSound: boolean;
+  messageSound: boolean;
+};
+
+const EMPTY: Draft = {
+  name: "",
+  phone: "",
+  email: "",
+  specialization: "",
+  bio: "",
+  photoURL: "",
+  presenceVisible: true,
+  notificationSound: true,
+  messageSound: true,
+};
 
 function Toggle({
   label,
   hint,
   checked,
   onChange,
-  disabled,
 }: {
   label: string;
   hint?: string;
   checked: boolean;
   onChange: (next: boolean) => void;
-  disabled?: boolean;
 }) {
   return (
     <label className="flex cursor-pointer items-start justify-between gap-4">
@@ -59,14 +68,13 @@ function Toggle({
         role="switch"
         aria-checked={checked}
         aria-label={label}
-        disabled={disabled}
         onClick={() => onChange(!checked)}
-        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50 ${
+        className={`relative mt-0.5 h-6 w-11 shrink-0 rounded-full transition-colors ${
           checked ? "bg-indigo" : "bg-line"
         }`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[inset-inline-start] ${
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
             checked ? "start-[1.375rem]" : "start-0.5"
           }`}
         />
@@ -82,37 +90,42 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
   const { locale, setLocale } = useLanguage();
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const doctor = profile as DoctorProfile | null;
-
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [bio, setBio] = useState("");
-  const [photoURL, setPhotoURL] = useState("");
-  const [presenceVisible, setPresenceVisible] = useState(true);
-  const [notificationSound, setNotificationSound] = useState(true);
-  const [messageSound, setMessageSound] = useState(true);
+  const [section, setSection] = useState<SectionId | null>(null);
+  const [draft, setDraft] = useState<Draft>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // Seed the form once the profile arrives. Keyed on uid rather than the whole
-  // profile so the live Firestore listener re-rendering doesn't wipe out edits
-  // the user is in the middle of typing.
+  // Seed once per account. Keyed on uid rather than the whole profile so the
+  // live Firestore listener re-rendering can't wipe out half-typed edits.
   useEffect(() => {
     if (!profile) return;
-    setName(profile.name ?? "");
-    setPhone(profile.phone ?? "");
-    setPhotoURL(profile.photoURL ?? "");
-    setNotificationSound(profile.notificationSound !== false);
-    setMessageSound(profile.messageSound !== false);
-    if (profile.role === "doctor") {
-      const d = profile as DoctorProfile;
-      setSpecialization(d.specialization ?? "");
-      setBio(d.bio ?? "");
-      setPresenceVisible(d.presenceVisible !== false);
-    }
+    const d = profile as DoctorProfile;
+    setDraft({
+      name: profile.name ?? "",
+      phone: profile.phone ?? "",
+      email: profile.email ?? "",
+      specialization: d.specialization ?? "",
+      bio: d.bio ?? "",
+      photoURL: profile.photoURL ?? "",
+      presenceVisible: d.presenceVisible !== false,
+      notificationSound: profile.notificationSound !== false,
+      messageSound: profile.messageSound !== false,
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile?.uid]);
+
+  function set<K extends keyof Draft>(key: K, value: Draft[K]) {
+    setDraft((d) => ({ ...d, [key]: value }));
+  }
+
+  const SECTIONS: { id: SectionId; icon: string; roles?: UserRole[] }[] = [
+    { id: "profile", icon: "👤" },
+    { id: "account", icon: "🔑" },
+    { id: "notifications", icon: "🔔" },
+    { id: "language", icon: "🌐" },
+    { id: "privacy", icon: "🔒", roles: ["doctor"] },
+  ];
+  const visibleSections = SECTIONS.filter((s) => !s.roles || s.roles.includes(role));
 
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -123,8 +136,13 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
       form.append("file", file);
       const res = await authedFetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? "Upload failed");
-      setPhotoURL(data.url);
+      if (!res.ok || !data.url) throw new Error(data.error ?? "upload");
+
+      // Persist immediately. A photo that only lives in local state until the
+      // user remembers to hit Save is how people end up still seeing their
+      // initial after "changing" their picture.
+      set("photoURL", data.url);
+      await save({ photoURL: data.url });
     } catch {
       toast.error(t("error.saveFailed"));
     } finally {
@@ -133,10 +151,10 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
     }
   }
 
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) {
-      toast.error(t("common.required"));
+  async function save(patch?: Partial<Draft>) {
+    const next = { ...draft, ...patch };
+    if (!next.name.trim()) {
+      toast.error(t("auth.enterName"));
       return;
     }
     setSaving(true);
@@ -145,179 +163,271 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          phone,
-          photoURL,
+          name: next.name,
+          phone: next.phone,
+          email: next.email,
+          photoURL: next.photoURL,
           locale,
-          notificationSound,
-          messageSound,
-          ...(role === "doctor" ? { specialization, bio, presenceVisible } : {}),
+          notificationSound: next.notificationSound,
+          messageSound: next.messageSound,
+          ...(role === "doctor"
+            ? {
+                specialization: next.specialization,
+                bio: next.bio,
+                presenceVisible: next.presenceVisible,
+              }
+            : {}),
         }),
       });
-      if (!res.ok) throw new Error();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? "save");
       toast.success(t("settings.savedProfile"));
-    } catch {
-      toast.error(t("error.saveFailed"));
+    } catch (err) {
+      toast.error(err instanceof Error && err.message !== "save" ? err.message : t("error.saveFailed"));
     } finally {
       setSaving(false);
     }
   }
 
-  if (!profile) {
-    return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
-  }
+  if (!profile) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
 
-  return (
-    <form onSubmit={save} className="animate-fade-up space-y-6">
-      <div>
-        <h1 className="h1">{t("settings.title")}</h1>
-        <p className="lede mt-1">{t("settings.subtitle")}</p>
-      </div>
+  /* ------------------------------ sections ------------------------------ */
 
-      <Section title={t("settings.profile")} hint={t("settings.profileHint")}>
-        <div className="flex items-center gap-4">
-          <Avatar name={name} photoURL={photoURL} size="xl" />
-          <div>
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading}
-              className="btn-outline btn-sm"
-            >
-              {uploading ? t("settings.uploading") : t("settings.changePhoto")}
-            </button>
-            <p className="field-hint">{t("settings.photoHint")}</p>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              onChange={handlePhoto}
-              className="hidden"
-            />
-          </div>
-        </div>
+  function renderSection(id: SectionId) {
+    switch (id) {
+      case "profile":
+        return (
+          <div className="space-y-5">
+            <div className="flex items-center gap-4">
+              <Avatar name={draft.name} photoURL={draft.photoURL} size="xl" />
+              <div>
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={uploading}
+                  className="btn-outline btn-sm"
+                >
+                  {uploading ? t("settings.uploading") : t("settings.changePhoto")}
+                </button>
+                <p className="field-hint">{t("settings.photoHint")}</p>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhoto}
+                  className="hidden"
+                />
+              </div>
+            </div>
 
-        <label className="field">
-          <span className="label">{t("settings.name")}</span>
-          <input
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            maxLength={80}
-          />
-        </label>
-
-        <label className="field">
-          <span className="label">{t("settings.email")}</span>
-          <input className="input" value={profile.email ?? ""} disabled />
-          <span className="field-hint">{t("settings.emailHint")}</span>
-        </label>
-
-        <label className="field">
-          <span className="label">{t("settings.phone")}</span>
-          <input
-            className="input numeric"
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="03XX-XXXXXXX"
-          />
-        </label>
-
-        {role === "doctor" && (
-          <>
             <label className="field">
-              <span className="label">{t("settings.specialization")}</span>
+              <span className="label">{t("settings.name")}</span>
               <input
                 className="input"
-                value={specialization}
-                onChange={(e) => setSpecialization(e.target.value)}
-                maxLength={120}
+                value={draft.name}
+                onChange={(e) => set("name", e.target.value)}
+                maxLength={80}
               />
             </label>
-            <label className="field">
-              <span className="label">{t("settings.bio")}</span>
-              <textarea
-                className="input resize-none"
-                rows={4}
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                maxLength={600}
-              />
-              <span className="field-hint">{t("settings.bioHint")}</span>
-            </label>
-          </>
-        )}
-      </Section>
 
-      <Section title={t("settings.preferences")}>
-        <div className="field">
-          <span className="label">{t("common.language")}</span>
-          <div className="mt-1.5 flex gap-2">
+            {role === "doctor" && (
+              <>
+                <label className="field">
+                  <span className="label">{t("settings.specialization")}</span>
+                  <input
+                    className="input"
+                    value={draft.specialization}
+                    onChange={(e) => set("specialization", e.target.value)}
+                    maxLength={120}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">{t("settings.bio")}</span>
+                  <textarea
+                    className="input resize-none"
+                    rows={4}
+                    value={draft.bio}
+                    onChange={(e) => set("bio", e.target.value)}
+                    maxLength={600}
+                  />
+                  <span className="field-hint">{t("settings.bioHint")}</span>
+                </label>
+              </>
+            )}
+          </div>
+        );
+
+      case "account":
+        return (
+          <div className="space-y-5">
+            <label className="field">
+              <span className="label">{t("settings.email")}</span>
+              <input
+                className="input"
+                type="email"
+                value={draft.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder={t("settings.emailPlaceholder")}
+              />
+              <span className="field-hint">{t("settings.emailOptionalHint")}</span>
+            </label>
+
+            <label className="field">
+              <span className="label">{t("settings.phone")}</span>
+              <input
+                className="input numeric"
+                type="tel"
+                value={draft.phone}
+                onChange={(e) => set("phone", e.target.value)}
+                placeholder="03XX-XXXXXXX"
+              />
+              {profile.phoneVerified && (
+                <span className="field-hint text-success">
+                  ✓ {t("settings.phoneVerified", { phone: formatPhone(profile.phone) })}
+                </span>
+              )}
+            </label>
+
+            <p className="rounded-[var(--radius-sm)] bg-mist/60 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+              {t("settings.identityHint")}
+            </p>
+          </div>
+        );
+
+      case "notifications":
+        return (
+          <div className="space-y-5">
+            <Toggle
+              label={t("settings.notificationSound")}
+              hint={t("settings.notificationSoundHint")}
+              checked={draft.notificationSound}
+              onChange={(next) => {
+                set("notificationSound", next);
+                if (next) playNotificationChime();
+              }}
+            />
+            <Toggle
+              label={t("settings.messageSound")}
+              hint={t("settings.messageSoundHint")}
+              checked={draft.messageSound}
+              onChange={(next) => set("messageSound", next)}
+            />
+            <p className="rounded-[var(--radius-sm)] bg-mist/60 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+              {t("settings.reminderHint")}
+            </p>
+          </div>
+        );
+
+      case "language":
+        return (
+          <div className="space-y-3">
             {LOCALES.map((l) => (
               <button
                 key={l.code}
                 type="button"
                 onClick={() => setLocale(l.code as Locale)}
                 aria-pressed={locale === l.code}
-                className={`rounded-[var(--radius-pill)] border px-4 py-1.5 text-xs font-semibold transition-colors ${
+                className={`flex w-full items-center justify-between rounded-[var(--radius-sm)] border px-4 py-3 text-sm font-semibold transition-colors ${
                   locale === l.code
-                    ? "border-indigo bg-indigo text-white"
+                    ? "border-indigo bg-indigo/5 text-indigo"
                     : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
                 }`}
               >
                 {l.label}
+                {locale === l.code && <span aria-hidden>✓</span>}
               </button>
             ))}
+            <p className="field-hint">{t("settings.languageHint")}</p>
           </div>
-          <span className="field-hint">{t("settings.languageHint")}</span>
-        </div>
+        );
 
-        <Toggle
-          label={t("settings.notificationSound")}
-          hint={t("settings.notificationSoundHint")}
-          checked={notificationSound}
-          onChange={(next) => {
-            setNotificationSound(next);
-            // Play it as they switch it on, so "what does this sound like?"
-            // doesn't require waiting for a real notification.
-            if (next) playNotificationChime();
-          }}
-        />
-
-        <Toggle
-          label={t("settings.messageSound")}
-          hint={t("settings.messageSoundHint")}
-          checked={messageSound}
-          onChange={setMessageSound}
-        />
-
-        {role === "doctor" && (
-          <>
+      case "privacy":
+        return (
+          <div className="space-y-5">
             <Toggle
               label={t("settings.presence")}
               hint={t("settings.presenceHint")}
-              checked={presenceVisible}
-              onChange={setPresenceVisible}
+              checked={draft.presenceVisible}
+              onChange={(next) => set("presenceVisible", next)}
             />
             <p className="rounded-[var(--radius-sm)] bg-mist/60 px-3 py-2 text-xs leading-relaxed text-ink-soft">
               {t("presence.autoNote")}
             </p>
-          </>
-        )}
-      </Section>
+          </div>
+        );
+    }
+  }
 
-      <div className="flex items-center gap-3">
-        <button type="submit" disabled={saving || uploading} className="btn-indigo">
-          {saving ? t("common.saving") : t("settings.saveChanges")}
+  const list = (
+    <ul className="space-y-1">
+      {visibleSections.map((s) => (
+        <li key={s.id}>
+          <button
+            type="button"
+            onClick={() => setSection(s.id)}
+            data-active={section === s.id}
+            className="shell-nav-link w-full text-start"
+          >
+            <span aria-hidden className="text-base">
+              {s.icon}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{t(`settings.section.${s.id}`)}</span>
+            <span aria-hidden className="flip-rtl text-ink-soft">
+              ›
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+
+  const panel = section && (
+    <div className="card card-pad">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setSection(null)}
+          aria-label={t("common.back")}
+          className="flip-rtl rounded-full p-1 text-ink-soft transition-colors hover:bg-mist hover:text-ink lg:hidden"
+        >
+          ‹
         </button>
-        {doctor?.role === "doctor" && (
-          <span className="text-xs text-ink-soft">
-            {presenceVisible ? t("presence.online") : t("presence.hidden")}
-          </span>
-        )}
+        <h2 className="h3 text-ink">{t(`settings.section.${section}`)}</h2>
       </div>
-    </form>
+      <p className="mt-1 text-xs text-ink-soft">{t(`settings.section.${section}.hint`)}</p>
+
+      <div className="mt-5">{renderSection(section)}</div>
+
+      <button
+        type="button"
+        onClick={() => save()}
+        disabled={saving || uploading}
+        className="btn-indigo mt-6 w-full sm:w-auto"
+      >
+        {saving ? t("common.saving") : t("settings.saveChanges")}
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="animate-fade-up">
+      <h1 className="h1">{t("settings.title")}</h1>
+      <p className="lede mt-1">{t("settings.subtitle")}</p>
+
+      {/* Mobile: the list, or the open panel — never both. */}
+      <div className="mt-6 lg:hidden">{section ? panel : list}</div>
+
+      {/* Desktop: list beside the panel. */}
+      <div className="mt-6 hidden gap-6 lg:grid lg:grid-cols-[15rem_1fr]">
+        <div>{list}</div>
+        <div>
+          {panel ?? (
+            <div className="card card-pad text-sm text-ink-soft">
+              {t("settings.pickSection")}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -263,7 +263,7 @@ function Shell({ role, nav, children }: Props) {
 
       {/* Mobile drawer */}
       {drawerOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-[60] lg:hidden">
           <button
             aria-label={t("common.close")}
             onClick={() => setDrawerOpen(false)}
@@ -286,7 +286,7 @@ function Shell({ role, nav, children }: Props) {
 
       <div className="lg:ps-[var(--shell-sidebar)]">
         {/* Top bar */}
-        <header className="sticky top-0 z-30 flex h-[var(--shell-topbar)] items-center gap-3 border-b border-line/70 bg-paper/90 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 flex min-h-[var(--shell-topbar)] items-center gap-3 border-b border-line/70 bg-paper/90 px-4 py-2 backdrop-blur sm:px-6">
           <button
             onClick={() => setDrawerOpen(true)}
             aria-label={t("common.menu")}
