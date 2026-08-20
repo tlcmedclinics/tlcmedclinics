@@ -488,6 +488,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "followUp.note": "Note for the patient",
     "followUp.notePlaceholder": "e.g. bring your lab results",
     "followUp.noSlots": "You have no open times — add some on the Slots page first.",
+    "followUp.noDoctorOnAppointment": "This appointment has no doctor assigned, so there is no calendar to book from.",
     "followUp.booked": "Next appointment booked — the patient has been notified.",
     "followUp.alreadyScheduled": "Next appointment already booked from this visit.",
 
@@ -968,6 +969,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "followUp.note": "مریض کے لیے ہدایت",
     "followUp.notePlaceholder": "مثلاً اپنی لیب رپورٹس ساتھ لائیں",
     "followUp.noSlots": "آپ کے پاس کوئی وقت خالی نہیں — پہلے اوقات والے صفحے سے شامل کریں۔",
+    "followUp.noDoctorOnAppointment": "اس ملاقات کے لیے کوئی ڈاکٹر مقرر نہیں، اس لیے کوئی اوقات دستیاب نہیں۔",
     "followUp.booked": "اگلی ملاقات طے ہو گئی — مریض کو اطلاع دے دی گئی۔",
     "followUp.alreadyScheduled": "اس ملاقات سے اگلی ملاقات پہلے ہی طے ہو چکی ہے۔",
 

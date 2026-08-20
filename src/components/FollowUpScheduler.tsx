@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
+import { isIndexError, readApiError } from "@/lib/api-error";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import type { Appointment } from "@/types";
@@ -30,18 +31,36 @@ export default function FollowUpScheduler({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState("");
+  const [loadError, setLoadError] = useState<{ message: string; setup: boolean } | null>(null);
 
   async function openPicker() {
     setOpen(true);
-    if (!appointment.doctorId) return;
+    setLoadError(null);
+
+    if (!appointment.doctorId) {
+      // Nothing to look up — an unassigned appointment has no doctor whose
+      // calendar we could offer.
+      setLoadError({ message: t("followUp.noDoctorOnAppointment"), setup: false });
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await authedFetch(
         `/api/slots?onlyAvailable=true&doctorId=${encodeURIComponent(appointment.doctorId)}`
       );
-      setSlots(res.ok ? await res.json() : []);
+      if (!res.ok) {
+        // This used to collapse any failure into an empty array, so a missing
+        // Firestore index rendered as "you have no open times" — sending the
+        // doctor off to add slots they already had. Show what actually broke.
+        const message = await readApiError(res, t("error.loadFailed"));
+        setLoadError({ message, setup: isIndexError(res.status, message) });
+        setSlots([]);
+        return;
+      }
+      setSlots(await res.json());
     } catch {
-      toast.error(t("error.loadFailed"));
+      setLoadError({ message: t("error.network"), setup: false });
     } finally {
       setLoading(false);
     }
@@ -106,6 +125,21 @@ export default function FollowUpScheduler({
       <div className="mt-3">
         {loading ? (
           <p className="text-xs text-ink-soft">{t("common.loading")}</p>
+        ) : loadError ? (
+          <div className="rounded-[var(--radius-sm)] border border-crimson/30 bg-danger-soft p-3">
+            <p className="text-xs font-semibold text-crimson-deep">
+              {t(loadError.setup ? "error.setupNeeded" : "error.loadFailed")}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-ink-soft">{loadError.message}</p>
+            {loadError.setup && (
+              <pre className="mt-2 overflow-x-auto rounded bg-ink/90 px-2 py-1.5 font-mono text-[0.65rem] text-paper">
+                firebase deploy --only firestore:indexes
+              </pre>
+            )}
+            <button type="button" onClick={openPicker} className="btn-outline btn-sm mt-2">
+              {t("common.retry")}
+            </button>
+          </div>
         ) : slots.length === 0 ? (
           <p className="text-xs text-ink-soft">{t("followUp.noSlots")}</p>
         ) : (
