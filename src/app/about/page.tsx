@@ -3,15 +3,29 @@ import Link from "next/link";
 import { site, clinicValues, faqs } from "@/data/site";
 import VitalsLine from "@/components/VitalsLine";
 import Testimonials from "@/components/Testimonials";
+import JsonLd from "@/components/JsonLd";
+import { pageMetadata, breadcrumbSchema, faqSchema } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "About — TLC Med Clinics",
-  description: "About TLC Med Clinics — mission, values, and standard of care.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "About the Clinic & Our Doctors",
+  description: `About TLC Med Clinics, Lahore — our values, our standard of care, and ${site.doctor.name}, ${site.doctor.credentials}, with over 35 years of clinical experience.`,
+  path: "/about",
+});
 
 export default function AboutPage() {
   return (
     <>
+    <JsonLd
+      data={[
+        breadcrumbSchema([
+          { name: "Home", path: "/" },
+          { name: "About", path: "/about" },
+        ]),
+        // The FAQ block is already on the page — declaring it makes it
+        // eligible for the expandable answers Google shows under a result.
+        faqSchema(faqs),
+      ]}
+    />
     <div className="mx-auto max-w-4xl px-6 py-16">
       <p className="eyebrow text-indigo">About us</p>
       <h1 className="mt-3 h1-hero">
@@ -50,7 +64,7 @@ export default function AboutPage() {
           </span>
         </div>
         <div>
-          <p className="h3 text-ink">{site.doctor.name}</p>
+          <h2 className="h3 text-ink">{site.doctor.name}</h2>
           <p className="text-sm text-indigo">{site.doctor.title}</p>
           <p className="mt-1 font-mono text-[0.7rem] text-ink-soft">{site.doctor.credentials}</p>
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">{site.doctor.bio}</p>
@@ -58,8 +72,8 @@ export default function AboutPage() {
       </div>
 
       <div className="mt-16 rounded-2xl bg-mist/60 p-6 sm:p-8">
-        <p className="h3 text-ink">Visit us</p>
-        <p className="mt-2 text-sm text-ink-soft">{site.address}</p>
+        <h2 className="h3 text-ink">Visit us</h2>
+        <address className="mt-2 not-italic text-sm text-ink-soft">{site.address}</address>
         <div className="mt-4 flex flex-wrap gap-x-8 gap-y-2 text-sm text-ink-soft">
           {site.hours.map((h) => (
             <span key={h.label}>

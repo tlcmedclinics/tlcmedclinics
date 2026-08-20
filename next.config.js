@@ -16,7 +16,20 @@ const nextConfig = {
         hostname: "res.cloudinary.com",
       },
     ],
+    // AVIF first, WebP second, original last. Blog covers and service photos
+    // are the heaviest thing on the public pages, and image weight is most of
+    // what Google's Largest Contentful Paint score measures.
+    formats: ["image/avif", "image/webp"],
   },
+
+  // Nothing gains from advertising the framework in a response header.
+  poweredByHeader: false,
+
+  // Every URL is generated without a trailing slash (sitemap, canonicals,
+  // internal links). Stating it here stops the host redirecting between the two
+  // forms, which would make canonicals disagree with the URLs that actually
+  // serve.
+  trailingSlash: false,
 };
 
 module.exports = nextConfig;

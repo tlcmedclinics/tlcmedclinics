@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Hero from "@/components/Hero";
 import ServicesOverview from "@/components/ServicesOverview";
 import HowItWorks from "@/components/HowItWorks";
@@ -5,6 +6,14 @@ import WhyUs from "@/components/WhyUs";
 import Testimonials from "@/components/Testimonials";
 import Link from "next/link";
 import VitalsLine from "@/components/VitalsLine";
+import { site } from "@/data/site";
+
+// The home page keeps the root title (no "%s — " prefix), but states its own
+// canonical so the domain never competes with itself over "/" vs "/index".
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  description: site.description,
+};
 
 export default function Home() {
   return (

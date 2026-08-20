@@ -1,14 +1,70 @@
+/** The days the clinic is open, spelled the way schema.org expects. */
+const CLINIC_DAYS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
 export const site = {
   name: "TLC Med Clinics",
   shortName: "TLC",
   tagline: "Whole-person care, US-trained standards, Lahore.",
+  /**
+   * The default meta description. It lives here rather than in layout.tsx so
+   * the same sentence feeds OpenGraph, structured data and the sitemap without
+   * three copies drifting apart.
+   */
+  description:
+    "TLC Med Clinics, Lahore — vein care, skin care and mental health under one roof, led by U.S. board-certified physicians. In-clinic visits and telemedicine appointments.",
   phone: "0310-040-4444",
+  /**
+   * The same number in E.164. Structured data and Google Business Profile both
+   * want the international form; `phone` above is what patients read.
+   */
+  phoneE164: "+923100404444",
   email: "info@tlcmedclinics.com",
   address: "221-G1 Johar Town, Near Doctors Hospital, Lahore, Pakistan",
+  /**
+   * The address split into fields, for schema.org PostalAddress. Google matches
+   * a clinic to its Business Profile partly on this, so it has to read exactly
+   * the same way in both places.
+   */
+  addressParts: {
+    street: "221-G1 Johar Town, Near Doctors Hospital",
+    city: "Lahore",
+    region: "Punjab",
+    country: "PK",
+  },
   hours: [
     { label: "Mon – Sat", value: "11:00 AM – 2:00 PM & 4:00 PM – 8:00 PM" },
     { label: "Telemedicine", value: "Mon – Sat, 11:00 AM – 9:30 PM" },
   ],
+  /**
+   * The same opening hours in 24-hour form, for structured data. `hours` above
+   * is written for people; this one is written for crawlers. They sit next to
+   * each other so changing one is an obvious prompt to change the other.
+   */
+  openingHours: [
+    { days: CLINIC_DAYS, opens: "11:00", closes: "14:00" },
+    { days: CLINIC_DAYS, opens: "16:00", closes: "20:00" },
+  ],
+  /**
+   * Public profiles that belong to this clinic — Facebook, Instagram, the
+   * Google Business Profile link, a Marham/Oladoc listing. Google uses these
+   * (schema.org `sameAs`) to confirm the website and the listings are the same
+   * business, which is one of the strongest local ranking signals there is.
+   * Empty until real URLs exist — a wrong link is worse than none.
+   */
+  socials: [] as string[],
+  /**
+   * Exact map coordinates, optional. Left undefined until they're copied from
+   * the clinic's own Google Business Profile, because a guessed pin is worse
+   * than no pin.
+   */
+  geo: undefined as { latitude: number; longitude: number } | undefined,
   stats: [
     { value: "35+", label: "Years of clinical experience" },
     { value: "10,200+", label: "Patients treated" },

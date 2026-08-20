@@ -3,7 +3,9 @@ import localFont from "next/font/local";
 import { Manrope, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
 import SiteChrome from "@/components/SiteChrome";
+import JsonLd from "@/components/JsonLd";
 import Toaster from "@/components/Toaster";
+import { rootMetadata, clinicSchema, websiteSchema } from "@/lib/seo";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
@@ -41,11 +43,9 @@ const plexMono = localFont({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "TLC Med Clinics — Vein, Skin & Mental Health Care in Lahore",
-  description:
-    "TLC Med Clinics offers US-standard vein care, skin care, and mental health treatment in Lahore, Pakistan — in person and by telemedicine.",
-};
+// Title template, canonical, OpenGraph and robots defaults — every page
+// inherits these and overrides only what differs. See lib/seo.ts.
+export const metadata: Metadata = rootMetadata();
 
 export const viewport: Viewport = {
   themeColor: "#fbfaf8",
@@ -66,6 +66,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${manrope.variable} ${nastaliq.variable} ${plexMono.variable} h-full`}
     >
       <body className="min-h-full bg-paper text-ink">
+        {/* Who the clinic is, where it is, when it's open — emitted on every
+            page so any entry point can identify the business. The panels are
+            noindex, so there's no cost to having it there too. */}
+        <JsonLd data={[clinicSchema(), websiteSchema()]} />
+
         <LanguageProvider>
           <ToastProvider>
             <AuthProvider>

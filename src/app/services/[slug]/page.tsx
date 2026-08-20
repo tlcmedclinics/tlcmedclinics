@@ -3,9 +3,15 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
+import JsonLd from "@/components/JsonLd";
+import { pageMetadata, serviceSchema, breadcrumbSchema } from "@/lib/seo";
 import type { Service } from "@/types";
 
-export const dynamic = "force-dynamic";
+// Treatment pages are the ones patients actually search for ("varicose veins
+// treatment Lahore"), so they need to be fast and cacheable rather than
+// re-queried on every request. An hour is well inside how often admin edits
+// them.
+export const revalidate = 3600;
 
 async function getServiceBySlug(slug: string): Promise<Service | null> {
   try {
@@ -37,11 +43,27 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const service = await getServiceBySlug(slug);
-  if (!service) return {};
-  return {
-    title: `${service.name} — TLC Med Clinics`,
-    description: service.short,
-  };
+
+  if (!service) {
+    return { title: "Service not found", robots: { index: false, follow: false } };
+  }
+
+  return pageMetadata({
+    // The city is in the title because that's how the search is typed —
+    // "laser hair removal Lahore", not "laser hair removal".
+    title: `${service.name} in Lahore`,
+    description:
+      service.short ||
+      `${service.name} at TLC Med Clinics, Johar Town, Lahore — assessment, treatment options and what to expect.`,
+    path: `/services/${service.slug}`,
+    image: service.image,
+    keywords: [
+      `${service.name} Lahore`,
+      `${service.name} treatment`,
+      `${service.category} Lahore`,
+      "TLC Med Clinics",
+    ],
+  });
 }
 
 export default async function ServiceDetailPage({
@@ -57,6 +79,17 @@ export default async function ServiceDetailPage({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-16 animate-fade-up">
+      <JsonLd
+        data={[
+          serviceSchema(service),
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Services", path: "/services" },
+            { name: service.name, path: `/services/${service.slug}` },
+          ]),
+        ]}
+      />
+
       <Link href="/services" className="text-sm text-indigo hover:text-indigo-deep">
         ← All services
       </Link>

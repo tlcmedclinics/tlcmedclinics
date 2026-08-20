@@ -2,15 +2,33 @@ import type { Metadata } from "next";
 import { site } from "@/data/site";
 import AppointmentForm from "@/components/AppointmentForm";
 import VitalsLine from "@/components/VitalsLine";
+import JsonLd from "@/components/JsonLd";
+import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Book an Appointment — TLC Med Clinics",
-  description: "Book an appointment at TLC Med Clinics, Lahore.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Book an Appointment — Contact the Clinic",
+  description: `Book an appointment at TLC Med Clinics, ${site.addressParts.street}, Lahore. Call ${site.phone}, or request an in-clinic or online consultation and our team will confirm your slot.`,
+  path: "/contact",
+});
 
 export default function ContactPage() {
   return (
     <div className="mx-auto grid max-w-6xl gap-14 px-6 py-16 lg:grid-cols-[1fr_1.2fr]">
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Book an Appointment", path: "/contact" },
+          ]),
+          {
+            "@context": "https://schema.org",
+            "@type": "ContactPage",
+            url: absoluteUrl("/contact"),
+            name: `Book an appointment — ${site.name}`,
+            inLanguage: "en",
+          },
+        ]}
+      />
       <div>
         <p className="eyebrow text-indigo">Get in touch</p>
         <h1 className="mt-3 h1-hero">
@@ -43,7 +61,7 @@ export default function ContactPage() {
           </div>
           <div>
             <p className="eyebrow text-ink-soft/70">Address</p>
-            <p className="mt-1 text-ink">{site.address}</p>
+            <address className="mt-1 not-italic text-ink">{site.address}</address>
           </div>
           <div>
             <p className="eyebrow text-ink-soft/70">Hours</p>

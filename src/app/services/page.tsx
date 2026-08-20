@@ -2,14 +2,23 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
+import JsonLd from "@/components/JsonLd";
+import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 import type { Service } from "@/types";
 
-export const metadata: Metadata = {
-  title: "Services — TLC Med Clinics",
-  description: "Vein care, skin care, and mental health services at TLC Med Clinics, Lahore.",
-};
+export const metadata: Metadata = pageMetadata({
+  title: "Services — Vein, Skin & Mental Health Treatment in Lahore",
+  description:
+    "Vein care, skin care and mental health treatment at TLC Med Clinics, Johar Town, Lahore. Browse the conditions we treat, what each treatment involves, and starting prices.",
+  path: "/services",
+});
 
-export const dynamic = "force-dynamic";
+// Was `force-dynamic`, which re-read the whole services collection on every
+// visit — including every crawler hit — and meant the page could never be
+// served from cache. Services change when an admin edits them, so an hourly
+// rebuild is fresh enough and far faster for patients, which Google measures
+// directly as a ranking signal.
+export const revalidate = 3600;
 
 async function getServices(): Promise<Service[]> {
   try {
@@ -27,6 +36,28 @@ export default async function ServicesPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-16">
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Services", path: "/services" },
+          ]),
+          // An explicit list tells Google these are the clinic's treatments,
+          // and often earns sitelinks under the main result.
+          {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            name: "Treatments at TLC Med Clinics",
+            itemListElement: services.slice(0, 30).map((s, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              name: s.name,
+              url: absoluteUrl(`/services/${s.slug}`),
+            })),
+          },
+        ]}
+      />
+
       <p className="eyebrow text-indigo">What we treat</p>
       <h1 className="mt-3 h1-hero">Services</h1>
       <VitalsLine className="mt-5 h-3 w-40" />
@@ -54,9 +85,11 @@ export default async function ServicesPage() {
                       style={{ animationDelay: `${i * 50}ms` }}
                       className="group card-hover animate-fade-up rounded-2xl border border-line/70 p-6 transition-colors hover:border-indigo/40 hover:bg-paper-dim/40"
                     >
-                      <p className="h4 text-ink group-hover:text-indigo-deep">
+                      {/* h3 under the category's h2 — heading levels are how a
+                          crawler reads the page's structure. */}
+                      <h3 className="h4 text-ink group-hover:text-indigo-deep">
                         {s.name}
-                      </p>
+                      </h3>
                       <p className="mt-2 text-sm leading-relaxed text-ink-soft">{s.short}</p>
                       {typeof s.price === "number" && (
                         <p className="mt-3 font-mono text-xs text-ink-soft">
