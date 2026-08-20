@@ -17,7 +17,7 @@ import ChatPanel from "@/components/ChatPanel";
 import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
 import type { Slot } from "@/types/slot";
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 50;
 
 // Searching swaps paging for a wider single fetch, so a name match isn't
 // limited to whichever page happens to be loaded. Still bounded — the route
