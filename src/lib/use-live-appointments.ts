@@ -38,10 +38,13 @@ import type { Appointment, AppointmentStatus } from "@/types";
  */
 export function useLiveAppointments({
   status,
+  date,
   pageSize = 50,
   enabled = true,
 }: {
   status?: AppointmentStatus | "all";
+  /** Exact day (YYYY-MM-DD) — used by the doctor's "today" list. */
+  date?: string;
   pageSize?: number;
   enabled?: boolean;
 } = {}) {
@@ -49,6 +52,7 @@ export function useLiveAppointments({
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
 
   const role = profile?.role;
   const uid = user?.uid;
@@ -63,12 +67,17 @@ export function useLiveAppointments({
     if (role === "patient") q = query(q, where("patientId", "==", uid));
     else if (role === "doctor") q = query(q, where("doctorId", "==", uid));
     if (status && status !== "all") q = query(q, where("status", "==", status));
+    if (date) q = query(q, where("date", "==", date));
     q = query(q, orderBy("createdAt", "desc"), fsLimit(pageSize));
 
     const unsub = onSnapshot(
       q,
       (snap) => {
         setAppointments(snap.docs.map((d) => d.data() as Appointment));
+        // Bumped on every snapshot so screens showing *aggregates* (the
+        // dashboards) can use this as a "something changed, refetch the
+        // totals" signal instead of streaming the whole collection.
+        setVersion((v) => v + 1);
         setLoading(false);
       },
       (err) => {
@@ -81,10 +90,10 @@ export function useLiveAppointments({
       }
     );
     return () => unsub();
-  }, [enabled, uid, role, status, pageSize]);
+  }, [enabled, uid, role, status, date, pageSize]);
 
   return useMemo(
-    () => ({ appointments, loading, error, setAppointments }),
-    [appointments, loading, error]
+    () => ({ appointments, loading, error, version, setAppointments }),
+    [appointments, loading, error, version]
   );
 }

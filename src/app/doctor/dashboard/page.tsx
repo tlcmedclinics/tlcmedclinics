@@ -3,18 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/authed-fetch";
+import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
-import type { Appointment } from "@/types";
 
 export default function DoctorDashboardPage() {
   const { profile } = useAuth();
   const toast = useToast();
   const t = useT();
-  const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [counts, setCounts] = useState({ upcoming: 0, uniquePatients: 0, completed: 0 });
-  const [loading, setLoading] = useState(true);
 
   // Presence is automatic now (lib/use-presence.ts, wired up in AppShell).
   // This screen only reports whether the doctor chose to show it.
@@ -23,52 +21,35 @@ export default function DoctorDashboardPage() {
 
   const todayIso = new Date().toISOString().slice(0, 10);
 
-  // Two narrow requests instead of one unbounded one: today's rows for the
-  // schedule list, and count() aggregations for the tiles. This used to
-  // download the doctor's entire appointment history to render both.
-  //
-  // They're settled independently so one failing doesn't blank the other, and
-  // a missing Firestore index reports itself specifically instead of hiding
-  // behind a generic "couldn't load".
+  // Today's schedule is a live query, so a booking or a completed session shows
+  // up without reloading.
+  const live = useLiveAppointments({ date: todayIso, pageSize: 100 });
+  const appointments = live.appointments;
+  const loading = live.loading;
+
+  // The tiles are aggregates (count() on the server), which a snapshot can't
+  // give us. Refetch them whenever the live query reports a change — that's
+  // one cheap request per actual change, rather than streaming the collection
+  // just to keep four numbers current.
   useEffect(() => {
     let cancelled = false;
-
     (async () => {
-      const [todaysRes, statsRes] = await Promise.allSettled([
-        authedFetch(`/api/appointments?date=${todayIso}&limit=100`),
-        authedFetch("/api/appointments/stats"),
-      ]);
-      if (cancelled) return;
-
-      let problem: string | null = null;
-
-      if (todaysRes.status === "fulfilled" && todaysRes.value.ok) {
-        setAppointments(await todaysRes.value.json());
-      } else if (todaysRes.status === "fulfilled") {
-        const data = await todaysRes.value.json().catch(() => ({}));
-        problem = data.error ?? "Couldn't load today's schedule.";
-      } else {
-        problem = "Couldn't load today's schedule.";
-      }
-
-      if (statsRes.status === "fulfilled" && statsRes.value.ok) {
-        const stats = await statsRes.value.json();
+      try {
+        const res = await authedFetch("/api/appointments/stats");
+        if (!res.ok || cancelled) return;
+        const stats = await res.json();
         setCounts(stats.counts);
-        if (stats.indexHint) problem = problem ?? stats.indexHint;
-      } else if (!problem) {
-        problem = "Couldn't load your dashboard totals.";
+        if (stats.indexHint) toast.error(stats.indexHint);
+      } catch {
+        // The tiles keep their last value; the schedule below is the part that
+        // actually matters and it has its own error state.
       }
-
-      if (cancelled) return;
-      if (problem) toast.error(problem);
-      setLoading(false);
     })();
-
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [live.version]);
 
   // `appointments` now only ever holds today's rows; cancelled ones are still
   // hidden from the schedule.

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authedFetch } from "@/lib/authed-fetch";
+import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useToast } from "@/contexts/ToastContext";
 
 type Counts = {
@@ -42,11 +43,14 @@ export default function AdminOverviewPage() {
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
   const [analytics, setAnalytics] = useState<Analytics>(EMPTY_ANALYTICS);
 
-  // One request, computed server-side with count() aggregations. This page
-  // used to hold five live listeners open — including one on the whole
-  // `appointments` collection — and rebuild the rollup in the browser, so it
-  // downloaded every appointment the clinic had ever taken just to show five
-  // numbers.
+  // A small live window — 20 rows, not the collection — used purely as a
+  // change signal. The original version of this page streamed every
+  // appointment the clinic had ever taken just to keep five numbers current;
+  // this watches the newest handful and refetches the aggregates when one of
+  // them moves.
+  const live = useLiveAppointments({ pageSize: 20 });
+
+  // One request, computed server-side with count() aggregations.
   useEffect(() => {
     authedFetch("/api/appointments/stats")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("stats"))))
