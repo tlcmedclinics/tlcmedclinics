@@ -193,7 +193,11 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
 
   /* ------------------------------ sections ------------------------------ */
 
-  function renderSection(id: SectionId) {
+  // Arrow const, NOT a hoisted `function`. TypeScript treats a hoisted
+  // declaration as callable before the `if (!profile) return` guard above, so
+  // it refuses to narrow `profile` inside one — which fails the production
+  // build with TS18047 even though this can never run with a null profile.
+  const renderSection = (id: SectionId) => {
     switch (id) {
       case "profile":
         return (
@@ -356,7 +360,7 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
           </div>
         );
     }
-  }
+  };
 
   const list = (
     <ul className="space-y-1">
