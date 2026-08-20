@@ -2,6 +2,50 @@ import { cert, getApps, initializeApp, type App } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
+/**
+ * Reads the service account's private key out of the environment.
+ *
+ * A PEM key is multi-line, and every hosting panel mangles multi-line values
+ * differently. This normalises the three forms that actually turn up, because
+ * getting it wrong takes down every Firestore read on the site and the only
+ * symptom is "Failed to parse private key" buried in a server log:
+ *
+ *   1. `\n` escapes — how it's written in .env, and what Vercel stores.
+ *   2. Wrapped in quotes — pasting the .env line into a panel's value box
+ *      brings the surrounding `"` along, and those quotes become part of the
+ *      PEM, which then no longer parses. (This is what broke production.)
+ *   3. Base64 — set FIREBASE_PRIVATE_KEY_BASE64 instead and newlines can't be
+ *      mangled at all. The most reliable option on a panel that reformats
+ *      whatever you paste.
+ */
+function readPrivateKey(): string | undefined {
+  const base64 = process.env.FIREBASE_PRIVATE_KEY_BASE64?.trim();
+  if (base64) {
+    try {
+      const decoded = Buffer.from(base64, "base64").toString("utf8");
+      if (decoded.includes("BEGIN")) return decoded;
+      console.error(
+        "[firebase-admin] FIREBASE_PRIVATE_KEY_BASE64 did not decode to a PEM key — ignoring it."
+      );
+    } catch {
+      console.error("[firebase-admin] FIREBASE_PRIVATE_KEY_BASE64 is not valid base64 — ignoring it.");
+    }
+  }
+
+  let key = process.env.FIREBASE_PRIVATE_KEY?.trim();
+  if (!key) return undefined;
+
+  // Strip a wrapping pair of quotes if the panel kept them.
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1);
+  }
+
+  return key.replace(/\\n/g, "\n");
+}
+
 // Uses a service account JSON stored as a single env var (escaped),
 // so this works on Vercel without a mounted file. See .env.example.
 function getAdminApp(): App {
@@ -9,7 +53,7 @@ function getAdminApp(): App {
 
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const privateKey = readPrivateKey();
 
   if (!projectId || !clientEmail || !privateKey) {
     // Don't throw at import time — this file is imported by every API route,
