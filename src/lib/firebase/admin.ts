@@ -22,9 +22,30 @@ function getAdminApp(): App {
     return initializeApp({ projectId: projectId || "placeholder-project" });
   }
 
-  return initializeApp({
-    credential: cert({ projectId, clientEmail, privateKey }),
-  });
+  try {
+    return initializeApp({
+      credential: cert({ projectId, clientEmail, privateKey }),
+    });
+  } catch (err) {
+    // `cert()` throws on a malformed key — "Failed to parse private key" —
+    // and because this module runs at import time, that single throw takes
+    // down EVERY route that imports it: all of /api, plus any server-rendered
+    // page that reads Firestore. Static pages keep serving, so the site looks
+    // half-alive while the real cause never appears anywhere obvious.
+    //
+    // The usual culprit is FIREBASE_PRIVATE_KEY losing its line breaks in a
+    // hosting panel's environment-variable box. The value has to keep its
+    // literal \n escapes (or real newlines) and must not be wrapped in
+    // quotes, or the PEM stops parsing.
+    //
+    // Failing the same way as "missing credentials" keeps the app up and puts
+    // one clear line in the server log instead of an unexplained 500.
+    console.error(
+      "[firebase-admin] FIREBASE_PRIVATE_KEY could not be parsed. Check that the key kept its \\n line breaks and has no surrounding quotes. Firestore will be unavailable until this is fixed.",
+      err
+    );
+    return initializeApp({ projectId });
+  }
 }
 
 export const adminApp = getAdminApp();
