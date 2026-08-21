@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyRequest } from "@/lib/auth-server";
 import { getStripe, PAYMENT_CURRENCY, toMinorUnits } from "@/lib/stripe";
 import { createPendingBooking } from "@/lib/payments";
+import { publicOrigin } from "@/lib/public-url";
 
 /**
  * Creates a Stripe Checkout Session for one appointment and returns its
@@ -50,7 +51,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const origin = req.nextUrl.origin;
+  // Not req.nextUrl.origin — see src/lib/public-url.ts. Getting this from the
+  // request is how a paying customer ends up redirected to an address their
+  // browser can't reach.
+  const origin = publicOrigin(req);
 
   try {
     const stripe = getStripe();
