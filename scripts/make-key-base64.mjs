@@ -19,7 +19,11 @@
 
 import fs from "fs";
 import path from "path";
-import { loadEnvConfig } from "@next/env";
+// Default import, then unpack: @next/env is CommonJS, and Node refuses to pull
+// named exports off a CommonJS module inside an .mjs file.
+import nextEnv from "@next/env";
+
+const { loadEnvConfig } = nextEnv;
 
 loadEnvConfig(process.cwd(), true, { info: () => {}, error: () => {} });
 

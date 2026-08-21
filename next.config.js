@@ -9,6 +9,18 @@
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Stamped into the client bundle at build time, and printed to the browser
+  // console once on load.
+  //
+  // Worth the two lines because "is the code I just deployed actually the code
+  // running?" has cost this project hours. A host serving a cached build looks
+  // exactly like code that doesn't work: the button isn't there, the fix didn't
+  // take, and there is no way from the outside to tell which. This makes the
+  // answer readable in one glance at the console.
+  env: {
+    NEXT_PUBLIC_BUILD_STAMP: new Date().toISOString(),
+  },
+
   images: {
     remotePatterns: [
       {

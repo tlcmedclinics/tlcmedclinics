@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { normaliseClinicTime } from "@/lib/clinic-time";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Slot } from "@/types/slot";
 
@@ -85,13 +86,41 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const { doctorId, doctorName, service, date, time, times, durationMinutes, mode } = body;
 
-  const timeList: string[] = Array.isArray(times) && times.length > 0 ? times : time ? [time] : [];
+  const rawTimes: string[] = Array.isArray(times) && times.length > 0 ? times : time ? [time] : [];
 
-  if (!doctorId || !doctorName || !date || timeList.length === 0) {
+  if (!doctorId || !doctorName || !date || rawTimes.length === 0) {
     return NextResponse.json(
       { error: "doctorId, doctorName, date and at least one time are required" },
       { status: 400 }
     );
+  }
+
+  // Every time is stored as 24-hour "HH:mm", settled here rather than trusted
+  // as typed.
+  //
+  // Slots used to be written down exactly as entered, so "2:45" went into
+  // Firestore as "2:45" — which is not a time any reader can use. Building an
+  // ISO string from it gives "2026-08-21T2:45", and that is Invalid Date rather
+  // than 02:45, because ISO 8601 wants two digits for the hour. So the join
+  // gate got null and refused to open for the entire appointment, and the
+  // five-minute reminder had nothing to compare against. Neither failure
+  // pointed anywhere near the slots form.
+  //
+  // Rejected rather than guessed. "2:45" reads as 02:45 here, and the clinic
+  // means 14:45 — nothing in the data can tell those apart, so the person who
+  // knows is asked while they are still looking at the form.
+  const timeList: string[] = [];
+  for (const t of rawTimes) {
+    const normalised = normaliseClinicTime(String(t));
+    if (!normalised) {
+      return NextResponse.json(
+        {
+          error: `“${t}” isn't a time we can read. Use 24-hour times like 09:00 or 14:45 — an afternoon slot is 14:45, not 2:45.`,
+        },
+        { status: 400 }
+      );
+    }
+    timeList.push(normalised);
   }
 
   try {

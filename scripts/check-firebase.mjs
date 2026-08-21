@@ -18,7 +18,9 @@
  * the output is safe to paste into a chat or a ticket.
  */
 
-import { loadEnvConfig } from "@next/env";
+// Default import, then unpack: @next/env is CommonJS, and Node refuses to pull
+// named exports off a CommonJS module inside an .mjs file.
+import nextEnv from "@next/env";
 import { cert, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
@@ -40,6 +42,8 @@ console.log("\nFirebase Admin credential check\n");
  * 0. Load the environment the way Next.js does, and say which files
  *    it actually found. "No file loaded" is itself a common cause.
  * ---------------------------------------------------------------- */
+
+const { loadEnvConfig } = nextEnv;
 
 const { loadedEnvFiles } = loadEnvConfig(process.cwd(), true, {
   info: () => {},
