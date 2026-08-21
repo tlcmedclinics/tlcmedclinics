@@ -67,7 +67,18 @@ function readPrivateKey(): string | undefined {
     key = key.slice(1, -1);
   }
 
-  return key.replace(/\\n/g, "\n");
+  // Turn the escaped line breaks back into real ones.
+  //
+  // `\\+n` rather than `\\n`: some panels escape the value a second time when
+  // they import or export it, so `\n` arrives as `\\n`. Replacing only the
+  // single form leaves a stray backslash welded to the end of every line —
+  // including the last, so the key no longer ends with the END marker and the
+  // parser rejects it, while the first line still looks perfect. That reads as
+  // "the key is fine, something else is wrong", which it isn't.
+  //
+  // Safe to be greedy here: a PEM body is base64 (A-Z a-z 0-9 + / =), so a
+  // backslash cannot legitimately appear anywhere in a valid key.
+  return key.replace(/\\+n/g, "\n");
 }
 
 // Uses a service account JSON stored as a single env var (escaped),

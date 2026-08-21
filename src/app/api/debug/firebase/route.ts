@@ -39,7 +39,9 @@ function normalise(raw: string): string {
   ) {
     key = key.slice(1, -1);
   }
-  return key.replace(/\\n/g, "\n");
+  // `\\+n`: some panels escape the value a second time, so `\n` arrives as
+  // `\\n`. See the note in src/lib/firebase/admin.ts.
+  return key.replace(/\\+n/g, "\n");
 }
 
 export async function GET(req: NextRequest) {
@@ -61,7 +63,7 @@ export async function GET(req: NextRequest) {
   const report: Record<string, unknown> = {
     // Which build is answering. If this doesn't change after a redeploy, the
     // host is serving a cached build and nothing else here matters.
-    buildMarker: "key-parse-fix-2",
+    buildMarker: "key-parse-fix-3",
     nodeEnv: process.env.NODE_ENV,
 
     FIREBASE_PROJECT_ID: projectId ?? null,
@@ -99,6 +101,9 @@ export async function GET(req: NextRequest) {
       endsWithQuote: t.endsWith('"') || t.endsWith("'"),
       endsWithComma: /[,;]$/.test(t),
       hasEscapedNewlines: t.includes("\\n"),
+      // True when the panel escaped the value a second time on import — the
+      // difference between a key that parses and one that doesn't.
+      hasDoubleEscapedNewlines: t.includes("\\\\n"),
       hasRealNewlines: t.includes("\n"),
       // After the same clean-up src/lib/firebase/admin.ts does:
       afterNormalising: {

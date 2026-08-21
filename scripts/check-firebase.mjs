@@ -122,7 +122,9 @@ function readPrivateKey() {
     key = key.slice(1, -1);
   }
 
-  return { key: key.replace(/\\n/g, "\n"), from: "FIREBASE_PRIVATE_KEY" };
+  // `\\+n`, not `\\n`: some panels escape the value a second time, so `\n`
+  // arrives as `\\n`. See the note in src/lib/firebase/admin.ts.
+  return { key: key.replace(/\\+n/g, "\n"), from: "FIREBASE_PRIVATE_KEY" };
 }
 
 const { key: privateKey, from } = readPrivateKey();
