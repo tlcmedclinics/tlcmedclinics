@@ -324,6 +324,25 @@ function PatientDashboardContent() {
                   </button>
                 )}
 
+                {/* Straight back into booking with the treatment and doctor
+                    already chosen — the two things a returning patient
+                    otherwise has to find again from a list. */}
+                {a.status === "completed" && (
+                  <Link
+                    href={{
+                      pathname: "/patient/book",
+                      query: {
+                        service: a.service,
+                        ...(a.doctorId ? { doctorId: a.doctorId } : {}),
+                      },
+                    }}
+                    className="mt-3 inline-block rounded-full border border-indigo px-4 py-2 text-xs font-medium text-indigo transition-colors hover:bg-indigo hover:text-white"
+                  >
+                    Book this again
+                    {a.doctorName ? ` with Dr. ${a.doctorName.replace(/^Dr\.?\s*/i, "")}` : ""}
+                  </Link>
+                )}
+
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">Reason: {a.cancelReason}</p>
                 )}

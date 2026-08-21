@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { normaliseClinicTime } from "@/lib/clinic-time";
+import { isOnLeave } from "@/lib/leaves";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Slot } from "@/types/slot";
 
@@ -78,13 +79,29 @@ export async function GET(req: NextRequest) {
 // { times: string[] } to create several slots for the same doctor/date in
 // one go (e.g. adding a whole day's schedule at once).
 export async function POST(req: NextRequest) {
-  const auth = await verifyRequest(req, ["admin"]);
+  // Doctors manage their own calendar; admin manages everyone's. Which of the
+  // two is talking decides whose slots can be written, below — a doctor's
+  // doctorId is taken from their token, never from the request, so no request
+  // body can put a slot in someone else's diary.
+  const auth = await verifyRequest(req, ["admin", "doctor"]);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   const body = await req.json();
-  const { doctorId, doctorName, service, date, time, times, durationMinutes, mode } = body;
+  const { service, date, time, times, durationMinutes, mode } = body;
+
+  // A doctor is always writing their own slots. Admin says whose.
+  //
+  // The name is read from the user document, not taken from the body: it is
+  // denormalised onto every slot so lists need no second read, and a
+  // client-supplied name would let a slot claim to belong to someone else.
+  const doctorId = auth.role === "doctor" ? auth.uid : body.doctorId;
+  let doctorName = body.doctorName;
+  if (auth.role === "doctor") {
+    const me = await adminDb.collection("users").doc(auth.uid).get();
+    doctorName = (me.data()?.name as string | undefined) ?? "";
+  }
 
   const rawTimes: string[] = Array.isArray(times) && times.length > 0 ? times : time ? [time] : [];
 
@@ -123,6 +140,17 @@ export async function POST(req: NextRequest) {
     timeList.push(normalised);
   }
 
+  // A slot on a day the doctor is away is a booking the clinic will have to
+  // unpick later, so it is refused at the point of creation rather than caught
+  // afterwards.
+  const onLeave = await isOnLeave(doctorId, date);
+  if (onLeave) {
+    return NextResponse.json(
+      { error: `${onLeave.doctorName} is marked away from ${onLeave.from} to ${onLeave.to}. Remove that leave first if this day should be bookable.` },
+      { status: 409 }
+    );
+  }
+
   try {
     const batch = adminDb.batch();
     const created: Slot[] = [];
@@ -158,7 +186,7 @@ export async function POST(req: NextRequest) {
 // or manually flip its status (e.g. freeing one up after a call-back
 // cancellation that was handled outside the normal flow).
 export async function PATCH(req: NextRequest) {
-  const auth = await verifyRequest(req, ["admin"]);
+  const auth = await verifyRequest(req, ["admin", "doctor"]);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -177,6 +205,12 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Slot not found" }, { status: 404 });
   }
   const slot = snap.data() as Slot;
+
+  // 404 rather than 403: a doctor probing ids shouldn't be able to map out
+  // another doctor's calendar by which ones come back "forbidden".
+  if (auth.role === "doctor" && slot.doctorId !== auth.uid) {
+    return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+  }
 
   const changingSchedule = date !== undefined || time !== undefined;
   if (changingSchedule && slot.status === "booked") {
@@ -228,7 +262,7 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/slots — admin only, { id } in body. Booked slots can't be
 // deleted directly so a linked appointment never points at a missing slot.
 export async function DELETE(req: NextRequest) {
-  const auth = await verifyRequest(req, ["admin"]);
+  const auth = await verifyRequest(req, ["admin", "doctor"]);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
@@ -244,6 +278,9 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
   const slot = snap.data() as Slot;
+  if (auth.role === "doctor" && slot.doctorId !== auth.uid) {
+    return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+  }
   if (slot.status === "booked") {
     return NextResponse.json(
       { error: "This slot is booked — cancel that appointment before deleting it" },

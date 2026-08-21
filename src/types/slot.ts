@@ -23,3 +23,23 @@ export interface Slot {
   appointmentId?: string;
   createdAt: string;
 }
+
+/**
+ * A stretch of days a doctor is unavailable.
+ *
+ * Stored separately from slots because leave covers time, not slots: booking a
+ * fortnight off has to close the days nobody has opened yet as well as the ones
+ * already on the calendar. Slot creation refuses dates inside a leave, and
+ * taking leave clears the open slots already in the range.
+ */
+export interface Leave {
+  id: string;
+  doctorId: string;
+  doctorName: string;
+  /** YYYY-MM-DD, inclusive */
+  from: string;
+  /** YYYY-MM-DD, inclusive */
+  to: string;
+  reason?: string;
+  createdAt: string;
+}

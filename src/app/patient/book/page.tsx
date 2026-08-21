@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
 import PaypalButton from "@/components/PaypalButton";
 import { authedFetch } from "@/lib/authed-fetch";
@@ -126,6 +126,52 @@ function BookAppointmentContent() {
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
 
   const [slots, setSlots] = useState<Slot[]>([]);
+
+  // ---- "Book again" prefill -------------------------------------------
+  //
+  // A patient arriving from a finished visit already knows what they want:
+  // the same treatment, with the same doctor. Landing them on step one to
+  // pick both again is the sort of thing that makes people give up and phone
+  // the clinic instead — which is the work this page exists to avoid.
+  //
+  // Read once, then never again: `prefilled` guards against re-running when
+  // the services list re-renders, which would drag someone back to the doctor
+  // step every time they tried to move past it.
+  const params = useSearchParams();
+  const prefilled = useRef(false);
+  const wantedDoctorId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (prefilled.current || services.length === 0) return;
+    prefilled.current = true;
+
+    const wantedService = params.get("service");
+    wantedDoctorId.current = params.get("doctorId");
+    if (!wantedService) return;
+
+    const match = services.find((x) => x.name === wantedService);
+    if (!match) return; // the service was renamed or removed since that visit
+
+    setPatientType(isFollowUpService(match) ? "follow-up" : "new");
+    setSelectedServiceName(match.name);
+    setStep("doctor");
+  }, [services, params]);
+
+  // The doctor is picked in a second pass, once their slots are actually
+  // loaded. Choosing the service clears `selectedDoctorId` — and a doctor
+  // selected before their availability is known would show an empty time step
+  // with no way to tell "fully booked" from "still loading".
+  useEffect(() => {
+    const wanted = wantedDoctorId.current;
+    if (!wanted || slots.length === 0) return;
+    if (slots.some((slot) => slot.doctorId === wanted)) {
+      setSelectedDoctorId(wanted);
+      setStep("time");
+    }
+    // Cleared either way: if that doctor has nothing open, the patient picks
+    // from whoever does rather than being held on a dead end.
+    wantedDoctorId.current = null;
+  }, [slots]);
   const [loadingSlots, setLoadingSlots] = useState(false);
 
   const [couponCode, setCouponCode] = useState("");
@@ -907,5 +953,15 @@ function BookAppointmentContent() {
 
 export default function BookAppointmentPage() {
   // Auth + role gating and page chrome come from app/patient/layout.tsx.
-  return <BookAppointmentContent />;
+  //
+  // The Suspense boundary is required, not decorative: this page reads
+  // useSearchParams() for the "book this again" prefill, and Next refuses to
+  // build a page that does so outside one — it can't prerender markup that
+  // depends on a query string it doesn't have yet. Without it the whole build
+  // fails, not just this route.
+  return (
+    <Suspense fallback={<Loader className="py-16" />}>
+      <BookAppointmentContent />
+    </Suspense>
+  );
 }
