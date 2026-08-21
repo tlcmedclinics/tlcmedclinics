@@ -1,6 +1,6 @@
-import Loader from "@/components/Loader";
 "use client";
 
+import Loader from "@/components/Loader";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
 import { authedFetch } from "@/lib/authed-fetch";
