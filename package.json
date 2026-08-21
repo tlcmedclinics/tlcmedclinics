@@ -7,6 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
+    "check-firebase": "node scripts/check-firebase.mjs",
     "create-admin": "node --env-file=.env.local scripts/create-admin.mjs",
     "create-doctor": "node --env-file=.env.local scripts/create-doctor.mjs",
     "seed-services": "node --env-file=.env.local scripts/seed-services.mjs"

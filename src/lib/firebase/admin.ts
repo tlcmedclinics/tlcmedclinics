@@ -14,7 +14,22 @@ import { getFirestore } from "firebase-admin/firestore";
  *   2. Wrapped in quotes — pasting the .env line into a panel's value box
  *      brings the surrounding `"` along, and those quotes become part of the
  *      PEM, which then no longer parses. (This is what broke production.)
- *   3. Base64 — set FIREBASE_PRIVATE_KEY_BASE64 instead and newlines can't be
+ *   3. Copied straight out of the service-account JSON, which means a
+ *      `"private_key":` label in front and/or a trailing comma behind:
+ *
+ *          FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n",
+ *                                                                  ^ this
+ *
+ *      That comma is worth spelling out, because it produced a bug that
+ *      looked impossible: `node --env-file` stops reading at the closing
+ *      quote and silently drops the comma, so `npm run check-firebase`
+ *      passed and reported a healthy 28-line key — while Next.js's own
+ *      loader (dotenv) refuses the quoted form once anything follows it,
+ *      hands the app `"-----BEGIN...` quotes and comma included, and every
+ *      Firestore call died. Same file, same variable, two different answers.
+ *      Stripping the trailing punctuation before the quotes makes both
+ *      parsers agree.
+ *   4. Base64 — set FIREBASE_PRIVATE_KEY_BASE64 instead and newlines can't be
  *      mangled at all. The most reliable option on a panel that reformats
  *      whatever you paste.
  */
@@ -34,6 +49,15 @@ function readPrivateKey(): string | undefined {
 
   let key = process.env.FIREBASE_PRIVATE_KEY?.trim();
   if (!key) return undefined;
+
+  // Drop a `"private_key":` label if the whole JSON line was pasted.
+  key = key.replace(/^"?private_key"?\s*:\s*/, "").trim();
+
+  // Drop trailing JSON punctuation — a comma left over from the
+  // service-account file, or a stray semicolon. Must happen BEFORE the quote
+  // check below, otherwise the closing quote is no longer the last character
+  // and the quotes never get stripped.
+  key = key.replace(/[,;]+$/, "").trim();
 
   // Strip a wrapping pair of quotes if the panel kept them.
   if (
@@ -84,8 +108,16 @@ function getAdminApp(): App {
     //
     // Failing the same way as "missing credentials" keeps the app up and puts
     // one clear line in the server log instead of an unexplained 500.
+    //
+    // The catch: firebase-admin caches this credential-less app globally for
+    // the life of the process, and `getApps()` above then hands it back for
+    // ever. Fixing the key is therefore not enough on its own — the process
+    // has to be restarted, or every query keeps failing against the app that
+    // was created while the key was broken. In `next dev` that means killing
+    // the server, not just saving a file: editing .env triggers a reload, but
+    // the Node process (and this cached app) survives it.
     console.error(
-      "[firebase-admin] FIREBASE_PRIVATE_KEY could not be parsed. Check that the key kept its \\n line breaks and has no surrounding quotes. Firestore will be unavailable until this is fixed.",
+      "[firebase-admin] FIREBASE_PRIVATE_KEY could not be parsed. Check that the key kept its \\n line breaks and has no surrounding quotes. Firestore stays unavailable until the key is fixed AND the server process is fully restarted.",
       err
     );
     return initializeApp({ projectId });

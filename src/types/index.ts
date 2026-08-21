@@ -112,6 +112,13 @@ export interface Appointment {
   // a short history so patient/doctor can see it was rescheduled and why.
   rescheduledFrom?: { date: string; time: string; at: string; by: UserRole };
   reminderSentAt?: string; // set once the 24h-before reminder has gone out, so it never repeats
+  /**
+   * Set once the "starting in a few minutes" nudge has gone out. Deliberately a
+   * separate flag from `reminderSentAt`: the two reminders fire at different
+   * times and go to different people, so sharing one flag would silently
+   * suppress whichever fired second.
+   */
+  startingSoonSentAt?: string;
   bookingType: BookingType;
   paymentStatus: "unpaid" | "paid" | "refunded";
   paymentProvider?: "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
@@ -203,6 +210,7 @@ export type NotificationType =
   | "appointment-rescheduled"
   | "appointment-cancelled"
   | "appointment-reminder"
+  | "appointment-starting-soon"
   | "doctor-assigned";
 
 export interface AppNotification {
