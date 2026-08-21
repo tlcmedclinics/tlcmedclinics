@@ -76,9 +76,15 @@ export default function FollowUpScheduler({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? t("common.somethingWrong"));
-      toast.success(t("followUp.booked"));
+      // Says what actually happened. The time is held, not booked — the patient
+      // still has to pay — and a doctor told "booked" would go on believing the
+      // visit was settled and only find out on the day.
+      const held = data.appointment as Appointment;
+      toast.success(
+        `Time held for ${held.patientName} — they've been asked to confirm and pay PKR ${held.amount}.`
+      );
       setOpen(false);
-      onScheduled(data.appointment as Appointment);
+      onScheduled(held);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
       // Most likely someone took the slot in between — refresh the list so the
@@ -89,7 +95,9 @@ export default function FollowUpScheduler({
     }
   }
 
-  // Already scheduled from this visit — nothing more to do.
+  // Already scheduled from this visit — nothing more to do here. Whether the
+  // patient has paid for it shows on that appointment's own row, which is where
+  // it can be acted on.
   if (appointment.followUpAppointmentId && !open) {
     return (
       <p className="mt-3 rounded-[var(--radius-sm)] bg-mist/60 px-3 py-2 text-xs text-ink-soft">

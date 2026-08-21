@@ -12,8 +12,13 @@ import { useT } from "@/contexts/LanguageContext";
 import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
+import {
+  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_STYLES as statusStyles,
+} from "@/lib/appointment-status";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
+import AppointmentHistory from "@/components/AppointmentHistory";
 import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
 import type { Slot } from "@/types/slot";
 
@@ -24,19 +29,6 @@ const PAGE_SIZE = 50;
 // caps at 500 — so it can't regress to fetching the whole collection.
 const SEARCH_WINDOW = 500;
 
-const statusStyles: Record<AppointmentStatus, string> = {
-  pending: "bg-mist text-ink-soft",
-  confirmed: "bg-indigo/10 text-indigo",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-crimson/10 text-crimson-deep",
-};
-
-const statusLabel: Record<AppointmentStatus, string> = {
-  pending: "Call-back needed",
-  confirmed: "Confirmed",
-  completed: "Completed",
-  cancelled: "Cancelled",
-};
 
 export default function AdminAppointmentsPage() {
   const { user } = useAuth();
@@ -466,12 +458,19 @@ export default function AdminAppointmentsPage() {
                       onChange={(e) => updateStatus(a.id, e.target.value as AppointmentStatus)}
                     >
                       <option value="pending">Call-back needed</option>
+                      {/* Listed so an unpaid follow-up shows its own state
+                          rather than an empty select. Admin can still confirm
+                          it by hand — a patient who paid at the desk shouldn't
+                          be stuck behind an online checkout. */}
+                      <option value="awaiting-payment">Awaiting patient payment</option>
                       <option value="confirmed">Confirmed</option>
                       <option value="completed">Completed</option>
                       <option value="cancelled">Cancelled</option>
                     </select>
                   </div>
                 </div>
+
+                <AppointmentHistory appointment={a} showInternal />
 
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">

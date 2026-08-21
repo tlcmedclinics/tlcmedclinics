@@ -34,6 +34,9 @@ export default function NotificationBell() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Set when the Firestore listener errors, so an empty bell can say whether it
+  // means "nothing new" or "this stopped working".
+  const [listenerError, setListenerError] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Ids seen last time. The first snapshot seeds this without chiming —
@@ -51,6 +54,7 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!profile?.uid) return;
     seenIds.current = null; // new subscription → fresh baseline
+    setListenerError(false);
 
     const q = query(
       collection(db, "notifications"),
@@ -58,18 +62,30 @@ export default function NotificationBell() {
       orderBy("createdAt", "desc"),
       limit(30)
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const next = snap.docs.map((d) => d.data() as AppNotification);
-      setItems(next);
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const next = snap.docs.map((d) => d.data() as AppNotification);
+        setItems(next);
 
-      const ids = new Set(next.map((n) => n.id));
-      const previous = seenIds.current;
-      seenIds.current = ids;
+        const ids = new Set(next.map((n) => n.id));
+        const previous = seenIds.current;
+        seenIds.current = ids;
 
-      if (!previous) return; // seed only
-      const hasArrival = next.some((n) => !previous.has(n.id) && !n.read);
-      if (hasArrival && soundOnRef.current) playNotificationChime();
-    });
+        if (!previous) return; // seed only
+        const hasArrival = next.some((n) => !previous.has(n.id) && !n.read);
+        if (hasArrival && soundOnRef.current) playNotificationChime();
+      },
+      // Without this the listener fails silently. A permission-denied, or a
+      // failed-precondition because the (userId, createdAt) composite index
+      // isn't deployed, would leave the bell permanently empty and looking
+      // exactly like "no notifications" — which is the one thing you cannot
+      // tell apart when someone reports that a reminder never arrived.
+      (err) => {
+        console.error("[NotificationBell] notifications listener failed", err);
+        setListenerError(true);
+      }
+    );
     return () => unsub();
   }, [profile?.uid]);
 
@@ -160,7 +176,12 @@ export default function NotificationBell() {
           </div>
 
           <div className="max-h-[24rem] overflow-y-auto shell-scroll">
-            {items.length === 0 ? (
+            {listenerError ? (
+              <p className="px-4 py-8 text-center text-xs text-rose-600">
+                Notifications aren&apos;t loading right now. Please refresh — if it
+                keeps happening, tell the clinic.
+              </p>
+            ) : items.length === 0 ? (
               <p className="px-4 py-8 text-center text-xs text-ink-soft">
                 {t("notifications.empty")}
               </p>

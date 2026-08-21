@@ -5,14 +5,12 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useToast } from "@/contexts/ToastContext";
-import type { Appointment, AppointmentStatus } from "@/types";
+import {
+  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_STYLES as statusStyles,
+} from "@/lib/appointment-status";
+import type { Appointment } from "@/types";
 
-const statusStyles: Record<AppointmentStatus, string> = {
-  pending: "bg-mist text-ink-soft",
-  confirmed: "bg-indigo/10 text-indigo",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-crimson/10 text-crimson-deep",
-};
 
 export default function DoctorPatientDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
@@ -107,8 +105,8 @@ export default function DoctorPatientDetailPage() {
                   {a.date} · {a.time} · {a.mode}
                 </p>
               </div>
-              <span className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}>
-                {a.status}
+              <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[a.status]}`}>
+                {statusLabel[a.status]}
               </span>
             </div>
             {a.notes && <p className="mt-2 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}

@@ -37,6 +37,17 @@ export async function createDailyRoom(
         eject_at_room_exp: true,
         start_video_off: audioOnly,
         start_audio_off: false,
+        // Turns recording on for the room. Without this the record button
+        // simply doesn't exist in Daily's call UI — not greyed out, not
+        // permission-denied, just absent — no matter what the joining token
+        // says. Who is actually allowed to press it is decided separately, on
+        // the token (see createDailyToken): the clinic side gets the streaming
+        // permission, the patient does not.
+        //
+        // "cloud" means Daily records server-side and the file appears in the
+        // Daily dashboard, so nothing depends on the doctor's own machine or
+        // connection holding up for the length of the consultation.
+        enable_recording: "cloud",
         // Skip the "check your camera" lobby for audio calls — there's no
         // camera to check, and it's one less step before the two of them are
         // talking.
@@ -60,6 +71,13 @@ export async function createDailyRoom(
  * For an audio call the token restricts what the participant is allowed to
  * publish to audio only. This is the real guarantee: even if someone digs into
  * the call UI, no camera track can be sent.
+ *
+ * The token is also what decides who may record. The room enables recording;
+ * this grants the clinic side (`isOwner`) the `canAdmin: ["streaming"]`
+ * permission that actually starts one, and never grants it to the patient. That
+ * distinction has to live on the token rather than in the UI — a control that is
+ * merely hidden is still reachable, and a patient recording a consultation
+ * without the doctor knowing is not a cosmetic problem.
  */
 export async function createDailyToken(
   roomUrl: string,
@@ -72,6 +90,13 @@ export async function createDailyToken(
 
   const roomName = roomUrl.split("/").pop();
 
+  // Built up rather than written inline because two independent rules both
+  // land in `permissions`, and Daily takes one object — writing it in two
+  // places would mean the second spread silently discarding the first.
+  const permissions: { canSend?: string[]; canAdmin?: string[] } = {};
+  if (audioOnly) permissions.canSend = ["audio"];
+  if (isOwner) permissions.canAdmin = ["streaming"]; // the right to record
+
   const res = await fetch(`${DAILY_API_BASE}/meeting-tokens`, {
     method: "POST",
     headers: {
@@ -83,13 +108,12 @@ export async function createDailyToken(
         room_name: roomName,
         user_name: userName,
         is_owner: isOwner,
-        ...(audioOnly
-          ? {
-              start_video_off: true,
-              enable_screenshare: false,
-              permissions: { canSend: ["audio"] },
-            }
-          : {}),
+        ...(audioOnly ? { start_video_off: true, enable_screenshare: false } : {}),
+        ...(Object.keys(permissions).length ? { permissions } : {}),
+        // Said outright for the patient rather than left to the absence of a
+        // permission. The room has recording switched on, so silence here would
+        // mean relying on Daily's default staying what it is today.
+        ...(isOwner ? {} : { enable_recording: false }),
       },
     }),
   });

@@ -58,6 +58,15 @@ export interface DoctorProfile extends UserProfile {
 
 export type AppointmentStatus =
   | "pending" // awaiting a call-back from the clinic to confirm (unpaid path)
+  // Held for the patient, waiting for them to pay. This is what a follow-up
+  // booked at the end of a visit starts as: the time is reserved and the
+  // patient has been asked to confirm it, but nothing is booked until they do.
+  //
+  // Deliberately not folded into "pending". That means "the clinic will call
+  // you" — the next move belongs to the clinic. Here the next move belongs to
+  // the patient, and a list showing both under one label tells the wrong person
+  // to act. `paymentDueAt` says when the hold lapses.
+  | "awaiting-payment"
   | "confirmed" // booked — either paid online, or confirmed by the clinic after a call
   | "completed"
   | "cancelled";
@@ -89,7 +98,11 @@ export type SessionStatus = "not_started" | "live" | "ended";
 // "call-back"       -> patient asked the clinic to call and confirm instead
 // "doctor-request" is booked without a slot: the patient wanted a service no
 // available doctor covers, so the clinic assigns someone and schedules it.
-export type BookingType = "online-payment" | "call-back" | "doctor-request";
+// "follow-up" is booked by the doctor from an existing visit, then paid by the
+// patient afterwards. It was previously recorded as "call-back", which read as
+// "the clinic will phone this patient" on every screen that shows booking type
+// — nobody ever phones them, and the thing actually waiting is the payment.
+export type BookingType = "online-payment" | "call-back" | "doctor-request" | "follow-up";
 
 export interface Appointment {
   id: string;
@@ -120,9 +133,21 @@ export interface Appointment {
    */
   startingSoonSentAt?: string;
   bookingType: BookingType;
+  /**
+   * When an "awaiting-payment" hold lapses, ISO. The slot stays reserved until
+   * this passes; after it, the sweep in /api/notifications/reminders cancels
+   * the appointment and frees the slot.
+   *
+   * Stored on the appointment rather than derived from createdAt so the clinic
+   * can extend a particular hold without that meaning "change the rule for
+   * everyone".
+   */
+  paymentDueAt?: string;
   paymentStatus: "unpaid" | "paid" | "refunded";
   paymentProvider?: "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
   paymentReference?: string;
+  /** When the money actually arrived, ISO. Set on pay-after-booking follow-ups. */
+  paidAt?: string;
   roomUrl?: string; // Daily.co room, created when the video session starts
   chatThreadId?: string; // == appointment id; created when the chat session starts
   sessionStatus?: SessionStatus; // video/chat only — gates the join button
@@ -211,6 +236,10 @@ export type NotificationType =
   | "appointment-cancelled"
   | "appointment-reminder"
   | "appointment-starting-soon"
+  // The doctor booked a follow-up and the patient needs to pay to hold it.
+  | "appointment-awaiting-payment"
+  // That hold ran out before they did.
+  | "appointment-payment-expired"
   | "doctor-assigned";
 
 export interface AppNotification {

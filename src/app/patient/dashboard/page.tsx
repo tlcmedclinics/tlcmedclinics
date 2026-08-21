@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import RatingStars from "@/components/RatingStars";
+import AppointmentHistory from "@/components/AppointmentHistory";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,10 +19,24 @@ import type { Appointment } from "@/types";
 
 const statusStyles: Record<Appointment["status"], string> = {
   pending: "bg-mist text-ink-soft",
+  // Amber, not grey: this is the one status where the patient has to do
+  // something, and it should not sit quietly beside the ones where they don't.
+  "awaiting-payment": "bg-amber-100 text-amber-800",
   confirmed: "bg-indigo/10 text-indigo",
   completed: "bg-green-100 text-green-700",
   cancelled: "bg-crimson/10 text-crimson-deep",
 };
+
+/** How much of the hold is left, in words. */
+function holdRemaining(dueAt?: string): string | null {
+  if (!dueAt) return null;
+  const ms = Date.parse(dueAt) - Date.now();
+  if (Number.isNaN(ms) || ms <= 0) return null;
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours >= 1) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  const mins = Math.max(1, Math.round(ms / 60_000));
+  return `${mins} minute${mins === 1 ? "" : "s"}`;
+}
 
 function PatientDashboardContent() {
   const { profile, user } = useAuth();
@@ -30,6 +45,8 @@ function PatientDashboardContent() {
   const t = useT();
   const now = useNow();
   const { startSession, pendingId } = useSessionAction();
+
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   const [activePanel, setActivePanel] = useState<
     | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
@@ -44,6 +61,48 @@ function PatientDashboardContent() {
   // Kept for the places that still act on a single row optimistically.
   function load() {
     /* no-op: the snapshot listener keeps this list current */
+  }
+
+  /**
+   * Sends the patient to Stripe to pay for a follow-up the doctor already
+   * booked. Nothing about the price is passed — the server reads it from the
+   * appointment — so this only has to say which one.
+   */
+  async function handlePayForAppointment(a: Appointment) {
+    setPayingId(a.id);
+    try {
+      const res = await authedFetch("/api/payments/stripe/pay-appointment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ appointmentId: a.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.url) {
+        throw new Error(data.error || "Couldn't start checkout");
+      }
+      window.location.href = data.url;
+    } catch (err) {
+      // Left cleared so they can try again; on success the browser navigates
+      // away and this never runs.
+      setPayingId(null);
+      toast.error(err instanceof Error ? err.message : "Couldn't start checkout.");
+    }
+  }
+
+  /** Turning down a held follow-up — frees the slot straight away. */
+  async function handleDecline(a: Appointment) {
+    if (!confirm("Release this time? The slot goes back to other patients.")) return;
+    try {
+      const res = await authedFetch("/api/appointments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: a.id, status: "cancelled" }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Time released. You can book whenever suits you.");
+    } catch {
+      toast.error("Couldn't release that time.");
+    }
   }
 
   async function handleCancel(a: Appointment) {
@@ -177,9 +236,42 @@ function PatientDashboardContent() {
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}
                   >
-                    {a.status === "pending" ? "Awaiting call-back" : a.status}
+                    {a.status === "pending"
+                      ? "Awaiting call-back"
+                      : a.status === "awaiting-payment"
+                      ? "Confirm to book"
+                      : a.status}
                   </span>
                 </div>
+
+                {a.status === "awaiting-payment" && (
+                  <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-medium text-amber-900">
+                      Dr. {(a.doctorName ?? "").replace(/^Dr\.?\s*/i, "")} has held this
+                      time for you — PKR {a.amount}
+                    </p>
+                    <p className="mt-1 text-xs text-amber-800">
+                      {holdRemaining(a.paymentDueAt)
+                        ? `Confirm within ${holdRemaining(a.paymentDueAt)} or the time is released to other patients.`
+                        : "This hold has expired. Please book a new time."}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handlePayForAppointment(a)}
+                        disabled={payingId === a.id || !holdRemaining(a.paymentDueAt)}
+                        className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo-deep disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {payingId === a.id ? "Opening checkout…" : "Confirm and pay"}
+                      </button>
+                      <button
+                        onClick={() => handleDecline(a)}
+                        className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:text-crimson-deep"
+                      >
+                        Not this time
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {a.status === "confirmed" && isOnlineMode && (
                   <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-mist/50 px-4 py-3">
@@ -214,6 +306,8 @@ function PatientDashboardContent() {
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">Reason: {a.cancelReason}</p>
                 )}
+
+                <AppointmentHistory appointment={a} />
 
                 {a.status === "completed" && (a.prescription || a.prescriptionImages?.length) && (
                   <div className="mt-3 rounded-[var(--radius-sm)] border border-success/20 bg-success-soft p-4">

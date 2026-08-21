@@ -1,3 +1,4 @@
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import type { Appointment, PatientType, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
@@ -50,7 +51,26 @@ export async function createPendingBooking(
     if (slot.status !== "available") {
       throw new Error("This slot was just booked by someone else — please pick another.");
     }
-    const doc: PendingBooking = { ...data, id: ref.id, createdAt: new Date().toISOString() };
+
+    // The doctor comes from the slot, never from the request body.
+    //
+    // This is the same rule POST /api/appointments already follows, and it was
+    // the one place that didn't. The booking form's payload builder never
+    // included doctorId at all, so every card/PayPal booking arrived here with
+    // no doctor — the appointment was created unassigned, the doctor was never
+    // notified (that notify() call is guarded on doctorId), and it stayed
+    // invisible to them because the doctor's list queries `doctorId == uid`.
+    // An admin then had to assign, by hand, the doctor the patient had already
+    // chosen. Reading it from the slot fixes card and PayPal in one place and
+    // can't be faked by a client either, since the slot doc is the thing that
+    // actually holds the appointment.
+    const doc: PendingBooking = {
+      ...data,
+      doctorId: slot.doctorId || undefined,
+      doctorName: slot.doctorName || undefined,
+      id: ref.id,
+      createdAt: new Date().toISOString(),
+    };
     tx.set(ref, doc);
     tx.update(slotRef, { status: "booked" }); // appointmentId linked once payment finalizes
   });
@@ -80,6 +100,105 @@ export async function releasePendingBooking(pendingBookingId: string): Promise<v
     }
     tx.delete(pendingRef);
   });
+}
+
+/**
+ * Marks an appointment that already exists as paid, and confirms it.
+ *
+ * The counterpart to finalizePendingBooking, for the other direction a payment
+ * can arrive from. A normal booking is paid for before the appointment exists,
+ * so payment *creates* it. A follow-up is booked by the doctor first and paid
+ * for afterwards, so the appointment is already sitting there holding a slot,
+ * waiting to be confirmed — there is nothing to create, only a state to move.
+ *
+ * Idempotent for the same reasons and by the same means as its counterpart: the
+ * Stripe webhook and the success page's /verify call both land here and can
+ * race, so the transaction checks whether the appointment is already paid and
+ * returns it untouched rather than confirming it twice or double-notifying.
+ */
+export async function confirmAppointmentPayment(
+  appointmentId: string,
+  opts: { provider: "card" | "paypal"; reference: string }
+): Promise<Appointment> {
+  const ref = adminDb.collection("appointments").doc(appointmentId);
+
+  const result = await adminDb.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new Error("Appointment not found");
+
+    const appointment = snap.data() as Appointment;
+
+    if (appointment.paymentStatus === "paid") {
+      return { appointment, changed: false };
+    }
+
+    // A hold that has already lapsed must not be revivable by a late payment —
+    // the slot may well have been given to someone else by then.
+    if (appointment.status === "cancelled") {
+      throw new Error("This appointment was cancelled — please book a new time.");
+    }
+
+    const paidAt = new Date().toISOString();
+
+    tx.update(ref, {
+      status: "confirmed",
+      paymentStatus: "paid",
+      paymentProvider: opts.provider,
+      paymentReference: opts.reference,
+      paidAt,
+      // The hold is over. Left in place, the expiry sweep would later cancel an
+      // appointment that has been paid for.
+      paymentDueAt: FieldValue.delete(),
+    });
+
+    const confirmed: Appointment = {
+      ...appointment,
+      status: "confirmed",
+      paymentStatus: "paid",
+      paymentProvider: opts.provider,
+      paymentReference: opts.reference,
+      paidAt,
+      paymentDueAt: undefined,
+    };
+
+    return { appointment: confirmed, changed: true };
+  });
+
+  if (!result.changed) return result.appointment;
+
+  const appointment = result.appointment;
+  const when = `${appointment.date} ${appointment.time}`;
+
+  await Promise.all([
+    notify({
+      userId: appointment.patientId,
+      role: "patient",
+      type: "appointment-confirmed",
+      title: "Appointment confirmed",
+      message: `Your ${appointment.service} appointment on ${when} is confirmed.`,
+      appointmentId: appointment.id,
+    }),
+    appointment.doctorId
+      ? notify({
+          userId: appointment.doctorId,
+          role: "doctor",
+          type: "appointment-confirmed",
+          title: "Follow-up confirmed",
+          message: `${appointment.patientName} paid for the follow-up on ${when}.`,
+          appointmentId: appointment.id,
+        })
+      : Promise.resolve(),
+    notifyAllAdmins({
+      type: "appointment-confirmed",
+      title: "Follow-up paid",
+      message: `${appointment.patientName} confirmed ${when}${
+        appointment.doctorName ? ` with Dr. ${appointment.doctorName}` : ""
+      } — PKR ${appointment.amount}.`,
+      appointmentId: appointment.id,
+    }),
+  ]);
+
+  return appointment;
 }
 
 /**

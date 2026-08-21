@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
-import { finalizePendingBooking } from "@/lib/payments";
+import { confirmAppointmentPayment, finalizePendingBooking } from "@/lib/payments";
 
 /**
  * Stripe calls this directly (not the browser) — register it at
@@ -36,15 +36,22 @@ export async function POST(req: NextRequest) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as { metadata?: Record<string, string>; payment_intent?: string; id: string };
     const pendingBookingId = session.metadata?.pendingBookingId;
+    const appointmentId = session.metadata?.appointmentId;
     const reference = (session.payment_intent as string) || session.id;
 
-    if (pendingBookingId) {
-      try {
+    try {
+      if (pendingBookingId) {
         await finalizePendingBooking(pendingBookingId, { provider: "card", reference });
-      } catch {
-        // Already finalized by the success-page /verify call, or the pending
-        // doc is gone — either way there's nothing more to do here.
+      } else if (appointmentId) {
+        // A follow-up the patient just paid for. This path matters more than
+        // the booking one: the patient is sent back to their dashboard rather
+        // than a success page that calls /verify, so for these payments the
+        // webhook is often the only thing that confirms the appointment.
+        await confirmAppointmentPayment(appointmentId, { provider: "card", reference });
       }
+    } catch {
+      // Already handled by the success-page /verify call, or the pending doc is
+      // gone — either way there's nothing more to do here.
     }
   }
 

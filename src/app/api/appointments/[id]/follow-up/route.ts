@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
+import {
+  resolveFollowUpPrice,
+  FOLLOW_UP_PAYMENT_WINDOW_HOURS,
+} from "@/lib/follow-up-price";
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
 
@@ -10,8 +14,21 @@ import type { Slot } from "@/types/slot";
  *
  * Books the patient's next visit straight after a session, without making them
  * go back through the booking flow. The doctor picks one of their own open
- * slots; booking it here creates a confirmed appointment and tells the patient
- * when to come back.
+ * slots; the time is held and the patient is asked to confirm it by paying.
+ *
+ * The appointment starts as "awaiting-payment", not "confirmed". Previously it
+ * was created confirmed, with `amount: 0` and `paymentStatus: "unpaid"`, and
+ * there was no way for the patient to pay for it anywhere in the app — so every
+ * follow-up a doctor booked became a free visit that looked, on every screen,
+ * exactly like one that had been paid for. The doctor's time was committed
+ * without the patient ever agreeing to it, and the clinic had no way of telling
+ * the two apart.
+ *
+ * The patient now gets a notification with the price and a Pay button, and the
+ * visit only becomes real when they pay. The slot is still claimed immediately
+ * so nobody else can take it in the meantime — held for
+ * FOLLOW_UP_PAYMENT_WINDOW_HOURS, after which the sweep in
+ * /api/notifications/reminders releases it.
  *
  * Slot-based rather than a free-text date/time on purpose: the slot is the
  * only thing that prevents double-booking, and it is claimed in the same
@@ -45,6 +62,24 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  // Priced before anything is written. A follow-up nobody has put a price on
+  // cannot be paid for, and creating it anyway is how the old version ended up
+  // with permanently unpayable appointments sitting in patients' lists.
+  const amount = await resolveFollowUpPrice();
+  if (!amount) {
+    return NextResponse.json(
+      {
+        error:
+          "No follow-up price is set. Add a service under a “Follow-up” category with a price, then try again.",
+      },
+      { status: 409 }
+    );
+  }
+
+  const paymentDueAt = new Date(
+    Date.now() + FOLLOW_UP_PAYMENT_WINDOW_HOURS * 60 * 60 * 1000
+  ).toISOString();
+
   const followUpRef = adminDb.collection("appointments").doc();
   const slotRef = adminDb.collection("slots").doc(slotId);
 
@@ -73,11 +108,12 @@ export async function POST(
         doctorName: slot.doctorName,
         date: slot.date,
         time: slot.time,
-        status: "confirmed",
-        amount: 0, // priced by the clinic when the patient pays for the visit
+        status: "awaiting-payment",
+        amount,
         patientType: "follow-up",
-        bookingType: "call-back",
+        bookingType: "follow-up",
         paymentStatus: "unpaid",
+        paymentDueAt,
         notes: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : undefined,
         slotId,
         followUpOf: source.id,
@@ -116,17 +152,21 @@ export async function POST(
     notify({
       userId: followUp.patientId,
       role: "patient",
-      type: "appointment-booked",
-      title: "Your next appointment is booked",
-      message: `Dr. ${followUp.doctorName} scheduled your follow-up for ${when}.${
-        followUp.notes ? ` Note: ${followUp.notes}` : ""
-      }`,
+      type: "appointment-awaiting-payment",
+      title: "Confirm your next appointment",
+      // Says the price, the deadline and what happens if they do nothing.
+      // "Your next appointment is booked" was the old wording, and it was the
+      // reason nobody paid: it told the patient the matter was settled.
+      message:
+        `Dr. ${followUp.doctorName} has held ${when} for your follow-up — PKR ${followUp.amount}. ` +
+        `Confirm it from your dashboard within ${FOLLOW_UP_PAYMENT_WINDOW_HOURS} hours or the time is released.` +
+        (followUp.notes ? ` Note: ${followUp.notes}` : ""),
       appointmentId: followUp.id,
     }),
     notifyAllAdmins({
-      type: "appointment-booked",
-      title: "Follow-up scheduled",
-      message: `Dr. ${followUp.doctorName} booked ${followUp.patientName} in for ${when}.`,
+      type: "appointment-awaiting-payment",
+      title: "Follow-up awaiting payment",
+      message: `Dr. ${followUp.doctorName} held ${when} for ${followUp.patientName} (PKR ${followUp.amount}) — waiting on the patient to pay.`,
       appointmentId: followUp.id,
     }),
   ]);

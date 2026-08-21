@@ -50,7 +50,15 @@ export default function AdminOverviewPage() {
   // them moves.
   const live = useLiveAppointments({ pageSize: 20 });
 
-  // One request, computed server-side with count() aggregations.
+  // One request, computed server-side with count() aggregations — re-run
+  // whenever the live window above moves.
+  //
+  // That dependency is the whole point of the listener and it used to be
+  // missing: the page held `live`, the comment above described refetching on
+  // change, and the effect ran once with an empty dependency array. Every
+  // number on this screen — patients, revenue, refunds, ratings, the
+  // doctor-performance table — froze at page load, so the clinic's overview was
+  // quietly showing whatever had been true when the tab was opened.
   useEffect(() => {
     authedFetch("/api/appointments/stats")
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error("stats"))))
@@ -63,7 +71,7 @@ export default function AdminOverviewPage() {
       })
       .catch(() => toast.error("Couldn't load the overview. Please refresh."));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [live.version]);
 
   const cards = [
     { label: "Patients", value: counts.patients, href: null },

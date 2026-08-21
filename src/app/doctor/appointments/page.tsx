@@ -16,6 +16,11 @@ import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
 import PrescriptionEditor from "@/components/PrescriptionEditor";
 import FollowUpScheduler from "@/components/FollowUpScheduler";
+import AppointmentHistory from "@/components/AppointmentHistory";
+import {
+  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_STYLES as statusStyles,
+} from "@/lib/appointment-status";
 import type { Appointment, AppointmentStatus } from "@/types";
 
 const PAGE_SIZE = 50;
@@ -25,12 +30,6 @@ const PAGE_SIZE = 50;
 // caps at 500 — so it can't regress to fetching the whole collection.
 const SEARCH_WINDOW = 500;
 
-const statusStyles: Record<AppointmentStatus, string> = {
-  pending: "bg-mist text-ink-soft",
-  confirmed: "bg-indigo/10 text-indigo",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-crimson/10 text-crimson-deep",
-};
 
 export default function DoctorAppointmentsPage() {
   const { user } = useAuth();
@@ -236,6 +235,13 @@ export default function DoctorAppointmentsPage() {
           {visible.map((a) => {
             const isOnlineMode = a.mode === "video" || a.mode === "audio" || a.mode === "chat";
             const joinable = canJoinSession(a, now);
+            // The doctor is a host, and the server has always let a host start
+            // early — only the admin screen offered a button for it. So a
+            // patient sitting in the waiting room ten minutes early meant the
+            // doctor had to ask an admin to open the room. They can now do it
+            // themselves; admin keeps the same ability, it just isn't required.
+            const canStartEarly =
+              a.status === "confirmed" && isOnlineMode && a.sessionStatus !== "ended" && !joinable;
             return (
               <div key={a.id} className="rounded-2xl border border-line/70 p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
@@ -250,9 +256,14 @@ export default function DoctorAppointmentsPage() {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}
                     >
-                      {a.status}
+                      {statusLabel[a.status]}
                     </span>
-                    {a.status !== "cancelled" && (
+                    {/* No status dropdown while the patient still has to pay:
+                        its options are confirmed/completed/cancelled, so an
+                        awaiting-payment row would render a select matching none
+                        of them — a blank control that silently confirms an
+                        unpaid visit the moment anyone touches it. */}
+                    {a.status !== "cancelled" && a.status !== "awaiting-payment" && (
                       <select
                         className="input w-auto"
                         value={a.status}
@@ -272,9 +283,18 @@ export default function DoctorAppointmentsPage() {
                       {sessionStatusLabel(a, now)}
                     </span>
                     <div className="flex items-center gap-2">
+                      {canStartEarly && (
+                        <button
+                          onClick={() => handleJoinAsHost(a)}
+                          disabled={pendingId === a.id}
+                          className="rounded-full border border-indigo-deep px-4 py-2 text-xs font-medium text-indigo-deep transition-colors hover:bg-indigo-deep hover:text-white disabled:opacity-50"
+                        >
+                          Start early
+                        </button>
+                      )}
                       <button
                         onClick={() => handleJoinAsHost(a)}
-                        disabled={!joinable || pendingId === a.id}
+                        disabled={(!joinable && !canStartEarly) || pendingId === a.id}
                         className="rounded-full bg-indigo-deep px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {pendingId === a.id
@@ -297,6 +317,8 @@ export default function DoctorAppointmentsPage() {
                     </div>
                   </div>
                 )}
+
+                <AppointmentHistory appointment={a} showInternal />
 
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">

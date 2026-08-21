@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRequest } from "@/lib/auth-server";
 import { getStripe } from "@/lib/stripe";
-import { finalizePendingBooking } from "@/lib/payments";
+import { confirmAppointmentPayment, finalizePendingBooking } from "@/lib/payments";
 
 /**
  * Called by /patient/book/success right after Stripe redirects back. Gives
@@ -27,16 +27,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Payment not completed" }, { status: 402 });
     }
 
+    const reference = (session.payment_intent as string) || session.id;
+
+    // Two kinds of payment come back through here, told apart by which id the
+    // session carries. `pendingBookingId` means the appointment doesn't exist
+    // yet and this payment creates it. `appointmentId` means the doctor already
+    // booked it — a follow-up holding a slot — and this payment confirms it.
     const pendingBookingId = session.metadata?.pendingBookingId;
-    if (!pendingBookingId) {
+    const appointmentId = session.metadata?.appointmentId;
+
+    if (!pendingBookingId && !appointmentId) {
       return NextResponse.json({ error: "Session missing booking reference" }, { status: 400 });
     }
 
-    const reference = (session.payment_intent as string) || session.id;
-    const appointment = await finalizePendingBooking(pendingBookingId, {
-      provider: "card",
-      reference,
-    });
+    const appointment = pendingBookingId
+      ? await finalizePendingBooking(pendingBookingId, { provider: "card", reference })
+      : await confirmAppointmentPayment(appointmentId as string, {
+          provider: "card",
+          reference,
+        });
 
     if (appointment.patientId !== auth.uid) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
