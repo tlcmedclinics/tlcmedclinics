@@ -7,6 +7,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
+import { formatClinicTime } from "@/lib/clinic-time";
+import Loader from "@/components/Loader";
 
 /**
  * "Book the next visit", offered on a finished appointment.
@@ -132,7 +134,7 @@ export default function FollowUpScheduler({
 
       <div className="mt-3">
         {loading ? (
-          <p className="text-xs text-ink-soft">{t("common.loading")}</p>
+          <Loader label={t("common.loading")} className="py-6" />
         ) : loadError ? (
           <div className="rounded-[var(--radius-sm)] border border-crimson/30 bg-danger-soft p-3">
             <p className="text-xs font-semibold text-crimson-deep">
@@ -160,7 +162,7 @@ export default function FollowUpScheduler({
                 onClick={() => book(s.id)}
                 className="numeric rounded-[var(--radius-pill)] border border-line bg-paper px-3 py-1.5 text-xs font-semibold text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
               >
-                {s.date} · {s.time}
+                {s.date} · {formatClinicTime(s.time)}
               </button>
             ))}
           </div>

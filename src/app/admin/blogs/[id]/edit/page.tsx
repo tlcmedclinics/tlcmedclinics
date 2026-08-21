@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
 import BlogForm from "@/components/BlogForm";
 import type { BlogPost } from "@/types";
+import Loader from "@/components/Loader";
 
 export default function EditBlogPostPage() {
   const params = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ export default function EditBlogPostPage() {
     <div className="animate-fade-up">
       <h1 className="h1">Edit Blog Post</h1>
       {loading ? (
-        <p className="mt-6 text-sm text-ink-soft">Loading…</p>
+        <Loader className="mt-6" />
       ) : post ? (
         <BlogForm post={post} />
       ) : (

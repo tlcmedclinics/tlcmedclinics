@@ -1,3 +1,4 @@
+import Loader from "@/components/Loader";
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -189,7 +190,7 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
     }
   }
 
-  if (!profile) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
+  if (!profile) return <Loader label={t("common.loading")} />;
 
   /* ------------------------------ sections ------------------------------ */
 

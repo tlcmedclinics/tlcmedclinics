@@ -9,12 +9,15 @@ import { usePagedList } from "@/lib/use-paged-list";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import type { BlogPost } from "@/types";
+import { useConfirm } from "@/contexts/ConfirmContext";
+import { SkeletonRows } from "@/components/Loader";
 
 type Filter = "all" | "published" | "draft";
 
 export default function AdminBlogsPage() {
   const t = useT();
   const toast = useToast();
+  const confirm = useConfirm();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [loading, setLoading] = useState(true);
@@ -44,7 +47,14 @@ export default function AdminBlogsPage() {
   }, [load]);
 
   async function handleDelete(id: string) {
-    if (!confirm(t("admin.blogs.deleteConfirm"))) return;
+    if (
+      !(await confirm({
+        title: t("admin.blogs.deleteConfirm"),
+        confirmLabel: "Delete",
+        destructive: true,
+      }))
+    )
+      return;
     try {
       const res = await authedFetch(`/api/blogs/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
@@ -92,7 +102,7 @@ export default function AdminBlogsPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">{t("common.loading")}</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : list.isEmptyResult ? (
         <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
       ) : visible.length === 0 ? (

@@ -8,6 +8,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import { usePagedList } from "@/lib/use-paged-list";
 import type { Appointment } from "@/types";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { SkeletonRows } from "@/components/Loader";
 
 type PatientSummary = {
   patientId: string;
@@ -83,7 +85,7 @@ export default function DoctorPatientsPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">{t("common.loading")}</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : list.isEmptyResult ? (
         <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
       ) : patients.length === 0 ? (
@@ -105,7 +107,7 @@ export default function DoctorPatientsPage() {
               </div>
               {p.nextUpcoming && (
                 <p className="mt-2 rounded-lg bg-indigo/10 px-3 py-1.5 text-xs font-medium text-indigo">
-                  {t("patient.dashboard.nextUp")}: <span className="numeric">{p.nextUpcoming.date} · {p.nextUpcoming.time}</span>
+                  {t("patient.dashboard.nextUp")}: <span className="numeric">{p.nextUpcoming.date} · {formatClinicTime(p.nextUpcoming.time)}</span>
                 </p>
               )}
               <p className="mt-3 text-xs font-medium text-indigo">{t("doctor.patients.viewDetails")} →</p>

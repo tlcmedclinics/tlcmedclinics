@@ -7,6 +7,7 @@ import { usePagedList } from "@/lib/use-paged-list";
 import { useT } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
 import type { DoctorProfile } from "@/types";
+import { SkeletonRows } from "@/components/Loader";
 
 export default function AdminDoctorsPage() {
   const t = useT();
@@ -174,7 +175,7 @@ export default function AdminDoctorsPage() {
       )}
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">Loading…</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : (
         <>
           {pending.length > 0 && (

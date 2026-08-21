@@ -8,10 +8,14 @@ import { useT } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
 import type { DoctorProfile, Service } from "@/types";
 import type { Slot } from "@/types/slot";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { useConfirm } from "@/contexts/ConfirmContext";
+import { SkeletonRows } from "@/components/Loader";
 
 export default function AdminSlotsPage() {
   const t = useT();
   const toast = useToast();
+  const confirm = useConfirm();
   const [slots, setSlots] = useState<Slot[]>([]);
   const [doctors, setDoctors] = useState<DoctorProfile[]>([]);
   const [services, setServices] = useState<Service[]>([]);
@@ -68,7 +72,7 @@ export default function AdminSlotsPage() {
       .map((t) => t.trim())
       .filter(Boolean);
     if (!form.date || times.length === 0) {
-      toast.error("Add a date and at least one time (e.g. 09:00, 09:30, 10:00).");
+      toast.error("Add a date and at least one time (e.g. 9:00 AM, 9:30 AM, 2:45 PM).");
       return;
     }
 
@@ -100,7 +104,15 @@ export default function AdminSlotsPage() {
   }
 
   async function deleteSlot(slot: Slot) {
-    if (!confirm(`Delete the ${slot.date} ${slot.time} slot for ${slot.doctorName}?`)) return;
+    if (
+      !(await confirm({
+        title: "Delete this slot?",
+        message: `${slot.date} at ${formatClinicTime(slot.time)} with ${slot.doctorName}. Patients will no longer see it.`,
+        confirmLabel: "Delete slot",
+        destructive: true,
+      }))
+    )
+      return;
     setDeletingId(slot.id);
     try {
       const res = await authedFetch("/api/slots", {
@@ -121,9 +133,12 @@ export default function AdminSlotsPage() {
 
   async function freeUp(slot: Slot) {
     if (
-      !confirm(
-        `Mark ${slot.date} ${slot.time} (${slot.doctorName}) as available again? Only do this if the linked appointment was already cancelled outside the system.`
-      )
+      !(await confirm({
+        title: "Mark this slot available again?",
+        message: `${slot.date} at ${formatClinicTime(slot.time)} with ${slot.doctorName}. Only do this if the appointment on it was already cancelled outside the system — otherwise the time can be double-booked.`,
+        confirmLabel: "Free it up",
+        destructive: true,
+      }))
     )
       return;
     try {
@@ -156,7 +171,7 @@ export default function AdminSlotsPage() {
   // and it keeps each page a predictable height.
   const list = usePagedList(
     visible,
-    ([date, daySlots]) => [date, ...daySlots.map((s) => `${s.doctorName} ${s.time} ${s.service ?? ""}`)],
+    ([date, daySlots]) => [date, ...daySlots.map((s) => `${s.doctorName} ${s.time} ${formatClinicTime(s.time)} ${s.service ?? ""}`)],
     3
   );
 
@@ -237,12 +252,12 @@ export default function AdminSlotsPage() {
         </div>
         <div className="sm:col-span-2">
           <label className="text-xs font-medium text-ink-soft">
-            Times — comma-separated (e.g. 09:00, 09:30, 10:00, 14:00)
+            Times — comma-separated (e.g. 9:00 AM, 9:30 AM, 2:45 PM)
           </label>
           <input
             required
             className="input mt-1"
-            placeholder="09:00, 09:30, 10:00"
+            placeholder="9:00 AM, 9:30 AM, 2:45 PM"
             value={form.times}
             onChange={(e) => setForm({ ...form, times: e.target.value })}
           />
@@ -281,7 +296,7 @@ export default function AdminSlotsPage() {
       </div>
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">Loading…</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : list.isEmptyResult ? (
         <EmptyState title={t("common.noResults")} hint={t("common.noResultsHint")} />
       ) : visible.length === 0 ? (
@@ -302,7 +317,7 @@ export default function AdminSlotsPage() {
                     >
                       <div>
                         <p className="text-sm font-medium text-ink">
-                          {s.time} · {s.doctorName}
+                          {formatClinicTime(s.time)} · {s.doctorName}
                         </p>
                         <p className="text-xs text-ink-soft">
                           {s.service ? s.service : "Any service"} · {s.durationMinutes} min ·{" "}

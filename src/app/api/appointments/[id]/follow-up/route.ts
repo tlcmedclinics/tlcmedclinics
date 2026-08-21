@@ -8,6 +8,7 @@ import {
 } from "@/lib/follow-up-price";
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
+import { formatClinicTime } from "@/lib/clinic-time";
 
 /**
  * POST /api/appointments/[id]/follow-up  { slotId, note? }
@@ -147,7 +148,7 @@ export async function POST(
     return NextResponse.json({ error: "Couldn't schedule the follow-up" }, { status: 500 });
   }
 
-  const when = `${followUp.date} at ${followUp.time}`;
+  const when = `${followUp.date} at ${formatClinicTime(followUp.time)}`;
   await Promise.all([
     notify({
       userId: followUp.patientId,

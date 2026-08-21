@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
 import ServiceForm from "@/components/ServiceForm";
 import type { Service } from "@/types";
+import Loader from "@/components/Loader";
 
 export default function EditServicePage() {
   const params = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ export default function EditServicePage() {
     <div className="animate-fade-up">
       <h1 className="h1">Edit Service</h1>
       {loading ? (
-        <p className="mt-6 text-sm text-ink-soft">Loading…</p>
+        <Loader className="mt-6" />
       ) : service ? (
         <ServiceForm service={service} />
       ) : (

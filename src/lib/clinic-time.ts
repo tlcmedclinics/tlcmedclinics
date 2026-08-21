@@ -68,6 +68,24 @@ export function normaliseClinicTime(time?: string): string | null {
   return `${String(parts.hh).padStart(2, "0")}:${String(parts.mm).padStart(2, "0")}`;
 }
 
+/**
+ * "14:45" as "2:45 PM" — how the clinic reads a time.
+ *
+ * Storage stays 24-hour, because that is the only form that sorts correctly,
+ * compares correctly and can't be misread. Nobody in a clinic says "fourteen
+ * forty-five", though, so the conversion happens at the edge, on the way to the
+ * screen — one function, rather than each page inventing its own.
+ */
+export function formatClinicTime(time?: string): string {
+  if (!time) return "";
+  const parts = parseTimeParts(time);
+  if (!parts) return time; // unrecognised: show it as stored rather than blank
+
+  const suffix = parts.hh < 12 ? "AM" : "PM";
+  const hour12 = parts.hh % 12 === 0 ? 12 : parts.hh % 12;
+  return `${hour12}:${String(parts.mm).padStart(2, "0")} ${suffix}`;
+}
+
 /** The clinic's wall-clock date + time as a real instant. */
 export function clinicInstant(date?: string, time?: string): Date | null {
   if (!date || !time) return null;

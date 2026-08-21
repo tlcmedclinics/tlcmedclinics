@@ -10,6 +10,8 @@ import {
   APPOINTMENT_STATUS_STYLES as statusStyles,
 } from "@/lib/appointment-status";
 import type { Appointment } from "@/types";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { SkeletonRows } from "@/components/Loader";
 
 
 export default function DoctorPatientDetailPage() {
@@ -42,7 +44,7 @@ export default function DoctorPatientDetailPage() {
   const upcoming = history.find((a) => a.date >= todayIso && a.status === "confirmed");
 
   if (loading) {
-    return <p className="text-sm text-ink-soft">Loading…</p>;
+    return <SkeletonRows rows={3} className="mt-6" />;
   }
 
   if (!patient) {
@@ -73,7 +75,7 @@ export default function DoctorPatientDetailPage() {
           <div className="rounded-2xl border border-indigo/20 bg-indigo/5 px-4 py-3 text-xs text-ink-soft">
             <p className="font-medium text-indigo">Next session</p>
             <p className="mt-0.5">
-              {upcoming.service} · {upcoming.date} at {upcoming.time} · {upcoming.mode}
+              {upcoming.service} · {upcoming.date} at {formatClinicTime(upcoming.time)} · {upcoming.mode}
             </p>
           </div>
         )}
@@ -102,7 +104,7 @@ export default function DoctorPatientDetailPage() {
               <div>
                 <p className="font-medium text-ink">{a.service}</p>
                 <p className="text-sm text-ink-soft">
-                  {a.date} · {a.time} · {a.mode}
+                  {a.date} · {formatClinicTime(a.time)} · {a.mode}
                 </p>
               </div>
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[a.status]}`}>

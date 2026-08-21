@@ -8,6 +8,7 @@ import Toaster from "@/components/Toaster";
 import { rootMetadata, clinicSchema, websiteSchema } from "@/lib/seo";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
+import { ConfirmProvider } from "@/contexts/ConfirmContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 
 // One Latin family across the whole app. Manrope carries headings at 800 and
@@ -74,7 +75,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <LanguageProvider>
           <ToastProvider>
             <AuthProvider>
-              <SiteChrome>{children}</SiteChrome>
+              {/* Inside AuthProvider so a confirmation can be raised from
+                  anywhere a signed-in action can be taken — logout included. */}
+              <ConfirmProvider>
+                <SiteChrome>{children}</SiteChrome>
+              </ConfirmProvider>
               <Toaster />
             </AuthProvider>
           </ToastProvider>

@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     if (!normalised) {
       return NextResponse.json(
         {
-          error: `“${t}” isn't a time we can read. Use 24-hour times like 09:00 or 14:45 — an afternoon slot is 14:45, not 2:45.`,
+          error: `“${t}” isn't a time we can read. Write it with AM or PM — “9:00 AM”, “2:45 PM” — or as a 24-hour time like 14:45. A bare “2:45” is read as the early morning.`,
         },
         { status: 400 }
       );
@@ -163,7 +163,10 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { id, date, time, durationMinutes, service, status, mode } = await req.json();
+  const body = await req.json();
+  const { id, date, durationMinutes, service, status, mode } = body;
+  // Reassigned below once normalised, so it can't be a const.
+  let time: string | undefined = body.time;
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });
   }
@@ -181,6 +184,20 @@ export async function PATCH(req: NextRequest) {
       { error: "This slot is booked — cancel that appointment before changing its date/time" },
       { status: 400 }
     );
+  }
+
+  // Normalised on edit too. Validating only on create leaves the back door
+  // open: editing a slot to "2:45" would write the same unusable string back
+  // into Firestore, and the failure it causes surfaces nowhere near this route.
+  if (time !== undefined) {
+    const normalisedTime = normaliseClinicTime(String(time));
+    if (!normalisedTime) {
+      return NextResponse.json(
+        { error: `“${time}” isn’t a time we can read. Write it with AM or PM — “9:00 AM”, “2:45 PM” — or as a 24-hour time like 14:45.` },
+        { status: 400 }
+      );
+    }
+    time = normalisedTime;
   }
 
   const updates: Record<string, unknown> = {};

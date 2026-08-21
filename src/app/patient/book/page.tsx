@@ -10,6 +10,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import type { Coupon, DoctorProfile, PatientType, Service, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
+import { formatClinicTime } from "@/lib/clinic-time";
+import Loader from "@/components/Loader";
 
 /**
  * Booking runs doctor-first: service → doctor → time → details → pay.
@@ -590,7 +592,7 @@ function BookAppointmentContent() {
           )}
 
           {loadingSlots ? (
-            <p className="text-sm text-ink-soft">{t("common.loading")}</p>
+            <Loader label={t("common.loading")} className="py-8" />
           ) : bookableDoctors.length > 0 ? (
             <div className="grid gap-2.5">
               {bookableDoctors.map((d) => {
@@ -628,7 +630,7 @@ function BookAppointmentContent() {
                         <span className="mt-2 block text-xs font-semibold text-indigo">
                           {t("book.nextAvailable")}{" "}
                           <span className="numeric">
-                            {next.date} · {next.time}
+                            {next.date} · {formatClinicTime(next.time)}
                           </span>
                           <span className="ms-1.5 font-normal text-ink-soft">
                             ({t("book.slotsOpen", { count })})
@@ -755,7 +757,7 @@ function BookAppointmentContent() {
                               : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
                           }`}
                         >
-                          {s.time}
+                          {formatClinicTime(s.time)}
                         </button>
                       ))}
                     </div>
@@ -832,7 +834,7 @@ function BookAppointmentContent() {
               <p className="mt-1 text-ink">Dr. {details.doctorName.replace(/^Dr\.?\s*/i, "")}</p>
             )}
             <p className="numeric mt-1">
-              {details.date} · {details.time}
+              {details.date} · {formatClinicTime(details.time)}
             </p>
             <p className="mt-0.5">{t(`mode.${details.mode === "in-person" ? "inPerson" : details.mode}`)}</p>
             {details.amount > 0 && (

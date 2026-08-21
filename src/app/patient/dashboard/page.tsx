@@ -16,6 +16,9 @@ import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import type { Appointment } from "@/types";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { useConfirm } from "@/contexts/ConfirmContext";
+import { SkeletonRows } from "@/components/Loader";
 
 const statusStyles: Record<Appointment["status"], string> = {
   pending: "bg-mist text-ink-soft",
@@ -42,6 +45,7 @@ function PatientDashboardContent() {
   const { profile, user } = useAuth();
   const router = useRouter();
   const toast = useToast();
+  const confirm = useConfirm();
   const t = useT();
   const now = useNow();
   const { startSession, pendingId } = useSessionAction();
@@ -91,7 +95,15 @@ function PatientDashboardContent() {
 
   /** Turning down a held follow-up — frees the slot straight away. */
   async function handleDecline(a: Appointment) {
-    if (!confirm("Release this time? The slot goes back to other patients.")) return;
+    if (
+      !(await confirm({
+        title: "Release this time?",
+        message: "The slot goes back to other patients. You can always book again later.",
+        confirmLabel: "Release it",
+        destructive: true,
+      }))
+    )
+      return;
     try {
       const res = await authedFetch("/api/appointments", {
         method: "PATCH",
@@ -106,7 +118,16 @@ function PatientDashboardContent() {
   }
 
   async function handleCancel(a: Appointment) {
-    if (!confirm("Cancel this appointment? If you already paid, the clinic will process your refund.")) return;
+    if (
+      !(await confirm({
+        title: "Cancel this appointment?",
+        message: "If you have already paid, the clinic will process your refund.",
+        confirmLabel: "Cancel appointment",
+        cancelLabel: "Keep it",
+        destructive: true,
+      }))
+    )
+      return;
     try {
       const res = await authedFetch("/api/appointments", {
         method: "PATCH",
@@ -189,7 +210,7 @@ function PatientDashboardContent() {
               <p className="text-xs font-medium uppercase tracking-wide text-indigo-deep">Next up</p>
               <p className="mt-1 text-sm font-medium text-ink">{stats.nextUp.service}</p>
               <p className="text-xs text-ink-soft">
-                {stats.nextUp.date} · {stats.nextUp.time}
+                {stats.nextUp.date} · {formatClinicTime(stats.nextUp.time)}
               </p>
             </>
           ) : (
@@ -213,7 +234,7 @@ function PatientDashboardContent() {
       </div>
 
       {loading ? (
-        <p className="mt-6 text-sm text-ink-soft">{t("common.loading")}</p>
+        <SkeletonRows rows={3} className="mt-6" />
       ) : appointments.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
           <p className="text-sm text-ink-soft">No appointments yet.</p>
@@ -229,7 +250,7 @@ function PatientDashboardContent() {
                   <div>
                     <p className="font-medium text-ink">{a.service}</p>
                     <p className="text-sm text-ink-soft">
-                      {a.date} · {a.time} · {a.mode}
+                      {a.date} · {formatClinicTime(a.time)} · {a.mode}
                       {a.doctorName && <span> · Dr. {a.doctorName.replace(/^Dr\.?\s*/i, "")}</span>}
                     </p>
                   </div>

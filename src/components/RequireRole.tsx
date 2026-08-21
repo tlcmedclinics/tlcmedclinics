@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useT } from "@/contexts/LanguageContext";
 import { auth } from "@/lib/firebase/client";
 import type { UserRole, DoctorProfile } from "@/types";
+import Loader from "@/components/Loader";
 
 export default function RequireRole({
   role,
@@ -33,7 +34,7 @@ export default function RequireRole({
   if (loading || !user || !profile || profile.role !== role) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <p className="text-sm text-ink-soft">{t("common.loading")}</p>
+        <Loader label={t("common.loading")} />
       </div>
     );
   }

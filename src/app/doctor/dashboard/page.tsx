@@ -7,6 +7,8 @@ import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { SkeletonRows } from "@/components/Loader";
 
 export default function DoctorDashboardPage() {
   const { profile } = useAuth();
@@ -106,7 +108,7 @@ export default function DoctorDashboardPage() {
       </div>
 
       {loading ? (
-        <p className="mt-6 text-sm text-ink-soft">{t("common.loading")}</p>
+        <SkeletonRows rows={3} className="mt-6" />
       ) : todays.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
           <p className="text-sm text-ink-soft">Nothing on the schedule for today.</p>
@@ -121,7 +123,7 @@ export default function DoctorDashboardPage() {
               <div>
                 <p className="font-medium text-ink">{a.patientName}</p>
                 <p className="text-sm text-ink-soft">
-                  {a.service} · {a.time} · {a.mode}
+                  {a.service} · {formatClinicTime(a.time)} · {a.mode}
                 </p>
               </div>
               <span className="rounded-full bg-indigo/10 px-3 py-1 text-xs font-medium capitalize text-indigo">

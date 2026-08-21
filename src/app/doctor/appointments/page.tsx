@@ -22,6 +22,8 @@ import {
   APPOINTMENT_STATUS_STYLES as statusStyles,
 } from "@/lib/appointment-status";
 import type { Appointment, AppointmentStatus } from "@/types";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { SkeletonRows, InlineSpinner } from "@/components/Loader";
 
 const PAGE_SIZE = 50;
 
@@ -227,7 +229,7 @@ export default function DoctorAppointmentsPage() {
       )}
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">{t("common.loading")}</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : visible.length === 0 ? (
         <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
       ) : (
@@ -248,7 +250,7 @@ export default function DoctorAppointmentsPage() {
                   <div>
                     <p className="font-medium text-ink">{a.patientName}</p>
                     <p className="text-sm text-ink-soft">
-                      {a.service} · {a.date} {a.time} · {a.mode}
+                      {a.service} · {a.date} {formatClinicTime(a.time)} · {a.mode}
                     </p>
                     {a.notes && <p className="mt-1 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}
                   </div>
@@ -369,7 +371,7 @@ export default function DoctorAppointmentsPage() {
             disabled={loadingMore}
             className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
           >
-            {loadingMore ? "Loading…" : "Load older appointments"}
+            {loadingMore ? <InlineSpinner /> : "Load older appointments"}
           </button>
         </div>
       )}

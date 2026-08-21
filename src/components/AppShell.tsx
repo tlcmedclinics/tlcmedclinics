@@ -15,6 +15,7 @@ import LanguageToggle from "@/components/LanguageToggle";
 import NotificationBell from "@/components/NotificationBell";
 import RequireRole from "@/components/RequireRole";
 import type { UserRole } from "@/types";
+import { useConfirm } from "@/contexts/ConfirmContext";
 
 export type NavItem = {
   href: string;
@@ -134,6 +135,7 @@ function Shell({ role, nav, children }: Props) {
   const router = useRouter();
   const t = useT();
   const toast = useToast();
+  const confirm = useConfirm();
   const { profile } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -180,6 +182,18 @@ function Shell({ role, nav, children }: Props) {
   const currentLabel = items.find((item) => isActive(item.href))?.labelKey;
 
   async function handleLogout() {
+    // Asked first, because the logout control sits in the same nav as the
+    // pages, and on a phone it sits next to them in a menu — a mis-tap ends
+    // the session mid-consultation, and signing back in is not quick when the
+    // account is a phone number waiting on an SMS code.
+    const ok = await confirm({
+      title: t("common.logout"),
+      message: "You'll need to sign in again to get back to your dashboard.",
+      confirmLabel: t("common.logout"),
+      cancelLabel: "Stay signed in",
+    });
+    if (!ok) return;
+
     try {
       await signOut(auth);
       router.push("/login");

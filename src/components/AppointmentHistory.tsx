@@ -1,6 +1,7 @@
 "use client";
 
 import type { Appointment } from "@/types";
+import { formatClinicTime } from "@/lib/clinic-time";
 
 /**
  * Everything that has happened to one appointment, oldest first.
@@ -64,7 +65,7 @@ export function buildAppointmentHistory(a: Appointment, showInternal: boolean): 
       events,
       a.rescheduledFrom.at,
       "Rescheduled",
-      `from ${a.rescheduledFrom.date} ${a.rescheduledFrom.time}, by ${a.rescheduledFrom.by}`
+      `from ${a.rescheduledFrom.date} ${formatClinicTime(a.rescheduledFrom.time)}, by ${a.rescheduledFrom.by}`
     );
   }
 

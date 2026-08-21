@@ -4,6 +4,7 @@ import type { Appointment, PatientType, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
+import { formatClinicTime } from "@/lib/clinic-time";
 
 export interface PendingBooking {
   id: string;
@@ -167,7 +168,7 @@ export async function confirmAppointmentPayment(
   if (!result.changed) return result.appointment;
 
   const appointment = result.appointment;
-  const when = `${appointment.date} ${appointment.time}`;
+  const when = `${appointment.date} ${formatClinicTime(appointment.time)}`;
 
   await Promise.all([
     notify({
@@ -290,7 +291,7 @@ export async function finalizePendingBooking(
     text: `${appointment.patientName} (${appointment.patientPhone ?? "no phone"}) booked ${appointment.service} on ${appointment.date} ${appointment.time}. Paid online via ${opts.provider} — confirmed automatically.`,
   }).catch(() => {});
 
-  const when = `${appointment.date} ${appointment.time}`;
+  const when = `${appointment.date} ${formatClinicTime(appointment.time)}`;
   await Promise.all([
     notify({
       userId: appointment.patientId,

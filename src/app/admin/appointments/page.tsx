@@ -21,6 +21,9 @@ import ChatPanel from "@/components/ChatPanel";
 import AppointmentHistory from "@/components/AppointmentHistory";
 import type { Appointment, AppointmentStatus, DoctorProfile } from "@/types";
 import type { Slot } from "@/types/slot";
+import { formatClinicTime } from "@/lib/clinic-time";
+import { useConfirm } from "@/contexts/ConfirmContext";
+import { SkeletonRows, InlineSpinner } from "@/components/Loader";
 
 const PAGE_SIZE = 50;
 
@@ -33,6 +36,7 @@ const SEARCH_WINDOW = 500;
 export default function AdminAppointmentsPage() {
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const t = useT();
   const now = useNow();
   const { startSession, endSession, pendingId } = useSessionAction();
@@ -143,7 +147,16 @@ export default function AdminAppointmentsPage() {
   }
 
   async function issueRefund(id: string) {
-    if (!confirm("Issue a real refund through Stripe/PayPal for this booking?")) return;
+    if (
+      !(await confirm({
+        title: "Issue a refund?",
+        message:
+          "This sends a real refund through Stripe or PayPal. It cannot be undone from here.",
+        confirmLabel: "Refund",
+        destructive: true,
+      }))
+    )
+      return;
     try {
       const res = await authedFetch(`/api/appointments/${id}/refund`, { method: "POST" });
       const data = await res.json().catch(() => ({}));
@@ -327,7 +340,7 @@ export default function AdminAppointmentsPage() {
       )}
 
       {loading ? (
-        <p className="mt-8 text-sm text-ink-soft">Loading…</p>
+        <SkeletonRows rows={4} className="mt-8" />
       ) : visible.length === 0 ? (
         <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
       ) : (
@@ -350,7 +363,7 @@ export default function AdminAppointmentsPage() {
                         <>
                           {" · "}
                           <span className="numeric">
-                            {a.date} {a.time}
+                            {a.date} {formatClinicTime(a.time)}
                           </span>
                         </>
                       ) : null}
@@ -382,7 +395,7 @@ export default function AdminAppointmentsPage() {
                     )}
                     {a.rescheduledFrom && (
                       <p className="mt-1 text-[0.65rem] text-ink-soft/70">
-                        Rescheduled from {a.rescheduledFrom.date} {a.rescheduledFrom.time}
+                        Rescheduled from {a.rescheduledFrom.date} {formatClinicTime(a.rescheduledFrom.time)}
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -431,7 +444,7 @@ export default function AdminAppointmentsPage() {
                                 onClick={() => confirmReschedule(a.id, s.id)}
                                 className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
                               >
-                                {s.date} · {s.time} · {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
+                                {s.date} · {formatClinicTime(s.time)} · {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
                               </button>
                             ))}
                           </div>
@@ -559,7 +572,7 @@ export default function AdminAppointmentsPage() {
             disabled={loadingMore}
             className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
           >
-            {loadingMore ? "Loading…" : "Load older appointments"}
+            {loadingMore ? <InlineSpinner /> : "Load older appointments"}
           </button>
         </div>
       )}

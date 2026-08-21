@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
-import { clinicInstant } from "@/lib/clinic-time";
+import { clinicInstant, formatClinicTime } from "@/lib/clinic-time";
 import type { Appointment } from "@/types";
 
 // GET /api/notifications/reminders
@@ -61,7 +61,7 @@ const appointmentInstant = clinicInstant;
 
 /** Human-readable "21 Aug 2026 at 14:00", in the clinic's own time. */
 function readableWhen(a: Appointment) {
-  return `${a.date} at ${a.time}`;
+  return `${a.date} at ${formatClinicTime(a.time)}`;
 }
 
 /**
@@ -282,7 +282,7 @@ export async function GET(req: NextRequest) {
             type: "appointment-starting-soon",
             title: "Your appointment starts in a few minutes",
             message:
-              `${a.service} at ${a.time}` +
+              `${a.service} at ${formatClinicTime(a.time)}` +
               (a.doctorName ? ` with Dr. ${a.doctorName}` : "") +
               (a.consultMode === "online"
                 ? " — open your dashboard to join."
@@ -295,7 +295,7 @@ export async function GET(req: NextRequest) {
                 role: "doctor",
                 type: "appointment-starting-soon",
                 title: "Session starting in a few minutes",
-                message: `${a.patientName} — ${a.service} at ${a.time}.`,
+                message: `${a.patientName} — ${a.service} at ${formatClinicTime(a.time)}.`,
                 appointmentId: a.id,
               })
             : Promise.resolve(),
@@ -303,8 +303,8 @@ export async function GET(req: NextRequest) {
             type: "appointment-starting-soon",
             title: "Session starting now",
             message: a.doctorName
-              ? `Dr. ${a.doctorName} has an appointment with ${a.patientName} at ${a.time} — ${a.service}.`
-              : `${a.patientName} has a ${a.service} appointment at ${a.time}, with no doctor assigned.`,
+              ? `Dr. ${a.doctorName} has an appointment with ${a.patientName} at ${formatClinicTime(a.time)} — ${a.service}.`
+              : `${a.patientName} has a ${a.service} appointment at ${formatClinicTime(a.time)}, with no doctor assigned.`,
             appointmentId: a.id,
           }),
         ])
