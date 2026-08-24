@@ -15,6 +15,7 @@ import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import type { UserProfile } from "@/types";
+import { safeNext, useNextQuery } from "@/lib/next-path";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -53,6 +54,7 @@ const dashboardPath: Record<string, string> = {
 };
 
 export default function LoginPage() {
+  const nextQuery = useNextQuery();
   const router = useRouter();
   const toast = useToast();
   const t = useT();
@@ -78,7 +80,7 @@ export default function LoginPage() {
       const profile = snap.data() as UserProfile | undefined;
 
       toast.success(t("auth.signedIn"));
-      router.push(dashboardPath[profile?.role ?? "patient"] ?? "/patient/dashboard");
+      router.push(safeNext() ?? dashboardPath[profile?.role ?? "patient"] ?? "/patient/dashboard");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Something went wrong. Please try again.";
@@ -112,13 +114,13 @@ export default function LoginPage() {
         if (!res.ok) throw new Error("Couldn't finish setting up your account");
         await cred.user.getIdToken(true);
         toast.success(t("auth.accountCreated"));
-        router.push("/patient/dashboard");
+        router.push(safeNext() ?? "/patient/dashboard");
         return;
       }
 
       const profile = snap.data() as UserProfile;
       toast.success(t("auth.signedIn"));
-      router.push(dashboardPath[profile.role] ?? "/patient/dashboard");
+      router.push(safeNext() ?? dashboardPath[profile.role] ?? "/patient/dashboard");
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Couldn't sign in with Google. Please try again.";
@@ -209,7 +211,7 @@ export default function LoginPage() {
 
       <p className="mt-6 text-center text-sm text-ink-soft">
         {t("auth.noAccount")}{" "}
-        <Link href="/register" className="font-semibold text-indigo hover:text-indigo-deep">
+        <Link href={`/register${nextQuery}`} className="font-semibold text-indigo hover:text-indigo-deep">
           {t("nav.register")}
         </Link>
       </p>

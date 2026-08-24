@@ -5,12 +5,15 @@ import VitalsLine from "@/components/VitalsLine";
 import Testimonials from "@/components/Testimonials";
 import JsonLd from "@/components/JsonLd";
 import { pageMetadata, breadcrumbSchema, faqSchema } from "@/lib/seo";
+import { pagesInGroup } from "@/data/content";
 
 export const metadata: Metadata = pageMetadata({
   title: "About the Clinic & Our Doctors",
   description: `About TLC Med Clinics, Lahore — our values, our standard of care, and ${site.doctor.name}, ${site.doctor.credentials}, with over 35 years of clinical experience.`,
   path: "/about",
 });
+
+const aboutPages = pagesInGroup("about");
 
 export default function AboutPage() {
   return (
@@ -34,7 +37,7 @@ export default function AboutPage() {
       <VitalsLine className="mt-5 h-3 w-40" />
 
       <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">
-        TLC Med Clinics brings together vein care, skin care, and mental health
+        TLC Med Clinics brings together mental health, ketamine therapy and skin care
         under one clinical team, so patients aren't shuffled between disconnected
         specialists.
       </p>
@@ -83,7 +86,7 @@ export default function AboutPage() {
           ))}
         </div>
         <Link
-          href="/contact"
+          href="/patient/book"
           className="mt-6 inline-block rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper hover:bg-indigo-deep"
         >
           Book Appointment
@@ -107,6 +110,26 @@ export default function AboutPage() {
             </summary>
             <p className="mt-3 text-sm leading-relaxed text-ink-soft">{f.answer}</p>
           </details>
+        ))}
+      </div>
+
+      {/* The About sub-pages, linked from the page they belong to. Without
+          this they exist only in the footer and in each other's sidebars —
+          reachable, but not from the one place a reader would look. */}
+      <div className="mt-14 grid gap-4 sm:grid-cols-3">
+        {aboutPages.map((p) => (
+          <Link
+            key={p.slug}
+            href={`/about/${p.slug}`}
+            className="group rounded-2xl border border-line/70 bg-paper-dim/40 p-5 transition-colors hover:border-indigo/40 hover:bg-paper-dim"
+          >
+            <span className="block font-medium text-ink group-hover:text-indigo-deep">
+              {p.title}
+            </span>
+            <span className="mt-2 block text-sm leading-relaxed text-ink-soft">
+              {p.summary}
+            </span>
+          </Link>
         ))}
       </div>
     </div>

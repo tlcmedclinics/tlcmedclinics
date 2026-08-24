@@ -7,9 +7,9 @@ import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 import type { Service } from "@/types";
 
 export const metadata: Metadata = pageMetadata({
-  title: "Services — Vein, Skin & Mental Health Treatment in Lahore",
+  title: "Services — Mental Health, Ketamine & Skin Treatment in Lahore",
   description:
-    "Vein care, skin care and mental health treatment at TLC Med Clinics, Johar Town, Lahore. Browse the conditions we treat, what each treatment involves, and starting prices.",
+    "Mental health, ketamine therapy and skin care at TLC Med Clinics, Johar Town, Lahore. Browse the conditions we treat, what each treatment involves, and starting prices.",
   path: "/services",
 });
 

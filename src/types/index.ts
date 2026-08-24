@@ -276,7 +276,19 @@ export interface Service {
   intro: string;
   points: string[];
   treatments: string[];
-  price?: number; // starting price in PKR, shown on the booking form
+  price?: number; // full price in PKR, shown on the booking form
+  /**
+   * What is taken online to hold the appointment, when that is less than the
+   * full price. The clinic charges a PKR 5,000 advance on its longer
+   * treatments and settles the balance at the visit.
+   *
+   * Undefined means the full price is charged at booking. Zero would mean
+   * "nothing to pay online" — a different thing — so this stays optional
+   * rather than defaulting to 0.
+   */
+  advancePayment?: number;
+  /** Session length in minutes, as published. */
+  durationMinutes?: number;
   image?: string; // Cloudinary URL, optional
   order: number;
   createdAt: string;

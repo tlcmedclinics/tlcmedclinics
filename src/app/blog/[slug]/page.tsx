@@ -124,7 +124,7 @@ export default async function BlogDetailPage({
           Book a consultation with our team — in the clinic in Lahore, or online.
         </p>
         <Link
-          href="/contact"
+          href="/patient/book"
           className="mt-5 inline-block rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
           Book Appointment

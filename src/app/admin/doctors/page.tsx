@@ -136,7 +136,7 @@ export default function AdminDoctorsPage() {
             <label className="text-xs font-medium text-ink-soft">Specialization</label>
             <input
               className="input mt-1"
-              placeholder="e.g. Vein care"
+              placeholder="e.g. Psychiatry"
               value={form.specialization}
               onChange={(e) => setForm({ ...form, specialization: e.target.value })}
             />

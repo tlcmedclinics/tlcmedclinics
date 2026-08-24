@@ -454,3 +454,70 @@ html[lang="ur"] .numeric {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Marketing-page motion
+   ---------------------------------------------------------------------------
+   Kept to two ideas — things arrive as you reach them, and images lift a
+   little under the cursor. Anything more on a clinic's site reads as
+   decoration rather than care.
+
+   Every rule here is a *transition*, not an animation, so nothing keeps a
+   transform applied once it has finished. (See the note above @keyframes
+   fade-up: a lingering transform turns an element into the containing block
+   for its fixed-position children, which has already broken the call overlay
+   in this codebase once.) */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  will-change: opacity, transform;
+}
+.reveal[data-shown="true"] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Images that grow slightly on hover. The wrapper clips, the image scales, so
+   the corner radius stays put while the picture moves inside it. */
+.zoom-frame {
+  overflow: hidden;
+  /* A tinted panel behind the picture, so a missing or still-loading image
+     reads as an empty space in the layout rather than a broken icon. */
+  background: var(--mist, rgba(54, 47, 143, 0.06));
+}
+.zoom-frame img {
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.zoom-frame:hover img,
+.zoom-frame:focus-within img {
+  transform: scale(1.06);
+}
+
+/* The header logo. Its own class rather than a utility, because the mark is
+   the one element on the page that must never look like it wobbles. */
+.logo-zoom {
+  transition: transform 0.35s cubic-bezier(0.2, 0.7, 0.3, 1);
+  transform-origin: center;
+}
+a:hover > .logo-zoom,
+a:focus-visible > .logo-zoom {
+  transform: scale(1.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .zoom-frame img,
+  .logo-zoom {
+    transition: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .zoom-frame:hover img,
+  .logo-zoom:hover {
+    transform: none;
+  }
+}

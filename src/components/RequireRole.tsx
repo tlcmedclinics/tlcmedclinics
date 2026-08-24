@@ -23,7 +23,21 @@ export default function RequireRole({
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      router.replace("/login");
+      /**
+       * Where they were going, carried through the sign-in.
+       *
+       * This used to be a bare replace("/login"), which threw the destination
+       * away: someone who clicked "Book this appointment" on the ketamine page
+       * signed in and landed on their dashboard with the treatment they had
+       * chosen forgotten. The query string is where that choice lives, so it
+       * has to travel too.
+       *
+       * Read from window rather than useSearchParams(): that hook forces every
+       * page using this guard to sit inside a <Suspense> boundary or the build
+       * fails, and this runs in an effect, where window is always there.
+       */
+      const here = window.location.pathname + window.location.search;
+      router.replace(`/login?next=${encodeURIComponent(here)}`);
       return;
     }
     if (profile && profile.role !== role) {

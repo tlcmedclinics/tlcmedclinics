@@ -42,6 +42,8 @@ export default function ServiceForm({ service }: { service?: Service }) {
       points: form.get("points"),
       treatments: form.get("treatments"),
       price: form.get("price"),
+      advancePayment: form.get("advancePayment"),
+      durationMinutes: form.get("durationMinutes"),
       image,
     };
 
@@ -73,7 +75,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-soft">Service name</span>
-          <input name="name" required defaultValue={service?.name} placeholder="e.g. Varicose Veins" className="input" />
+          <input name="name" required defaultValue={service?.name} placeholder="e.g. Ketamine Therapy" className="input" />
         </label>
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-soft">Category</span>
@@ -81,14 +83,17 @@ export default function ServiceForm({ service }: { service?: Service }) {
             name="category"
             required
             defaultValue={service?.category}
-            placeholder="e.g. Vein Care"
+            placeholder="e.g. Health Care"
             className="input"
             list="category-suggestions"
           />
+          {/* The clinic's three areas of care, matching the home page. A free
+              text field with suggestions rather than a fixed dropdown: a new
+              category shouldn't need a developer. */}
           <datalist id="category-suggestions">
-            <option value="Vein Care" />
-            <option value="Skin Care" />
-            <option value="Mental Health" />
+            <option value="Diagnosis" />
+            <option value="Health Care" />
+            <option value="Skin &amp; Aesthetics" />
           </datalist>
         </label>
       </div>
@@ -130,17 +135,51 @@ export default function ServiceForm({ service }: { service?: Service }) {
         </label>
       </div>
 
-      <label className="block max-w-xs">
-        <span className="mb-1.5 block text-xs font-medium text-ink-soft">Starting price (PKR)</span>
-        <input
-          name="price"
-          type="number"
-          min={0}
-          defaultValue={service?.price}
-          placeholder="5000"
-          className="input"
-        />
-      </label>
+      <div className="grid gap-5 sm:grid-cols-3">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Full price (PKR)</span>
+          <input
+            name="price"
+            type="number"
+            min={0}
+            defaultValue={service?.price}
+            placeholder="18000"
+            className="input"
+          />
+        </label>
+
+        {/* Blank means the full price is charged online. It is not the same as
+            0, which would mean nothing is taken — so this field has no default
+            and the API only stores it when a number is actually entered. */}
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
+            Advance to book (PKR)
+          </span>
+          <input
+            name="advancePayment"
+            type="number"
+            min={0}
+            defaultValue={service?.advancePayment}
+            placeholder="5000"
+            className="input"
+          />
+          <span className="mt-1 block text-[0.7rem] leading-snug text-ink-soft/80">
+            Leave blank to charge the full price online.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Duration (minutes)</span>
+          <input
+            name="durationMinutes"
+            type="number"
+            min={0}
+            defaultValue={service?.durationMinutes}
+            placeholder="60"
+            className="input"
+          />
+        </label>
+      </div>
 
       <div>
         <span className="mb-1.5 block text-xs font-medium text-ink-soft">Image (optional)</span>

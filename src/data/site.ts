@@ -18,7 +18,7 @@ export const site = {
    * three copies drifting apart.
    */
   description:
-    "TLC Med Clinics, Lahore — vein care, skin care and mental health under one roof, led by U.S. board-certified physicians. In-clinic visits and telemedicine appointments.",
+    "TLC Med Clinics, Lahore — mental health, ketamine therapy and skin care under one roof, led by U.S. board-certified physicians. In-clinic visits and telemedicine appointments.",
   phone: "0310-040-4444",
   /**
    * The same number in E.164. Structured data and Google Business Profile both
@@ -65,17 +65,23 @@ export const site = {
    * than no pin.
    */
   geo: undefined as { latitude: number; longitude: number } | undefined,
+  /**
+   * The headline figures, animated on the home page by StatsBand.
+   *
+   * Each is parsed for its digits there, so keep them in this shape: an
+   * optional prefix, the number, an optional suffix ("38", "259,200+", "100%").
+   */
   stats: [
-    { value: "35+", label: "Years of clinical experience" },
-    { value: "10,200+", label: "Patients treated" },
-    { value: "98%", label: "Patient satisfaction" },
-    { value: "3", label: "Specialty programs under one roof" },
+    { value: "38", label: "Years of experience" },
+    { value: "259,200+", label: "Patients treated" },
+    { value: "100%", label: "Quality of care" },
+    { value: "3", label: "Specialty programmes under one roof" },
   ],
   doctor: {
-    name: "Dr. A. Chaudhry",
+    name: "Dr. Naseem M. Chaudhry",
     title: "Medical Director",
     credentials: "M.B.B.S, M.D., D.A.B.P.N.",
-    bio: "Over 35 years of clinical experience across General Medicine, Psychiatry & Neurology, Aesthetic Medicine, and Vein Care. U.S. Board Certified.",
+    bio: "Over 35 years of clinical experience across General Medicine, Psychiatry & Neurology, and Aesthetic Medicine. American Board Certified in Psychiatry and Neurology; Castle Connolly “Top Doctor”, Chicago.",
   },
 };
 
@@ -115,6 +121,36 @@ export const testimonials: Testimonial[] = [
     role: "Patient's Parent",
     quote:
       "Dr. Naseem Chaudhry is a very competent psychiatrist. My 14-year-old son is under his treatment, and with the blessings of Allah Almighty he is recovering. Dr. Naseem sahab is a very humble person.",
+  },
+  {
+    name: "Somia N.",
+    role: "Businesswoman",
+    quote:
+      "I met Dr. Naseem at a difficult time in my life. I never thought I would resort to medication or therapy, and did not believe in them either. With his warm, understanding and compassionate personality, treatment has been a beautiful journey. He helped me let go of fears I had lived with for years.",
+  },
+  {
+    name: "Fatima A.",
+    role: "Patient",
+    quote:
+      "Dr. Naseem did an amazing job with my skin. He performed three micro-needling and PRP treatments for my face — gentle, and almost perfect in technique. Highly recommended.",
+  },
+  {
+    name: "Imran Z.",
+    role: "Patient",
+    quote:
+      "The way you have treated me, I am thoroughly impressed. You very professionally dealt with varied opinions of other consultants and specialists, and provided such clinically honest care and treatment.",
+  },
+  {
+    name: "Jamal",
+    role: "Patient",
+    quote:
+      "I visited Dr. Naseem Chaudhry three weeks back. He listened to all my problems very carefully. The medication he prescribed for depression is working very well.",
+  },
+  {
+    name: "Owais",
+    role: "Businessman",
+    quote:
+      "It was a great experience with Dr. Naseem. Such a humble and great personality. 100% recommended.",
   },
 ];
 
@@ -183,7 +219,7 @@ export const faqs: Faq[] = [
   {
     question: "What does TLC Med Clinics treat?",
     answer:
-      "We bring vein care, skin care, and mental health together under one clinical team, led by " +
+      "We bring mental health, ketamine therapy and skin care together under one clinical team, led by " +
       site.doctor.name +
       ", so you aren't shuffled between disconnected specialists.",
   },
@@ -191,14 +227,104 @@ export const faqs: Faq[] = [
     question: "Where is the clinic located?",
     answer: site.address,
   },
+  {
+    question: "What should I expect at my first visit?",
+    answer:
+      "Arrive 15 minutes early to complete check-in. Bring a list of your current medications, notes on treatments you have tried before, and any medical records you think will help. A first appointment is deliberately longer than a follow-up, so your history can be gone through properly before any medication is started.",
+  },
+  {
+    question: "What are your hours?",
+    answer:
+      site.hours[0].label + ", " + site.hours[0].value + ". Telemedicine consults run " + site.hours[1].value + ".",
+  },
+  {
+    question: "Why choose TLC Med Clinics?",
+    answer:
+      "Care is led by a U.S. board certified physician with over 35 years of experience, using U.S. diagnosis and treatment protocols — in a clinic in Lahore, at local cost. We are also the first clinic of our kind in the city to offer ketamine therapy under physician supervision.",
+  },
+  {
+    question: "Do I need a referral?",
+    answer:
+      "No. You can book an initial evaluation directly, in the clinic or by telemedicine, and the doctor will tell you what care you need from there.",
+  },
+  {
+    question: "Is my consultation confidential?",
+    answer:
+      "Yes. Telemedicine sessions are encrypted per session, and your records are visible only to you and your treating clinician. Nothing is shared without your consent.",
+  },
+  {
+    question: "Can I bring my child to the appointment?",
+    answer:
+      "Yes — and if the appointment is for your child, please come with them. We treat adolescent problems, ADHD and children's developmental concerns, and a parent's account of what has been happening is part of the assessment.",
+  },
+  {
+    question: "How do I pay?",
+    answer:
+      "Online, through the secure checkout when you book. Card details are handled by the payment provider and are never stored on our servers. Some treatments take a PKR 5,000 advance to hold the appointment, with the balance settled at the visit.",
+  },
 ];
 
 // `labelKey` resolves through the i18n dictionary rather than being a literal,
 // so the public header translates with the rest of the site.
 export const navLinks = [
   { href: "/", labelKey: "nav.home" },
-  { href: "/services", labelKey: "nav.services" },
+  { href: "/conditions", labelKey: "nav.conditions" },
+  { href: "/treatments", labelKey: "nav.treatments" },
+  { href: "/telemedicine", labelKey: "nav.telemedicine" },
+  { href: "/what-to-expect", labelKey: "nav.whatToExpect" },
   { href: "/about", labelKey: "nav.about" },
-  { href: "/blog", labelKey: "nav.blog" },
   { href: "/contact", labelKey: "nav.contact" },
+];
+
+/**
+ * The footer's link columns.
+ *
+ * Separate from navLinks because a footer is a site map, not a menu: it can
+ * afford the depth the header can't, and it is where people look for the
+ * pages that don't earn a place in the top bar — fees, forms, policies.
+ */
+export const footerColumns: { heading: string; links: { href: string; label: string }[] }[] = [
+  {
+    heading: "Telemedicine",
+    links: [
+      { href: "/telemedicine/what-is-telemedicine", label: "What is Telemedicine?" },
+      { href: "/telemedicine/benefits", label: "Benefits" },
+      { href: "/telemedicine/how-it-works", label: "How does it work?" },
+      { href: "/patient/book", label: "Schedule & pay online" },
+      { href: "/privacy", label: "Privacy policy" },
+    ],
+  },
+  {
+    heading: "Conditions",
+    links: [
+      { href: "/conditions/mental-disorders", label: "Mental disorders" },
+      { href: "/conditions/major-depressive-disorder", label: "Depression" },
+      { href: "/conditions/generalized-anxiety-disorder", label: "Anxiety" },
+      { href: "/conditions/acne-scars", label: "Acne scars" },
+      { href: "/conditions/hair-thinning-hair-loss", label: "Hair thinning & hair loss" },
+      { href: "/conditions", label: "View all" },
+    ],
+  },
+  {
+    heading: "Treatments",
+    links: [
+      { href: "/treatments/ketamine-therapy", label: "Ketamine therapy" },
+      { href: "/treatments/psychiatric-consultation", label: "Psychiatric consultation" },
+      { href: "/treatments/botox", label: "Botox" },
+      { href: "/treatments/micro-needling-with-prp", label: "Micro-needling with PRP" },
+      { href: "/treatments/hair-regrowth-with-prp", label: "Hair regrowth with PRP" },
+      { href: "/treatments", label: "View all" },
+    ],
+  },
+  {
+    heading: "Clinic",
+    links: [
+      { href: "/what-to-expect/first-time-consultation", label: "First-time consultation" },
+      { href: "/what-to-expect/costs", label: "Costs" },
+      { href: "/what-to-expect/patient-forms", label: "Patient forms" },
+      { href: "/about/our-doctors", label: "Our doctors" },
+      { href: "/faq", label: "FAQ & answers" },
+      { href: "/contact", label: "Contact" },
+    ],
+  },
 ];

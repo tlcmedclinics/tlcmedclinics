@@ -24,7 +24,7 @@ export const revalidate = 600;
 export const metadata: Metadata = pageMetadata({
   title: "Health & Wellness Blog",
   description:
-    "Articles on vein health, skin care and mental wellbeing from the clinical team at TLC Med Clinics, Lahore — written for patients, not for other doctors.",
+    "Articles on mental wellbeing, ketamine therapy and skin care from the clinical team at TLC Med Clinics, Lahore — written for patients, not for other doctors.",
   path: "/blog",
 });
 
@@ -83,7 +83,7 @@ export default async function BlogListPage() {
       <h1 className="mt-3 h1-hero">Blog</h1>
       <VitalsLine className="mt-5 h-3 w-40" />
       <p className="mt-5 max-w-lg text-ink-soft">
-        Plain-language notes on vein health, skin care and mental wellbeing from
+        Plain-language notes on mental wellbeing, ketamine therapy and skin care from
         the team at TLC Med Clinics.
       </p>
 

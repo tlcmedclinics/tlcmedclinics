@@ -3,10 +3,15 @@ import { adminDb } from "@/lib/firebase/admin";
 import type { Service } from "@/types";
 import VitalsLine from "./VitalsLine";
 
+// Keyed by the category names used on the Service documents in Firestore, so a
+// category the clinic adds later still renders — it just falls back to the
+// generic line below rather than disappearing.
 const categoryBlurb: Record<string, string> = {
-  "Vein Care": "Circulation and vein health, diagnosed and treated in-clinic.",
-  "Skin Care": "Conservative, natural-looking aesthetic treatments.",
   "Mental Health": "Confidential, physician-led care — in person or remote.",
+  "Ketamine Therapy": "For depression, PTSD, OCD, anxiety and chronic pain.",
+  "Skin Care": "Conservative, natural-looking aesthetic treatments.",
+  Diagnosis: "Careful evaluation first — a treatment plan built on a real diagnosis.",
+  "Follow-up": "Ongoing medication management and therapy sessions.",
 };
 
 async function getServices(): Promise<Service[]> {

@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
 import Hero from "@/components/Hero";
+import KetamineHighlight from "@/components/KetamineHighlight";
+import MindBody from "@/components/MindBody";
+import StatsBand from "@/components/StatsBand";
+import CareAreas from "@/components/CareAreas";
+import AboutClinic from "@/components/AboutClinic";
 import ServicesOverview from "@/components/ServicesOverview";
 import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
@@ -19,8 +24,19 @@ export default function Home() {
   return (
     <>
       <Hero />
+
+      {/* Ketamine sits directly under the hero, before anything else. It is
+          the treatment people cannot get elsewhere in the city, and burying it
+          below the service list would waste the one thing this clinic can say
+          that no competitor can. */}
+      <KetamineHighlight />
+
+      <MindBody />
+      <StatsBand />
+      <CareAreas />
       <ServicesOverview />
       <HowItWorks />
+      <AboutClinic />
       <WhyUs />
       <Testimonials />
 
@@ -33,7 +49,7 @@ export default function Home() {
           Book a consultation and our team will confirm within one business day.
         </p>
         <Link
-          href="/contact"
+          href="/patient/book"
           className="mt-7 inline-block rounded-full bg-indigo px-8 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
           Book Appointment

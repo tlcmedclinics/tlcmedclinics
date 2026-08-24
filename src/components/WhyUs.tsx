@@ -5,7 +5,7 @@ const points = [
   },
   {
     title: "One roof, three disciplines",
-    body: "Vein care, skin care, and mental health — coordinated by the same clinical team.",
+    body: "Mental health, ketamine therapy and skin care — coordinated by the same clinical team.",
   },
   {
     title: "Telemedicine built in",

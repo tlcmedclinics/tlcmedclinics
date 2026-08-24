@@ -16,6 +16,7 @@ import NotificationBell from "@/components/NotificationBell";
 import RequireRole from "@/components/RequireRole";
 import type { UserRole } from "@/types";
 import { useConfirm } from "@/contexts/ConfirmContext";
+import { images } from "@/data/images";
 
 export type NavItem = {
   href: string;
@@ -223,7 +224,7 @@ function Shell({ role, nav, children }: Props) {
       <div className="px-3">
         <Link href="/" className="flex items-center gap-2.5 py-1">
           <Image
-            src="/images/logo-icon.png"
+            src={images.logoIcon}
             alt="TLC Med Clinics"
             width={40}
             height={38}

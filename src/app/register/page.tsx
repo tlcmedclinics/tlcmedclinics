@@ -14,6 +14,7 @@ import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
+import { safeNext, useNextQuery } from "@/lib/next-path";
 
 type Role = "patient" | "doctor";
 
@@ -48,6 +49,7 @@ function GoogleIcon() {
 }
 
 export default function RegisterPage() {
+  const nextQuery = useNextQuery();
   const router = useRouter();
   const toast = useToast();
   const t = useT();
@@ -101,7 +103,7 @@ export default function RegisterPage() {
         toast.success("Account created — your doctor request is pending admin approval.");
         router.push("/doctor/dashboard");
       } else {
-        router.push("/patient/dashboard");
+        router.push(safeNext() ?? "/patient/dashboard");
       }
     } catch (err) {
       const message =
@@ -141,7 +143,7 @@ export default function RegisterPage() {
         toast.success("Account created — your doctor request is pending admin approval.");
         router.push("/doctor/dashboard");
       } else {
-        router.push("/patient/dashboard");
+        router.push(safeNext() ?? "/patient/dashboard");
       }
     } catch (err) {
       const message =
@@ -214,7 +216,7 @@ export default function RegisterPage() {
         {role === "doctor" && (
           <input
             name="specialization"
-            placeholder="Specialization (e.g. Vein care)"
+            placeholder="Specialization (e.g. Psychiatry)"
             className="input"
           />
         )}
@@ -288,7 +290,7 @@ export default function RegisterPage() {
 
       <p className="mt-6 text-center text-sm text-ink-soft">
         {t("auth.haveAccount")}{" "}
-        <Link href="/login" className="font-semibold text-indigo hover:text-indigo-deep">
+        <Link href={`/login${nextQuery}`} className="font-semibold text-indigo hover:text-indigo-deep">
           {t("nav.login")}
         </Link>
       </p>

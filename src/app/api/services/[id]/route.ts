@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
+import { optionalNumber } from "../route";
 
 export async function GET(
   _req: NextRequest,
@@ -45,7 +47,20 @@ export async function PUT(
           .map((t: string) => t.trim())
           .filter(Boolean);
   }
-  if (body.price !== undefined) updates.price = Number(body.price) || 0;
+  /**
+   * The three numeric fields, each of which can legitimately be cleared.
+   *
+   * An emptied input has to remove the field rather than store 0 or "". For
+   * `advancePayment` that distinction is the whole point: absent means "charge
+   * the full price online", 0 means "charge nothing" — so clearing the box has
+   * to delete the field, not set it to zero, or the clinic would silently start
+   * giving that treatment away.
+   */
+  for (const field of ["price", "advancePayment", "durationMinutes"] as const) {
+    if (body[field] === undefined) continue;
+    const value = optionalNumber(body[field]);
+    updates[field] = value === undefined ? FieldValue.delete() : value;
+  }
 
   await adminDb.collection("services").doc(id).update(updates);
   return NextResponse.json({ ok: true });

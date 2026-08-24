@@ -9,6 +9,7 @@ import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import { phoneErrorInfo, requestCode, submitCode } from "@/lib/phone-auth";
 import type { UserProfile } from "@/types";
+import { safeNext } from "@/lib/next-path";
 
 const dashboardPath: Record<string, string> = {
   patient: "/patient/dashboard",
@@ -87,7 +88,7 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
       if (snap.exists()) {
         const profile = snap.data() as UserProfile;
         toast.success(t("auth.signedIn"));
-        router.push(dashboardPath[profile.role] ?? "/patient/dashboard");
+        router.push(safeNext() ?? dashboardPath[profile.role] ?? "/patient/dashboard");
         return;
       }
 
@@ -121,7 +122,7 @@ export default function PhoneAuthForm({ mode }: { mode: "login" | "register" }) 
       await clientAuth.currentUser?.getIdToken(true);
 
       toast.success(t("auth.accountCreated"));
-      router.push(dashboardPath[data.role ?? "patient"] ?? "/patient/dashboard");
+      router.push(safeNext() ?? dashboardPath[data.role ?? "patient"] ?? "/patient/dashboard");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
     } finally {

@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { navLinks, site } from "@/data/site";
+import { footerColumns, navLinks, site } from "@/data/site";
 import { useT } from "@/contexts/LanguageContext";
+import { images } from "@/data/images";
 
 // Client component so the nav labels translate. It used to be a server
 // component printing `link.labelKey` verbatim, which rendered raw keys like
@@ -17,7 +18,7 @@ export default function Footer() {
         <div>
           <div className="flex items-center gap-2.5">
             <Image
-              src="/images/logo-icon.png"
+              src={images.logoIcon}
               alt="TLC Med Clinics"
               width={36}
               height={35}
@@ -28,53 +29,76 @@ export default function Footer() {
           <p className="mt-3 max-w-xs text-sm text-paper/70">{site.tagline}</p>
         </div>
 
-        <div>
-          <p className="eyebrow text-paper/50">{t("footer.explore")}</p>
-          <ul className="mt-4 space-y-2 text-sm">
-            {navLinks.map((link) => (
-              <li key={link.href}>
-                <Link href={link.href} className="text-paper/80 transition-colors hover:text-paper">
-                  {t(link.labelKey)}
-                </Link>
-              </li>
-            ))}
-            <li>
-              <Link href="/privacy" className="text-paper/80 transition-colors hover:text-paper">
-                {t("nav.privacy")}
-              </Link>
-            </li>
-          </ul>
-        </div>
+        {/* Deep link columns rather than a copy of the header menu. A footer is
+            a site map: it is where people go looking for fees, forms and
+            individual condition pages that the top bar has no room for. */}
+        {footerColumns.map((column) => (
+          <div key={column.heading}>
+            <p className="eyebrow text-paper/50">{column.heading}</p>
+            <ul className="mt-4 space-y-2 text-sm">
+              {column.links.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-paper/80 transition-colors hover:text-paper"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
 
-        <div>
-          <p className="eyebrow text-paper/50">{t("footer.hours")}</p>
-          <ul className="mt-4 space-y-2 text-sm text-paper/80">
-            {site.hours.map((h) => (
-              <li key={h.label} className="flex justify-between gap-3">
-                <span>{h.label}</span>
-                <span className="numeric text-paper/70">{h.value}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+      <div className="border-t border-paper/10">
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <p className="eyebrow text-paper/50">{t("footer.hours")}</p>
+            <ul className="mt-4 space-y-2 text-sm text-paper/80">
+              {site.hours.map((h) => (
+                <li key={h.label} className="flex flex-wrap justify-between gap-x-3">
+                  <span>{h.label}</span>
+                  <span className="numeric text-paper/70">{h.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
 
-        <div>
-          <p className="eyebrow text-paper/50">{t("footer.contact")}</p>
-          <ul className="mt-4 space-y-2 text-sm text-paper/80">
-            <li>
-              <a href={`tel:${site.phone}`} className="numeric transition-colors hover:text-paper">
-                {site.phone}
-              </a>
-            </li>
-            {site.email && (
+          <div>
+            <p className="eyebrow text-paper/50">{t("footer.contact")}</p>
+            <ul className="mt-4 space-y-2 text-sm text-paper/80">
               <li>
-                <a href={`mailto:${site.email}`} className="transition-colors hover:text-paper">
-                  {site.email}
+                <a href={`tel:${site.phoneE164}`} className="numeric transition-colors hover:text-paper">
+                  {site.phone}
                 </a>
               </li>
-            )}
-            {site.address && <li className="text-paper/70">{site.address}</li>}
-          </ul>
+              {site.email && (
+                <li>
+                  <a href={`mailto:${site.email}`} className="transition-colors hover:text-paper">
+                    {site.email}
+                  </a>
+                </li>
+              )}
+              {site.address && <li className="text-paper/70">{site.address}</li>}
+            </ul>
+          </div>
+
+          <div>
+            <p className="eyebrow text-paper/50">{t("footer.explore")}</p>
+            <ul className="mt-4 space-y-2 text-sm">
+              {navLinks.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="text-paper/80 transition-colors hover:text-paper"
+                  >
+                    {t(link.labelKey)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </div>
 

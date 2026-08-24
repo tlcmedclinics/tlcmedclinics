@@ -1,0 +1,182 @@
+import Reveal from "@/components/Reveal";
+import SiteImage from "@/components/SiteImage";
+import VitalsLine from "@/components/VitalsLine";
+import { AwardIcon, CheckIcon } from "@/components/Icons";
+import { certificates, images } from "@/data/images";
+import { site } from "@/data/site";
+
+/**
+ * Who the clinic is, and the outcome figures behind the telemedicine claim.
+ *
+ * The two sit together because the first is what the clinic says about itself
+ * and the second is the evidence. Separated by half a page, the claims read as
+ * marketing; next to the numbers, they read as a record.
+ */
+
+const POINTS = [
+  "The first medical centre of its kind in Pakistan to offer the same level of care and environment as clinics in the U.S.A.",
+  "Directly run and supervised by U.S.-trained, American Board Certified specialists with over 38 years of experience in patient care, education and management.",
+  "International-level facilities and the U.S.A. standard of care at a competitive cost.",
+  "We use the latest and most effective U.S.A. diagnosis and treatment protocols.",
+  "An alternative to travelling to the U.S.A. for diagnosis and treatment.",
+  "The best trained and most experienced team of doctors under one roof.",
+  "An environment that is pristine, safe and inviting to all.",
+  "Executive health screenings and physicals, stress-reduction and performance-improvement strategies.",
+  "Preventative health screenings and health management.",
+];
+
+export default function AboutClinic() {
+  return (
+    <section className="mx-auto max-w-6xl px-6 py-20">
+      <Reveal className="text-center">
+        <p className="eyebrow text-indigo">About us</p>
+        <h2 className="mt-3 h1 sm:text-4xl">Who we are</h2>
+      </Reveal>
+
+      <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:items-start">
+        <Reveal>
+          <div className="zoom-frame relative aspect-[4/3] rounded-3xl">
+            <SiteImage
+              src={images.clinic}
+              alt={`Inside ${site.name}`}
+              sizes="(min-width: 1024px) 45vw, 100vw"
+            />
+          </div>
+        </Reveal>
+
+        <Reveal delay={100}>
+          {/* Ticks rather than bullets. Every line here is a claim the clinic is
+              making about itself, and a tick says that; a dot says nothing. */}
+          <ul className="space-y-3.5">
+            {POINTS.map((point) => (
+              <li key={point} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
+                <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      </div>
+
+      {/* ---- Outcome data ---- */}
+      <Reveal className="mt-20 rounded-3xl border border-line bg-paper-dim/50 p-8 sm:p-12">
+        <p className="eyebrow text-indigo">Outcome data</p>
+        <h3 className="mt-3 h1 text-2xl sm:text-3xl">
+          Telemedicine, proven effective in symptom reduction
+        </h3>
+        <VitalsLine className="mt-5 h-3 w-40" color="var(--crimson)" />
+
+        <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-soft">
+          Across 10,000 participants with anxiety and depression, followed over
+          twelve weeks.
+        </p>
+
+        <div className="mt-9 grid gap-8 sm:grid-cols-2">
+          {[
+            { figure: "50%", label: "of participants fully recovered" },
+            { figure: "70%", label: "of participants saw significant improvement" },
+          ].map((row) => (
+            <div key={row.figure} className="rounded-2xl bg-paper p-6">
+              <p className="stat-number text-4xl text-indigo-deep">{row.figure}</p>
+              <p className="mt-2 text-sm leading-snug text-ink-soft">{row.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* The source is named rather than implied. A recovery figure with no
+            citation beside it is the kind of claim a clinic should not make. */}
+        <p className="mt-6 text-xs text-ink-soft/80">
+          Source: BMC Psychiatry, June 2020.
+        </p>
+      </Reveal>
+
+      {/* ---- Medical director ---- */}
+      <Reveal className="mt-20 grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
+        <div>
+          <div className="zoom-frame relative aspect-[3/4] rounded-3xl">
+            <SiteImage
+              src={images.doctor}
+              alt={site.doctor.name}
+              sizes="(min-width: 1024px) 30vw, 100vw"
+            />
+          </div>
+
+          <div className="zoom-frame relative mt-5 aspect-[4/3] rounded-2xl">
+            <SiteImage
+              src={images.award}
+              alt="Castle Connolly Top Doctor award, Chicago"
+              sizes="(min-width: 1024px) 30vw, 100vw"
+              className="object-contain p-3"
+            />
+          </div>
+        </div>
+
+        <div>
+          <p className="eyebrow text-indigo">{site.doctor.title}</p>
+          <h3 className="mt-3 h1 text-2xl sm:text-3xl">{site.doctor.name}</h3>
+          <p className="mt-1.5 font-mono text-xs uppercase tracking-wider text-ink-soft">
+            {site.doctor.credentials}
+          </p>
+
+          <ul className="mt-6 space-y-3.5">
+            {[
+              "Graduated with honours from King Edward Medical College, Lahore.",
+              "Awarded the “Best Doctor” award and nominated as a “Top Doctor” in Chicago, U.S.A.",
+              "Over 35 years of experience practising across a variety of medical fields in the U.S.A.",
+              "Extensively trained in General Medicine, Psychiatry & Neurology, and Aesthetic Medicine.",
+              "Certified by the American Board of Psychiatry and Neurology, and the American Academy of Aesthetic Medicine.",
+            ].map((line) => (
+              <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
+                <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
+                {line}
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-7 flex gap-4 rounded-2xl border border-line bg-paper-dim/50 p-5">
+            <AwardIcon className="h-8 w-8 shrink-0 text-crimson" />
+            <div>
+            <p className="text-sm font-semibold text-ink">Top Doctor in Chicago</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              Awarded the Castle Connolly Medical “Top Doctor” award in Chicago,
+              U.S.A. — given to one physician out of several thousand for
+              outstanding work in their area of specialisation.
+            </p>
+            </div>
+          </div>
+        </div>
+      </Reveal>
+
+      {/* ---- Qualifications ---- */}
+      {certificates.length > 0 && (
+        <Reveal className="mt-20">
+          <p className="eyebrow text-indigo">Qualifications</p>
+          <h3 className="mt-3 h1 text-2xl sm:text-3xl">Certifications & licences</h3>
+          <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
+            The framed originals hang in the clinic. They are reproduced here so
+            that a patient can check them before booking rather than after
+            arriving.
+          </p>
+
+          {/* Scrolls horizontally on a phone instead of shrinking ten
+              certificates to the point where none of them is readable. */}
+          <ul className="mt-8 flex snap-x gap-4 overflow-x-auto pb-4 shell-scroll">
+            {certificates.map((src, i) => (
+              <li
+                key={src}
+                className="zoom-frame relative aspect-[3/4] w-40 shrink-0 snap-start rounded-xl border border-line bg-paper-dim/40 sm:w-48"
+              >
+                <SiteImage
+                  src={src}
+                  alt={`Certificate ${i + 1}`}
+                  sizes="12rem"
+                  className="object-contain p-2"
+                />
+              </li>
+            ))}
+          </ul>
+        </Reveal>
+      )}
+    </section>
+  );
+}

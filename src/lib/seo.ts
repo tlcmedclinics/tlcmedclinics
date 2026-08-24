@@ -30,7 +30,7 @@ export const SITE_URL = (
   "https://tlcmedclinics.com"
 ).replace(/\/+$/, "");
 
-/** Turns "/services/varicose-veins" into a full https:// URL. */
+/** Turns "/services/ketamine-therapy" into a full https:// URL. */
 export function absoluteUrl(path = "/") {
   if (/^https?:\/\//i.test(path)) return path;
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
@@ -50,8 +50,8 @@ export const OG_IMAGE = {
 const DEFAULT_KEYWORDS = [
   "TLC Med Clinics",
   "clinic in Lahore",
-  "vein clinic Lahore",
-  "varicose veins treatment Lahore",
+  "ketamine therapy Lahore",
+  "depression treatment Lahore",
   "skin specialist Lahore",
   "dermatologist Johar Town",
   "psychiatrist Lahore",
@@ -64,7 +64,7 @@ type PageMeta = {
   /** Page title WITHOUT the site name — the layout template appends it. */
   title: string;
   description: string;
-  /** Route path, e.g. "/services/varicose-veins". Becomes the canonical URL. */
+  /** Route path, e.g. "/services/ketamine-therapy". Becomes the canonical URL. */
   path: string;
   /** Absolute or root-relative image for the social card. */
   image?: string;
@@ -124,7 +124,7 @@ export function pageMetadata({
 
 /** The root metadata — title template and the defaults every page inherits. */
 export function rootMetadata(): Metadata {
-  const title = `${site.name} — Vein, Skin & Mental Health Care in Lahore`;
+  const title = `${site.name} — Mental Health, Ketamine & Skin Care in Lahore`;
 
   return {
     // Without this, relative URLs in metadata (og:image, canonical) stay
@@ -239,11 +239,11 @@ export function clinicSchema() {
       { "@type": "Country", name: "Pakistan" },
     ],
     availableService: [
-      { "@type": "MedicalTherapy", name: "Vein care" },
+      { "@type": "MedicalTherapy", name: "Ketamine therapy" },
       { "@type": "MedicalTherapy", name: "Skin care" },
       { "@type": "MedicalTherapy", name: "Mental health care" },
     ],
-    medicalSpecialty: ["Dermatology", "Psychiatry", "VascularSurgery"],
+    medicalSpecialty: ["Psychiatry", "Dermatology"],
     employee: {
       "@type": "Physician",
       name: site.doctor.name,

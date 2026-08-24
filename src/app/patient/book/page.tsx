@@ -149,7 +149,25 @@ function BookAppointmentContent() {
     wantedDoctorId.current = params.get("doctorId");
     if (!wantedService) return;
 
-    const match = services.find((x) => x.name === wantedService);
+    /**
+     * Matched on slug first, then on name.
+     *
+     * Two kinds of link arrive here. "Book again" on a finished appointment
+     * passes the service *name*, because that is what the appointment record
+     * stores. A Book button on a treatment page passes the *slug*, because
+     * that is what identifies the page — and a slug is stable where a name is
+     * not, so a service the clinic renames keeps working from its own page.
+     *
+     * The name comparison is case- and space-insensitive: an appointment saved
+     * before a name was tidied up ("Botox  — up to 50 units") should still find
+     * its service rather than silently dropping the patient on step one.
+     */
+    const wanted = wantedService.trim().toLowerCase().replace(/\s+/g, " ");
+    const match =
+      services.find((x) => x.slug === wantedService) ??
+      services.find(
+        (x) => x.name?.trim().toLowerCase().replace(/\s+/g, " ") === wanted
+      );
     if (!match) return; // the service was renamed or removed since that visit
 
     setPatientType(isFollowUpService(match) ? "follow-up" : "new");
@@ -218,7 +236,26 @@ function BookAppointmentContent() {
     [services, selectedServiceName]
   );
 
-  const basePrice = selectedService?.price ?? 0;
+  /** The published fee for the treatment. */
+  const fullPrice = selectedService?.price ?? 0;
+
+  /**
+   * What is actually charged online now.
+   *
+   * The clinic takes a PKR 5,000 advance on its longer treatments and settles
+   * the balance at the visit, so a service carrying `advancePayment` must be
+   * charged that and not its full fee. Billing a patient PKR 18,000 up front
+   * for a ketamine session the clinic only asks 5,000 to hold is the kind of
+   * mistake that ends in a refund and a lost patient.
+   *
+   * `??` rather than `||`, so an advance of 0 — "book now, pay at the clinic" —
+   * stays 0 instead of falling through to the full price.
+   */
+  const basePrice = selectedService?.advancePayment ?? fullPrice;
+
+  /** The part settled at the clinic, if any. */
+  const balanceDue = Math.max(0, fullPrice - basePrice);
+
   const discountedAmount = useMemo(() => {
     if (!appliedCoupon || patientType !== "new") return basePrice;
     if (appliedCoupon.discountType === "percent") {
@@ -574,10 +611,28 @@ function BookAppointmentContent() {
                     {s.short && (
                       <span className="mt-0.5 block text-xs text-ink-soft">{s.short}</span>
                     )}
+                    {typeof s.durationMinutes === "number" && s.durationMinutes > 0 && (
+                      <span className="numeric mt-1 block text-[0.7rem] text-ink-soft/80">
+                        {s.durationMinutes} minutes
+                      </span>
+                    )}
                   </span>
+
+                  {/* The full fee, and under it what is actually taken online.
+                      Showing only the advance makes the treatment look cheaper
+                      than it is; showing only the total makes the patient think
+                      they are about to be charged all of it. */}
                   {typeof s.price === "number" && (
-                    <span className="numeric shrink-0 text-sm text-ink-soft">
-                      PKR {s.price.toLocaleString()}
+                    <span className="shrink-0 text-end">
+                      <span className="numeric block text-sm font-medium text-ink">
+                        PKR {s.price.toLocaleString()}
+                      </span>
+                      {typeof s.advancePayment === "number" &&
+                        s.advancePayment < s.price && (
+                          <span className="numeric mt-0.5 block text-[0.7rem] text-indigo">
+                            PKR {s.advancePayment.toLocaleString()} to book
+                          </span>
+                        )}
                     </span>
                   )}
                 </button>
@@ -886,6 +941,18 @@ function BookAppointmentContent() {
             {details.amount > 0 && (
               <p className="numeric mt-1 font-semibold text-ink">
                 PKR {details.amount.toLocaleString()}
+              </p>
+            )}
+            {/* Said before they pay, not after. A patient who is charged 5,000
+                and then billed 13,000 at the clinic without warning has been
+                surprised by their own doctor. */}
+            {balanceDue > 0 && (
+              <p className="mt-1 text-xs text-ink-soft">
+                Advance payment. The balance of{" "}
+                <span className="numeric font-medium text-ink">
+                  PKR {balanceDue.toLocaleString()}
+                </span>{" "}
+                is settled at the clinic.
               </p>
             )}
             <button

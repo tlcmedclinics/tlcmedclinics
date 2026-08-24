@@ -9,6 +9,7 @@
     "lint": "eslint",
     "check-firebase": "node scripts/check-firebase.mjs",
     "fix-times": "node scripts/fix-times.mjs",
+    "seed-clinic-services": "node scripts/seed-clinic-services.mjs",
     "create-admin": "node --env-file=.env.local scripts/create-admin.mjs",
     "create-doctor": "node --env-file=.env.local scripts/create-doctor.mjs",
     "seed-services": "node --env-file=.env.local scripts/seed-services.mjs"

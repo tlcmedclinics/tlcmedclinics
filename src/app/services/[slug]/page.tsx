@@ -140,15 +140,43 @@ export default async function ServiceDetailPage({
       </div>
 
       <div className="mt-12 rounded-2xl bg-mist/60 p-6 sm:p-8">
-        <p className="h3 text-ink">Have questions about this condition?</p>
+        <p className="h3 text-ink">Ready to book {service.name}?</p>
         <p className="mt-2 text-sm text-ink-soft">
-          Book a consultation and we&apos;ll walk you through what to expect.
+          {typeof service.price === "number" ? (
+            <>
+              <span className="numeric font-medium text-ink">
+                PKR {service.price.toLocaleString()}
+              </span>
+              {typeof service.advancePayment === "number" &&
+                service.advancePayment < service.price && (
+                  <>
+                    {" · "}
+                    <span className="numeric">
+                      PKR {service.advancePayment.toLocaleString()}
+                    </span>{" "}
+                    to hold the appointment, balance at the clinic
+                  </>
+                )}
+              {typeof service.durationMinutes === "number" && service.durationMinutes > 0 && (
+                <>
+                  {" · "}
+                  <span className="numeric">{service.durationMinutes} minutes</span>
+                </>
+              )}
+            </>
+          ) : (
+            <>Book a consultation and we&apos;ll walk you through what to expect.</>
+          )}
         </p>
+        {/* Carries the slug, so the booking page opens with this treatment
+            already selected. This used to point at /contact, which dropped the
+            patient into a general enquiry form and threw away the one decision
+            they had already made. */}
         <Link
-          href="/contact"
+          href={`/patient/book?service=${encodeURIComponent(service.slug)}`}
           className="mt-5 inline-block rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
-          Book Appointment
+          Book this appointment
         </Link>
       </div>
 
