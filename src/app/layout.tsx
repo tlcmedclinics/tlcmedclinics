@@ -2,14 +2,9 @@ import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Manrope, Noto_Nastaliq_Urdu } from "next/font/google";
 import "./globals.css";
-import SiteChrome from "@/components/SiteChrome";
 import JsonLd from "@/components/JsonLd";
-import Toaster from "@/components/Toaster";
+import Providers from "@/components/Providers";
 import { rootMetadata, clinicSchema, websiteSchema } from "@/lib/seo";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { ToastProvider } from "@/contexts/ToastContext";
-import { ConfirmProvider } from "@/contexts/ConfirmContext";
-import { LanguageProvider } from "@/contexts/LanguageContext";
 
 // One Latin family across the whole app. Manrope carries headings at 800 and
 // body text at 400–600, so hierarchy comes from weight and size rather than
@@ -72,18 +67,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             noindex, so there's no cost to having it there too. */}
         <JsonLd data={[clinicSchema(), websiteSchema()]} />
 
-        <LanguageProvider>
-          <ToastProvider>
-            <AuthProvider>
-              {/* Inside AuthProvider so a confirmation can be raised from
-                  anywhere a signed-in action can be taken — logout included. */}
-              <ConfirmProvider>
-                <SiteChrome>{children}</SiteChrome>
-              </ConfirmProvider>
-              <Toaster />
-            </AuthProvider>
-          </ToastProvider>
-        </LanguageProvider>
+        {/* Every provider, the header/footer chrome and the toaster live in one
+            client component. They used to be nested here, which made six
+            separate client references for the server to resolve out of the
+            build's manifest — see the note in Providers.tsx. */}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
