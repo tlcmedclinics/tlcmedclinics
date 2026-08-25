@@ -42,9 +42,13 @@ function Svg({ className = "h-6 w-6", children }: IconProps & { children: ReactN
 export function BrainIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M12 5.5a2.5 2.5 0 0 0-5 0 2.5 2.5 0 0 0-2 3.9A2.5 2.5 0 0 0 5.6 14 2.5 2.5 0 0 0 8 17.5a2.5 2.5 0 0 0 4 .9Z" />
-      <path d="M12 5.5a2.5 2.5 0 0 1 5 0 2.5 2.5 0 0 1 2 3.9A2.5 2.5 0 0 1 18.4 14 2.5 2.5 0 0 1 16 17.5a2.5 2.5 0 0 1-4 .9Z" />
-      <path d="M12 5.5v13" />
+      {/* Two lobes and the seam between them. The bumps used to be 2.5 units
+          across — two and a half pixels at the size this icon is actually
+          rendered — so they merged into their own stroke and the whole thing
+          read as a coin with a line through it. At 3.5 the lobes survive down
+          to 24px, which is where it is used. */}
+      <path d="M12 6.5a3.5 3.5 0 0 0-6.6-1.6A3 3 0 0 0 4.2 10 3.2 3.2 0 0 0 5.4 15.6 3.2 3.2 0 0 0 12 18Z" />
+      <path d="M12 6.5a3.5 3.5 0 0 1 6.6-1.6A3 3 0 0 1 19.8 10 3.2 3.2 0 0 1 18.6 15.6 3.2 3.2 0 0 1 12 18Z" />
     </Svg>
   );
 }
@@ -63,10 +67,13 @@ export function SparkleIcon(props: IconProps) {
 export function StethoscopeIcon(props: IconProps) {
   return (
     <Svg {...props}>
-      <path d="M6 3v5a4 4 0 0 0 8 0V3" />
-      <path d="M4.5 3h3M12.5 3h3" />
-      <path d="M10 12v2a5 5 0 0 0 5 5 4 4 0 0 0 4-4v-1.2" />
-      <circle cx="19" cy="10.5" r="2.3" />
+      {/* Wider tubing and a bigger bell. The bell was 2.3 units and sat almost
+          on top of the tube it hangs from; at 24px the two shapes touched and
+          the icon lost its outline. */}
+      <path d="M6 3v5.5a4.5 4.5 0 0 0 9 0V3" />
+      <path d="M4.2 3h3.6M13.2 3h3.6" />
+      <path d="M10.5 13v1.5a5 5 0 0 0 10 0v-1.7" />
+      <circle cx="20.5" cy="10.5" r="2.6" />
     </Svg>
   );
 }

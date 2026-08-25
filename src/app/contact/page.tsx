@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { site } from "@/data/site";
 import VitalsLine from "@/components/VitalsLine";
+import ContactForm from "@/components/ContactForm";
 import JsonLd from "@/components/JsonLd";
 import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/Icons";
 import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
@@ -75,9 +76,8 @@ export default function ContactPage() {
           </p>
 
           {/* Booking lives in one place — the booking flow, where a patient can
-              see who is free and pay. The second, simpler form that used to sit
-              on this page produced enquiries the clinic then had to chase by
-              phone, which is exactly the work the booking flow removes. */}
+              see who is free and pay. The form further down this page is a
+              different thing: a question, not an appointment. */}
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/patient/book" className="btn-indigo !px-7 !py-3.5">
               Book an appointment
@@ -157,6 +157,13 @@ export default function ContactPage() {
             Parking is available on site. If this is your first appointment,
             please arrive 15 minutes early to complete check-in.
           </p>
+
+          {/* The form sits under the map rather than beside the address, so the
+              page answers "where are you" and "how do I reach you" before it
+              asks the reader for anything. */}
+          <div className="mt-8">
+            <ContactForm />
+          </div>
         </div>
       </div>
     </div>

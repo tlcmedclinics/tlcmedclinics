@@ -4,6 +4,8 @@ import Reveal from "@/components/Reveal";
 import SiteImage from "@/components/SiteImage";
 import { GROUP_META, groupedPages, type ContentPage } from "@/data/content";
 import { pageImages } from "@/data/images";
+import { adminDb } from "@/lib/firebase/admin";
+import type { Service } from "@/types";
 import { site } from "@/data/site";
 
 /**
@@ -17,12 +19,32 @@ import { site } from "@/data/site";
  * On a phone it moves below the article — a list of twenty sibling links above
  * the thing you came to read is a wall, not navigation.
  */
-export default function ContentLayout({ page }: { page: ContentPage }) {
+/**
+ * The live services, read only when the page actually shows prices.
+ *
+ * Wrapped: a fee table that fails should cost the reader a table, not the whole
+ * page. ContentBlocks says so in words when the list comes back empty.
+ */
+async function getServices(): Promise<Service[]> {
+  try {
+    const snap = await adminDb.collection("services").get();
+    return snap.docs.map((d) => d.data() as Service);
+  } catch (err) {
+    console.error("[ContentLayout] prices unavailable:", err);
+    return [];
+  }
+}
+
+export default async function ContentLayout({ page }: { page: ContentPage }) {
   const meta = GROUP_META[page.group];
   const sections = groupedPages(page.group);
   // Only some pages have an honest photograph — see pageImages. A page without
   // one keeps the plain indigo banner rather than borrowing a stock image.
   const banner = pageImages[page.slug];
+
+  // Most pages have no fee table and pay nothing for this.
+  const needsPrices = page.blocks.some((b) => b.kind === "prices");
+  const services = needsPrices ? await getServices() : [];
 
   return (
     <>
@@ -61,7 +83,7 @@ export default function ContentLayout({ page }: { page: ContentPage }) {
 
       <div className="mx-auto grid max-w-6xl gap-12 px-6 py-14 lg:grid-cols-[1fr_18rem] lg:items-start">
         <Reveal as="article">
-          <ContentBlocks blocks={page.blocks} />
+          <ContentBlocks blocks={page.blocks} services={services} />
 
           <div className="mt-12 rounded-2xl border border-line bg-paper-dim/50 p-6">
             <p className="text-sm font-semibold text-ink">Ready to talk to someone?</p>

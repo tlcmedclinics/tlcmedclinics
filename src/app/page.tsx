@@ -5,7 +5,6 @@ import MindBody from "@/components/MindBody";
 import StatsBand from "@/components/StatsBand";
 import CareAreas from "@/components/CareAreas";
 import AboutClinic from "@/components/AboutClinic";
-import ServicesOverview from "@/components/ServicesOverview";
 import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
 import Testimonials from "@/components/Testimonials";
@@ -34,8 +33,12 @@ export default function Home() {
 
       <MindBody />
       <StatsBand />
+      {/* "Where we can help" and the old "Our Services" band were two sections
+          listing the same treatments — one hand-written, one from Firestore —
+          and the hand-written one went stale the moment a service was added or
+          repriced. CareAreas is now built from the database, so it is the only
+          one, and ServicesOverview is gone. */}
       <CareAreas />
-      <ServicesOverview />
       <HowItWorks />
       <AboutClinic />
       <WhyUs />

@@ -43,7 +43,7 @@ export const expectPages: ContentPage[] = [
       { kind: "h", text: "Costs" },
       {
         kind: "p",
-        text: "You will also speak to an office manager about the cost of treatment as it applies to your diagnosis and plan, and about when treatment will begin. A psychiatric consultation is PKR 3,000.",
+        text: "You will also speak to an office manager about the cost of treatment as it applies to your diagnosis and plan, and about when treatment will begin. Current consultation fees are listed on the Costs page.",
       },
     ],
   },
@@ -119,36 +119,14 @@ export const expectPages: ContentPage[] = [
         kind: "p",
         text: "For a mental health appointment you will meet an American Board Certified psychiatrist with over 35 years of experience, ranked a 'top doctor' in the United States in his field by his peers.",
       },
-      {
-        kind: "table",
-        caption: "Consultation fees",
-        rows: [
-          ["Initial evaluation with a specialist", "PKR 3,000"],
-          ["Follow-up — 15 min medication management", "PKR 3,500"],
-          ["Follow-up — 30 min therapy + medication management", "PKR 6,000"],
-          ["Follow-up — 60 min therapy + medication management", "PKR 12,000"],
-        ],
-      },
-      {
-        kind: "table",
-        caption: "Treatments",
-        rows: [
-          ["Ketamine therapy, 180 min", "PKR 18,000"],
-          ["Full face micro-needling with PRP, 90 min", "PKR 16,000"],
-          ["Hair regrowth with PRP, 90 min", "PKR 20,000"],
-          ["Botox, up to 50 units", "PKR 12,000"],
-          ["Botox, up to 100 units", "PKR 22,000"],
-          ["PRF under eyes, 60 min", "PKR 12,000"],
-          ["PRF nasolabial folds, 60 min", "PKR 10,000"],
-          ["PRF lips, 60 min", "PKR 12,000"],
-          ["Lip flip — Botox only, 30 min", "PKR 8,000"],
-          ["Lip flip — Botox with filler, 60 min", "PKR 20,000"],
-          ["Lipolytic injection for double chin, 60 min", "PKR 12,000"],
-        ],
-      },
+      // Whole categories, so a service the clinic adds in the admin panel
+      // appears here the same day without anyone editing this file.
+      { kind: "prices", caption: "Diagnosis", category: "Diagnosis" },
+      { kind: "prices", caption: "Consultation fees", category: "Health Care" },
+      { kind: "prices", caption: "Treatments", category: "Skin & Aesthetics" },
       {
         kind: "note",
-        text: "Treatments marked with an advance payment on the booking form require PKR 5,000 to hold the appointment; the balance is settled at the visit.",
+        text: "Where a treatment shows an amount to book, that is the advance taken online to hold the appointment; the balance is settled at the visit.",
       },
     ],
   },

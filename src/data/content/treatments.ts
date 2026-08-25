@@ -32,15 +32,7 @@ export const treatmentPages: ContentPage[] = [
         kind: "p",
         text: "Ours is the first clinic of its kind in Lahore, run and supervised by U.S. board certified physicians — providing safe, effective and world-class treatment with the best outcomes.",
       },
-      {
-        kind: "table",
-        caption: "Session",
-        rows: [
-          ["Duration", "180 minutes"],
-          ["Fee", "PKR 18,000"],
-          ["Advance payment to book", "PKR 5,000"],
-        ],
-      },
+      { kind: "prices", caption: "Session", slugs: ["ketamine-therapy"] },
       {
         kind: "note",
         text: "Ketamine therapy is given under physician supervision, and starts with an evaluation — it is not something to book without one. Your first visit will establish whether it is right for you.",
@@ -60,13 +52,13 @@ export const treatmentPages: ContentPage[] = [
         text: "You will meet an American Board Certified psychiatrist with over 35 years of experience, ranked a 'top doctor' in the United States by his peers. First appointments are deliberately longer, so your history and background can be gone through thoroughly before any medication is started.",
       },
       {
-        kind: "table",
+        kind: "prices",
         caption: "Consultation fees",
-        rows: [
-          ["Initial evaluation with a specialist", "PKR 3,000"],
-          ["Regular follow-up — 15 min medication management", "PKR 3,500"],
-          ["Therapy + medication management — 30 min", "PKR 6,000"],
-          ["Full therapy + medication management — 60 min", "PKR 12,000"],
+        slugs: [
+          "initial-evaluation",
+          "regular-follow-up",
+          "therapy-med-management-30",
+          "therapy-med-management-60",
         ],
       },
       {
@@ -92,13 +84,13 @@ export const treatmentPages: ContentPage[] = [
         text: "Compared with other procedures it is affordable, and the risk of side effects is minimal. The effect is temporary, so treatment is repeated periodically.",
       },
       {
-        kind: "table",
+        kind: "prices",
         caption: "Fees",
-        rows: [
-          ["Up to 50 units", "PKR 12,000"],
-          ["Up to 100 units", "PKR 22,000 (advance payment PKR 5,000)"],
-          ["Lip flip — Botox only, 30 min", "PKR 8,000"],
-          ["Lip flip — Botox with filler, 60 min", "PKR 20,000 (advance payment PKR 5,000)"],
+        slugs: [
+          "botox-50-units",
+          "botox-100-units",
+          "lip-flip-botox",
+          "lip-flip-botox-filler",
         ],
       },
     ],
@@ -138,13 +130,9 @@ export const treatmentPages: ContentPage[] = [
         text: "The same treatment is used for wrinkles, age spots and sun damage across the full face.",
       },
       {
-        kind: "table",
+        kind: "prices",
         caption: "Full face micro-needling with PRP",
-        rows: [
-          ["Duration", "90 minutes"],
-          ["Fee", "PKR 16,000"],
-          ["Advance payment to book", "PKR 5,000"],
-        ],
+        slugs: ["micro-needling-with-prp"],
       },
     ],
   },
@@ -161,13 +149,9 @@ export const treatmentPages: ContentPage[] = [
         text: "Your blood is drawn and carefully processed to extract plasma rich in growth factors, which is then injected into the scalp. Those platelets prompt inactive or newly implanted hair to enter an active growth phase.",
       },
       {
-        kind: "table",
+        kind: "prices",
         caption: "Hair regrowth with PRP",
-        rows: [
-          ["Duration", "90 minutes"],
-          ["Fee", "PKR 20,000"],
-          ["Advance payment to book", "PKR 5,000"],
-        ],
+        slugs: ["hair-regrowth-with-prp"],
       },
     ],
   },
@@ -184,13 +168,9 @@ export const treatmentPages: ContentPage[] = [
         text: "PRF — platelet-rich fibrin — is prepared from your own blood and used to restore volume and skin quality in the most delicate areas of the face, where a heavier filler would be too much.",
       },
       {
-        kind: "table",
+        kind: "prices",
         caption: "Fees",
-        rows: [
-          ["Under eyes — dark circles, eye bags, 60 min", "PKR 12,000"],
-          ["Nasolabial folds, 60 min", "PKR 10,000"],
-          ["Lips, 60 min", "PKR 12,000"],
-        ],
+        slugs: ["prf-under-eyes", "prf-nasolabial-folds", "prf-lips"],
       },
     ],
   },
@@ -205,13 +185,7 @@ export const treatmentPages: ContentPage[] = [
         kind: "p",
         text: "A lipolytic injection treatment for submental fullness — a double chin — given in the clinic. More than one treatment is usually needed, and your doctor will tell you how many to expect after examining you.",
       },
-      {
-        kind: "table",
-        caption: "Fees",
-        rows: [
-          ["Per treatment, 60 min", "PKR 12,000"],
-        ],
-      },
+      { kind: "prices", caption: "Fees", slugs: ["lipolytic-injection"] },
     ],
   },
 ];

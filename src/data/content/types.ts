@@ -24,7 +24,28 @@ export type Block =
   /** A highlighted aside — a fee, a caution, a "bring this with you". */
   | { kind: "note"; text: string }
   /** A two-column table: [label, value] rows with an optional caption. */
-  | { kind: "table"; caption?: string; rows: [string, string][] };
+  | { kind: "table"; caption?: string; rows: [string, string][] }
+  /**
+   * A fee table built from the live services in Firestore.
+   *
+   * Never write a price into this folder. Fees used to be typed into these
+   * files as plain `table` rows, and they drifted the moment the clinic changed
+   * one in the admin panel — at one point the Costs page said an initial
+   * evaluation was PKR 4,000 while the Ketamine page said PKR 3,000 for the
+   * same appointment, and the booking form charged a third figure. A patient
+   * can screenshot the cheapest one.
+   *
+   * Name the services instead and the price comes from wherever it is edited.
+   * A slug that no longer exists is skipped rather than shown as blank.
+   */
+  | {
+      kind: "prices";
+      caption?: string;
+      /** Specific services, in the order given. */
+      slugs?: string[];
+      /** Or every service in a category, in the clinic's own ordering. */
+      category?: string;
+    };
 
 export type ContentGroup =
   | "telemedicine"
