@@ -18,15 +18,25 @@ import { site } from "@/data/site";
 
 const DURATION_MS = 1600;
 
+/**
+ * Splits "259,200+" into the number to count to and the text around it.
+ *
+ * One regex with three groups, rather than stripping the digits out and
+ * splitting the original string on them. That earlier approach only worked for
+ * figures with no thousands separator: for "259,200+" it stripped the comma to
+ * get "259200", then split "259,200+" on a substring that string does not
+ * contain — so the whole thing came back as the prefix and the band rendered
+ * "259,200+259,200" on the live site.
+ */
 function parse(value: string) {
-  const digits = value.replace(/[^\d.]/g, "");
-  const target = Number(digits);
+  const match = value.match(/^([^\d]*)([\d.,]+)([^\d]*)$/);
+  if (!match) return null;
+
+  const [, prefix, numeric, suffix] = match;
+  const target = Number(numeric.replace(/,/g, ""));
   if (!Number.isFinite(target) || target === 0) return null;
 
-  // Everything that isn't part of the number — "+", "%", "yrs" — kept in the
-  // order it was written so "98%" and "35+" both come back correctly.
-  const [prefix, suffix] = value.split(digits);
-  return { target, prefix: prefix ?? "", suffix: suffix ?? "" };
+  return { target, prefix, suffix };
 }
 
 function useCountUp(target: number | null, start: boolean) {

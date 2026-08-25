@@ -56,6 +56,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "common.pagination": "Pagination",
     "common.showingCount": "{{count}} results",
     "common.pageOf": "Page {{page}} of {{pageCount}}",
+    "common.all": "All",
     "common.noResults": "Nothing matched your search",
     "common.noResultsHint": "Try a different name, date or keyword.",
 
@@ -544,6 +545,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "common.pagination": "صفحہ بندی",
     "common.showingCount": "{{count}} نتائج",
     "common.pageOf": "صفحہ {{page}} از {{pageCount}}",
+    "common.all": "تمام",
     "common.noResults": "آپ کی تلاش سے کچھ نہیں ملا",
     "common.noResultsHint": "کوئی دوسرا نام، تاریخ یا لفظ آزمائیں۔",
 

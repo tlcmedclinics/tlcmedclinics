@@ -5,6 +5,7 @@ import { isMissingIndexError, missingIndexMessage } from "@/lib/firestore-errors
 import type { Appointment } from "@/types";
 import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
+import { sendSms, smsBody } from "@/lib/sms";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
 
 export async function POST(req: NextRequest) {
@@ -92,6 +93,13 @@ export async function POST(req: NextRequest) {
       text: `${appointment.patientName} (${patientPhone ?? "no phone"}) requested ${appointment.service}. Preferred: ${appointment.preferredWhen || "not specified"}. No doctor covering this service had an open slot — please assign one.`,
     }).catch(() => {});
 
+    sendSms(
+      patientPhone,
+      smsBody(
+        `We received your ${appointment.service} request. The clinic will confirm your time shortly.`
+      )
+    ).catch(() => {});
+
     await Promise.all([
       notify({
         userId: appointment.patientId,
@@ -173,6 +181,21 @@ export async function POST(req: NextRequest) {
   }).catch(() => {});
 
   const when = `${appointment.date} ${appointment.time}`;
+
+  // The patient's own copy. The email above goes to the clinic, so without this
+  // the person who just booked gets nothing outside the app. Not awaited — an
+  // SMS failure must not fail a booking that is already written.
+  sendSms(
+    patientPhone,
+    smsBody(
+      isPaid
+        ? `Confirmed: ${appointment.service} on ${when}` +
+            (appointment.doctorName ? ` with Dr. ${appointment.doctorName}` : "") +
+            "."
+        : `Booked: ${appointment.service} on ${when}. We'll call to confirm.`
+    )
+  ).catch(() => {});
+
   await Promise.all([
     notify({
       userId: appointment.patientId,

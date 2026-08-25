@@ -53,6 +53,30 @@ export const images = {
 export type ImageKey = keyof typeof images;
 
 /**
+ * The clinic itself, cycled as a slideshow on the About section.
+ *
+ * Interiors and treatment areas only — no faces, no procedure close-ups. The
+ * section they sit in is about the place, and a treatment photograph in the
+ * middle of that reads as an advert rather than as "here is where you'll be
+ * sitting".
+ *
+ * `images.clinic` above is the first of these, and stays as the single-image
+ * fallback for anywhere that wants one photograph rather than a loop.
+ */
+export const clinicGallery: string[] = [
+  "/images/beauty_clinic-min-860x645.jpeg",
+  "/images/skin_glow-min-860x645.jpeg",
+  "/images/beauty_care-min-860x645.jpeg",
+  "/images/skin_care-min-860x645.jpeg",
+  "/images/face_fillers-min-860x645.jpeg",
+  "/images/spider_veins-min-860x645.jpeg",
+  "/images/skin_clinic-min-860x645.jpeg",
+  "/images/acne-min-860x645.jpeg",
+  "/images/hair_loss-min-860x645.jpeg",
+  "/images/aesthetic-min-860x645.jpeg",
+];
+
+/**
  * Pictures for the individual condition and treatment pages, by slug.
  *
  * A partial map on purpose: a page with no entry renders without a banner

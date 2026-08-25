@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
-import { optionalNumber } from "../route";
+import { optionalNumber } from "@/lib/service-fields";
 
 export async function GET(
   _req: NextRequest,

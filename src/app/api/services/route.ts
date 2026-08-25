@@ -2,20 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Service } from "@/types";
-
-/**
- * A number from a form field, or undefined.
- *
- * An empty input arrives as "" and has to stay absent rather than becoming 0.
- * For `advancePayment` those mean opposite things — absent is "charge the full
- * price online", zero is "charge nothing at all" — and Number("") is 0, which
- * is exactly the trap.
- */
-export function optionalNumber(value: unknown): number | undefined {
-  if (value === undefined || value === null || value === "") return undefined;
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? n : undefined;
-}
+import { optionalNumber } from "@/lib/service-fields";
 
 function slugify(input: string) {
   return String(input)

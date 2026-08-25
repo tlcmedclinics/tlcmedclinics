@@ -9,6 +9,7 @@ import ServicesOverview from "@/components/ServicesOverview";
 import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
 import Testimonials from "@/components/Testimonials";
+import LatestPosts from "@/components/LatestPosts";
 import Link from "next/link";
 import VitalsLine from "@/components/VitalsLine";
 import { site } from "@/data/site";
@@ -39,6 +40,7 @@ export default function Home() {
       <AboutClinic />
       <WhyUs />
       <Testimonials />
+      <LatestPosts />
 
       <section className="mx-auto max-w-6xl px-6 py-20 text-center">
         <VitalsLine className="mx-auto h-3 w-40" color="var(--crimson)" />

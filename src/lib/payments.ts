@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebase/admin";
 import type { Appointment, PatientType, SessionType } from "@/types";
 import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
+import { sendSms, smsBody } from "@/lib/sms";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
 import { formatClinicTime } from "@/lib/clinic-time";
 
@@ -170,6 +171,19 @@ export async function confirmAppointmentPayment(
   const appointment = result.appointment;
   const when = `${appointment.date} ${formatClinicTime(appointment.time)}`;
 
+  // The patient's own confirmation, to the number they gave. The clinic gets an
+  // email; without this the person who just paid receives nothing outside the
+  // app. Not awaited — a Twilio outage must not fail a booking that is already
+  // paid for and written.
+  sendSms(
+    appointment.patientPhone,
+    smsBody(
+      `Payment received: ${appointment.service} on ${when}` +
+        (appointment.doctorName ? ` with Dr. ${appointment.doctorName}` : "") +
+        "."
+    )
+  ).catch(() => {});
+
   await Promise.all([
     notify({
       userId: appointment.patientId,
@@ -292,6 +306,20 @@ export async function finalizePendingBooking(
   }).catch(() => {});
 
   const when = `${appointment.date} ${formatClinicTime(appointment.time)}`;
+
+  // The patient's own confirmation, to the number they gave. The clinic gets an
+  // email; without this the person who just paid receives nothing outside the
+  // app. Not awaited — a Twilio outage must not fail a booking that is already
+  // paid for and written.
+  sendSms(
+    appointment.patientPhone,
+    smsBody(
+      `Confirmed: ${appointment.service} on ${when}` +
+        (appointment.doctorName ? ` with Dr. ${appointment.doctorName}` : "") +
+        "."
+    )
+  ).catch(() => {});
+
   await Promise.all([
     notify({
       userId: appointment.patientId,

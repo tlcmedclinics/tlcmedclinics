@@ -30,6 +30,18 @@ async function getServices(): Promise<Service[]> {
   }
 }
 
+/**
+ * The id each category section carries, so the home page can link straight to
+ * one. Kept identical to the copy in ServicesOverview — if these two ever
+ * disagree, the link silently lands at the top of the page instead.
+ */
+function categoryId(category: string) {
+  return category
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "");
+}
+
 export default async function ServicesPage() {
   const services = await getServices();
   const categories = Array.from(new Set(services.map((s) => s.category)));
@@ -73,7 +85,7 @@ export default async function ServicesPage() {
       ) : (
         <div className="mt-14 space-y-16">
           {categories.map((category) => (
-            <div key={category}>
+            <div key={category} id={categoryId(category)} className="scroll-mt-28">
               <h2 className="h2 text-indigo-deep">{category}</h2>
               <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {services

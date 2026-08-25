@@ -2,7 +2,8 @@ import Reveal from "@/components/Reveal";
 import SiteImage from "@/components/SiteImage";
 import VitalsLine from "@/components/VitalsLine";
 import { AwardIcon, CheckIcon } from "@/components/Icons";
-import { certificates, images } from "@/data/images";
+import Slideshow from "@/components/Slideshow";
+import { certificates, clinicGallery, images } from "@/data/images";
 import { site } from "@/data/site";
 
 /**
@@ -35,13 +36,15 @@ export default function AboutClinic() {
 
       <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:items-start">
         <Reveal>
-          <div className="zoom-frame relative aspect-[4/3] rounded-3xl">
-            <SiteImage
-              src={images.clinic}
-              alt={`Inside ${site.name}`}
-              sizes="(min-width: 1024px) 45vw, 100vw"
-            />
-          </div>
+          {/* A loop rather than one photograph: a clinic is judged on whether
+              it looks like somewhere you would sit down, and one angle of one
+              room does not answer that. */}
+          <Slideshow
+            images={clinicGallery}
+            alt={`Inside ${site.name}`}
+            sizes="(min-width: 1024px) 45vw, 100vw"
+            className="zoom-frame aspect-[4/3] rounded-3xl"
+          />
         </Reveal>
 
         <Reveal delay={100}>
@@ -101,14 +104,6 @@ export default function AboutClinic() {
             />
           </div>
 
-          <div className="zoom-frame relative mt-5 aspect-[4/3] rounded-2xl">
-            <SiteImage
-              src={images.award}
-              alt="Castle Connolly Top Doctor award, Chicago"
-              sizes="(min-width: 1024px) 30vw, 100vw"
-              className="object-contain p-3"
-            />
-          </div>
         </div>
 
         <div>
@@ -133,17 +128,39 @@ export default function AboutClinic() {
             ))}
           </ul>
 
-          <div className="mt-7 flex gap-4 rounded-2xl border border-line bg-paper-dim/50 p-5">
-            <AwardIcon className="h-8 w-8 shrink-0 text-crimson" />
-            <div>
-            <p className="text-sm font-semibold text-ink">Top Doctor in Chicago</p>
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              Awarded the Castle Connolly Medical “Top Doctor” award in Chicago,
-              U.S.A. — given to one physician out of several thousand for
-              outstanding work in their area of specialisation.
-            </p>
-            </div>
-          </div>
+        </div>
+      </Reveal>
+
+      {/* ---- The award ----
+
+          Its own band, with the plaque beside the claim rather than stacked
+          under the portrait. The plaque is the evidence for the sentence next
+          to it, and evidence a reader has to scroll away from to find is doing
+          none of its work. */}
+      <Reveal className="mt-20 grid gap-10 rounded-3xl border border-line bg-paper-dim/40 p-8 sm:p-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div>
+          <span className="inline-flex items-center gap-2 rounded-full bg-crimson/10 px-3 py-1.5 text-xs font-medium text-crimson">
+            <AwardIcon className="h-4 w-4" />
+            Castle Connolly, 2001
+          </span>
+
+          <h3 className="mt-5 h1 text-2xl sm:text-3xl">Top Doctor in Chicago</h3>
+
+          <p className="mt-5 text-base leading-relaxed text-ink-soft">
+            {site.doctor.name} received the Castle Connolly Medical “Top Doctor”
+            award in Chicago, U.S.A. It is given to one physician out of several
+            thousand, for dedicated and outstanding work in their area of
+            specialisation.
+          </p>
+        </div>
+
+        <div className="zoom-frame relative aspect-[3/4] rounded-2xl bg-paper">
+          <SiteImage
+            src={images.award}
+            alt="The Castle Connolly Top Doctor plaque awarded to Dr. Naseem Chaudhry"
+            sizes="(min-width: 1024px) 32vw, 100vw"
+            className="object-contain p-4"
+          />
         </div>
       </Reveal>
 

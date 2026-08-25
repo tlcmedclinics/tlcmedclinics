@@ -3,6 +3,7 @@ import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
 import { clinicInstant, formatClinicTime } from "@/lib/clinic-time";
+import { sendSmsMany, smsBody } from "@/lib/sms";
 import type { Appointment } from "@/types";
 
 // GET /api/notifications/reminders
@@ -309,6 +310,37 @@ export async function GET(req: NextRequest) {
           }),
         ])
       ),
+    ]);
+
+    // ---- The same two reminders, by SMS ----
+    //
+    // The patient only. patientPhone is already on the appointment, so this
+    // costs no extra reads; a doctor's number lives on their user document and
+    // fetching it per appointment would add a round trip to every tick — and
+    // doctors and admins are watching the panel, where the in-app notification
+    // has already landed.
+    //
+    // Deliberately NOT inside the Promise.all above: sendSmsMany never
+    // rejects, but keeping it separate means a Twilio outage cannot interfere
+    // with the notification writes that matter more.
+    await sendSmsMany([
+      ...dayBefore.map((a) => ({
+        to: a.patientPhone,
+        body: smsBody(
+          `Reminder: ${a.service} tomorrow, ${readableWhen(a)}` +
+            (a.doctorName ? ` with Dr. ${a.doctorName}` : "") +
+            "."
+        ),
+      })),
+      ...startingSoon.map((a) => ({
+        to: a.patientPhone,
+        body: smsBody(
+          `Your ${a.service} appointment starts at ${formatClinicTime(a.time)}` +
+            (a.consultMode === "online"
+              ? ". Open your dashboard to join."
+              : ". Please head to the clinic.")
+        ),
+      })),
     ]);
 
     // Stamp them so the next tick doesn't re-notify. Written after the

@@ -56,14 +56,21 @@ export default function Reveal({
     return () => observer.disconnect();
   }, []);
 
+  // `as` makes this a dynamic element, and TypeScript cannot reconcile one ref
+  // type against the union of every element it might become — the cast to
+  // RefObject<HTMLDivElement> failed the production build as soon as Reveal was
+  // used with as="li", because a div ref is not an li ref. ElementType is
+  // React's own escape hatch for a component whose tag is chosen at runtime.
+  const Component = Tag as React.ElementType;
+
   return (
-    <Tag
-      ref={ref as React.RefObject<HTMLDivElement>}
+    <Component
+      ref={ref}
       data-shown={shown}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
       className={`reveal ${className}`}
     >
       {children}
-    </Tag>
+    </Component>
   );
 }
