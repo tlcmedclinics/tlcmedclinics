@@ -115,7 +115,7 @@ export const treatmentPages: ContentPage[] = [
   },
   {
     slug: "micro-needling-with-prp",
-    title: "Micro-needling with PRP (Vampire Facial)",
+    title: "Micro-needling with PRP",
     summary:
       "Full-face micro-needling with platelet-rich plasma, for acne scars, wrinkles, age spots and sun damage.",
     group: "treatments",
