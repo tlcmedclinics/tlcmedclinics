@@ -12,23 +12,12 @@ const { version } = require("./package.json");
 /**
  * Which build is running, printed to the browser console by SiteChrome.
  *
- * This used to be `new Date().toISOString()`, and that broke the production
- * build. `next build` runs two separate webpack compilations — one for the
- * server, one for the client — and each evaluates this file independently, so
- * the two got timestamps a few milliseconds apart. An `env` value is inlined
- * into whichever modules read it, so SiteChrome.tsx compiled to different
- * bytes on the server than on the client, and the server then asked for a
- * module the client manifest had no matching entry for:
- *
- *   Error: Could not find the module ".../SiteChrome.tsx#default" in the
- *   React Client Manifest.
- *
- * SiteChrome is the only file that reads this value, which is why it was the
- * only one named. `next dev` compiles once, so it never appeared locally.
- *
- * Whatever goes here has to be identical on every evaluation. A package
- * version is; a clock is not. Set NEXT_PUBLIC_BUILD_STAMP in Hostinger's
- * environment variables if you want something more specific per deploy.
+ * Deliberately NOT `new Date()`. `next build` runs two separate webpack
+ * compilations, server and client, and each evaluates this file, so a clock
+ * gives them different values — and an `env` value is inlined into whichever
+ * modules read it. A package version is the same on every evaluation. Set
+ * NEXT_PUBLIC_BUILD_STAMP in Hostinger's environment variables for something
+ * more specific per deploy.
  */
 const BUILD_STAMP = process.env.NEXT_PUBLIC_BUILD_STAMP || `v${version}`;
 
@@ -36,6 +25,38 @@ const BUILD_STAMP = process.env.NEXT_PUBLIC_BUILD_STAMP || `v${version}`;
 const nextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_STAMP: BUILD_STAMP,
+  },
+
+  /**
+   * Generate the static pages in ONE process instead of sixty-three.
+   *
+   * WHY. The Hostinger build kept dying with:
+   *
+   *   Could not find the module ".../SiteChrome.tsx#default" in the React
+   *   Client Manifest. This is probably a bug in the React Server Components
+   *   bundler.
+   *
+   * It reads like a broken import, and it isn't. Two things say so. First, a
+   * different set of pages failed on each run — /about and /register one time,
+   * /_not-found and /privacy the next — and a genuinely broken module fails the
+   * same pages every time. Second, /_not-found contains none of this project's
+   * code at all; it is the root layout and nothing else. So SiteChrome compiles
+   * fine and is in the manifest; some of the workers just can't see it.
+   *
+   * The log line above the failure is "Generating static pages using 63
+   * workers". Each of those is a process that loads the client reference
+   * manifest, and this is shared hosting with limited memory — the same build
+   * is already falling back to the WASM build of SWC because the native binary
+   * won't load. Serialising removes the race outright.
+   *
+   * COST: a slower build. Ninety-nine pages in one process is seconds, not
+   * minutes, and a build that takes a minute longer beats one that fails.
+   *
+   * If deploys move to a machine with real memory, raise this or delete it.
+   */
+  experimental: {
+    cpus: 1,
+    workerThreads: false,
   },
 
   images: {
