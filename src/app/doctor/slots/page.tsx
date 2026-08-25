@@ -7,6 +7,8 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { useT } from "@/contexts/LanguageContext";
 import { formatClinicTime } from "@/lib/clinic-time";
 import Loader, { InlineSpinner, SkeletonRows } from "@/components/Loader";
+import SlotBuilder, { type SlotDraft } from "@/components/SlotBuilder";
+import type { Service } from "@/types";
 import type { Leave, Slot } from "@/types/slot";
 
 /**
@@ -30,6 +32,7 @@ export default function DoctorSlotsPage() {
 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [leaves, setLeaves] = useState<Leave[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingLeave, setSavingLeave] = useState(false);
@@ -57,6 +60,16 @@ export default function DoctorSlotsPage() {
     load();
   }, [load]);
 
+  // Only used to let a doctor tie a time to one treatment. A failure here
+  // costs that dropdown and nothing else, so it is deliberately not part of
+  // `load` and never blocks the calendar.
+  useEffect(() => {
+    fetch("/api/services")
+      .then((res) => (res.ok ? res.json() : []))
+      .then(setServices)
+      .catch(() => {});
+  }, []);
+
   /** Slots grouped by day, each day's times in order. */
   const byDate = useMemo(() => {
     const map = new Map<string, Slot[]>();
@@ -69,43 +82,25 @@ export default function DoctorSlotsPage() {
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
   }, [slots]);
 
-  async function addSlots(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = e.currentTarget;
-    const data = new FormData(form);
-
-    const times = String(data.get("times") ?? "")
-      .split(",")
-      .map((x) => x.trim())
-      .filter(Boolean);
-
-    if (!data.get("date") || times.length === 0) {
-      toast.error("Add a date and at least one time (e.g. 9:00 AM, 2:45 PM).");
-      return;
-    }
-
+  async function addSlots(draft: SlotDraft): Promise<boolean> {
     setSaving(true);
     try {
       const res = await authedFetch("/api/slots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // No doctorId: the server takes it from the token.
-        body: JSON.stringify({
-          date: data.get("date"),
-          times,
-          durationMinutes: Number(data.get("durationMinutes")) || 30,
-          mode: data.get("mode"),
-          service: data.get("service") || undefined,
-        }),
+        body: JSON.stringify(draft),
       });
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error);
 
-      toast.success(`${times.length} time${times.length === 1 ? "" : "s"} added.`);
-      form.reset();
+      const n = draft.times.length;
+      toast.success(`${n} time${n === 1 ? "" : "s"} opened.`);
       load();
+      return true;
     } catch (err) {
       toast.error(err instanceof Error && err.message ? err.message : t("error.saveFailed"));
+      return false;
     } finally {
       setSaving(false);
     }
@@ -217,39 +212,12 @@ export default function DoctorSlotsPage() {
       </p>
 
       {/* ---- Add times ---- */}
-      <form onSubmit={addSlots} className="card card-pad mt-6 grid gap-4 sm:grid-cols-2">
-        <label className="field">
-          <span className="label">Date</span>
-          <input name="date" type="date" required min={todayIso()} className="input numeric" />
-        </label>
-
-        <label className="field">
-          <span className="label">In clinic or online</span>
-          <select name="mode" className="input" defaultValue="online">
-            <option value="online">Online (telemedicine)</option>
-            <option value="in-clinic">In clinic</option>
-          </select>
-        </label>
-
-        <label className="field sm:col-span-2">
-          <span className="label">Times — comma-separated</span>
-          <input name="times" required placeholder="9:00 AM, 9:30 AM, 2:45 PM" className="input" />
-          <span className="field-hint">
-            Write AM or PM. A bare &ldquo;2:45&rdquo; is read as the early morning.
-          </span>
-        </label>
-
-        <label className="field">
-          <span className="label">Minutes each</span>
-          <input name="durationMinutes" type="number" min={5} placeholder="30" className="input numeric" />
-        </label>
-
-        <div className="flex items-end">
-          <button type="submit" disabled={saving} className="btn-indigo w-full">
-            {saving ? <InlineSpinner /> : "Add times"}
-          </button>
-        </div>
-      </form>
+      <SlotBuilder
+        existingSlots={slots}
+        services={services}
+        busy={saving}
+        onCreate={addSlots}
+      />
 
       {/* ---- Leave ---- */}
       <section className="mt-10">

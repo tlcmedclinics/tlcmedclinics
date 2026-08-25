@@ -52,6 +52,17 @@ export const site = {
     { days: CLINIC_DAYS, opens: "16:00", closes: "20:00" },
   ],
   /**
+   * Where the online day starts and ends by default — the 24-hour form of the
+   * "Telemedicine" line in `hours` above.
+   *
+   * Only a starting point. A doctor opening online times can move both ends,
+   * because telemedicine is not tied to the building: a consultant seeing
+   * patients at 9pm from home is the ordinary case, not the exception. The
+   * in-clinic grid gets no such freedom — `openingHours` is when the doors are
+   * actually unlocked.
+   */
+  telemedicineWindow: { opens: "11:00", closes: "21:30" },
+  /**
    * Public profiles that belong to this clinic — Facebook, Instagram, the
    * Google Business Profile link, a Marham/Oladoc listing. Google uses these
    * (schema.org `sameAs`) to confirm the website and the listings are the same

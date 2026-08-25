@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { normaliseClinicTime } from "@/lib/clinic-time";
+import { formatClinicTime, normaliseClinicTime } from "@/lib/clinic-time";
+import { overlaps } from "@/lib/slot-grid";
 import { isOnLeave } from "@/lib/leaves";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Slot } from "@/types/slot";
@@ -151,6 +152,53 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // A doctor cannot be in two places at once, so a new time may not run into
+  // one that already exists for them that day — in clinic or online, open or
+  // booked. The form greys these out, but the form is not the guard: two tabs,
+  // a stale page, or an admin and the doctor working at the same moment all
+  // reach this route with times the browser thought were free.
+  //
+  // Mode is deliberately not part of the comparison. An 11:00 in-clinic session
+  // blocks an 11:00 video call exactly as hard as it blocks another in-clinic
+  // one.
+  const sessionMinutes = Number(durationMinutes) || 30;
+  try {
+    const sameDay = await adminDb
+      .collection("slots")
+      .where("doctorId", "==", doctorId)
+      .where("date", "==", date)
+      .get();
+    const existing = sameDay.docs.map((d) => d.data() as Slot);
+
+    // Against what is already stored, and against the rest of this batch —
+    // otherwise a single request could post 11:00 and 11:15 as two 30-minute
+    // sessions and neither would be there yet to object.
+    const accepted: string[] = [];
+    for (const t of timeList) {
+      const clash =
+        existing.find((s) => overlaps(t, sessionMinutes, s.time, s.durationMinutes || 30)) ??
+        (accepted.some((a) => overlaps(t, sessionMinutes, a, sessionMinutes))
+          ? { time: t, status: "available" as const }
+          : undefined);
+
+      if (clash) {
+        return NextResponse.json(
+          {
+            error: `${formatClinicTime(t)} runs into ${formatClinicTime(clash.time)}, which is already on the calendar for ${date}. Remove that time first, or pick a different one.`,
+          },
+          { status: 409 }
+        );
+      }
+      accepted.push(t);
+    }
+  } catch (err) {
+    console.error("[POST /api/slots] overlap check failed:", err);
+    return NextResponse.json(
+      { error: "Could not check the existing calendar. Please try again." },
+      { status: 503 }
+    );
+  }
+
   try {
     const batch = adminDb.batch();
     const created: Slot[] = [];
@@ -163,7 +211,7 @@ export async function POST(req: NextRequest) {
         service: service || undefined,
         date,
         time: t,
-        durationMinutes: Number(durationMinutes) || 30,
+        durationMinutes: sessionMinutes,
         mode: mode === "in-clinic" ? "in-clinic" : "online",
         status: "available",
         createdAt: new Date().toISOString(),

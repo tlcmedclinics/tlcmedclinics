@@ -6,6 +6,7 @@ import { authedFetch } from "@/lib/authed-fetch";
 import { usePagedList } from "@/lib/use-paged-list";
 import { useT } from "@/contexts/LanguageContext";
 import { useToast } from "@/contexts/ToastContext";
+import SlotBuilder, { type SlotDraft } from "@/components/SlotBuilder";
 import type { DoctorProfile, Service } from "@/types";
 import type { Slot } from "@/types/slot";
 import { formatClinicTime } from "@/lib/clinic-time";
@@ -25,14 +26,8 @@ export default function AdminSlotsPage() {
 
   const [doctorFilter, setDoctorFilter] = useState("");
 
-  const [form, setForm] = useState({
-    doctorId: "",
-    service: "",
-    date: "",
-    times: "",
-    durationMinutes: "30",
-    mode: "online" as "online" | "in-clinic",
-  });
+  /** Whose calendar the builder is writing to — separate from the list filter. */
+  const [createDoctorId, setCreateDoctorId] = useState("");
 
   async function load() {
     setLoading(true);
@@ -60,20 +55,11 @@ export default function AdminSlotsPage() {
       .catch(() => {});
   }, []);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    const doctor = doctors.find((d) => d.uid === form.doctorId);
+  async function handleCreate(draft: SlotDraft): Promise<boolean> {
+    const doctor = doctors.find((d) => d.uid === createDoctorId);
     if (!doctor) {
       toast.error("Pick a doctor first.");
-      return;
-    }
-    const times = form.times
-      .split(",")
-      .map((t) => t.trim())
-      .filter(Boolean);
-    if (!form.date || times.length === 0) {
-      toast.error("Add a date and at least one time (e.g. 9:00 AM, 9:30 AM, 2:45 PM).");
-      return;
+      return false;
     }
 
     setSubmitting(true);
@@ -81,23 +67,17 @@ export default function AdminSlotsPage() {
       const res = await authedFetch("/api/slots", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doctorId: doctor.uid,
-          doctorName: doctor.name,
-          service: form.service || undefined,
-          date: form.date,
-          times,
-          durationMinutes: Number(form.durationMinutes) || 30,
-          mode: form.mode,
-        }),
+        body: JSON.stringify({ ...draft, doctorId: doctor.uid, doctorName: doctor.name }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't create slot(s)");
-      toast.success(`${times.length} slot${times.length > 1 ? "s" : ""} added for ${doctor.name}.`);
-      setForm({ ...form, times: "" });
+      const n = draft.times.length;
+      toast.success(`${n} slot${n > 1 ? "s" : ""} added for ${doctor.name}.`);
       load();
+      return true;
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't create slot(s)");
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +135,16 @@ export default function AdminSlotsPage() {
     }
   }
 
+  /**
+   * The chosen doctor's own slots, so the builder can grey out times that are
+   * already taken. Empty until a doctor is picked — which is right: with nobody
+   * selected there is no calendar to clash with.
+   */
+  const forDoctor = useMemo(
+    () => (createDoctorId ? slots.filter((s) => s.doctorId === createDoctorId) : []),
+    [slots, createDoctorId]
+  );
+
   const visible = useMemo(() => {
     const list = doctorFilter ? slots.filter((s) => s.doctorId === doctorFilter) : slots;
     const grouped = new Map<string, Slot[]>();
@@ -183,95 +173,36 @@ export default function AdminSlotsPage() {
         themselves. A slot disappears from booking the moment it&apos;s taken.
       </p>
 
-      <form
-        onSubmit={handleCreate}
-        className="mt-6 grid gap-4 rounded-2xl border border-line/70 p-6 sm:grid-cols-2"
-      >
-        <div>
-          <label className="text-xs font-medium text-ink-soft">Doctor</label>
-          <select
-            required
-            className="input mt-1"
-            value={form.doctorId}
-            onChange={(e) => setForm({ ...form, doctorId: e.target.value })}
-          >
-            <option value="">Select doctor</option>
-            {doctors.map((d) => (
-              <option key={d.uid} value={d.uid}>
-                {d.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-ink-soft">Service (optional)</label>
-          <select
-            className="input mt-1"
-            value={form.service}
-            onChange={(e) => setForm({ ...form, service: e.target.value })}
-          >
-            <option value="">Any service</option>
-            {services.map((s) => (
-              <option key={s.id} value={s.name}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-medium text-ink-soft">Date</label>
-          <input
-            required
-            type="date"
-            className="input mt-1"
-            value={form.date}
-            onChange={(e) => setForm({ ...form, date: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-ink-soft">Duration (minutes)</label>
-          <input
-            type="number"
-            min={5}
-            step={5}
-            className="input mt-1"
-            value={form.durationMinutes}
-            onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="text-xs font-medium text-ink-soft">In-clinic or online</label>
-          <select
-            className="input mt-1"
-            value={form.mode}
-            onChange={(e) => setForm({ ...form, mode: e.target.value as "online" | "in-clinic" })}
-          >
-            <option value="online">Online (telemedicine)</option>
-            <option value="in-clinic">In clinic</option>
-          </select>
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-xs font-medium text-ink-soft">
-            Times — comma-separated (e.g. 9:00 AM, 9:30 AM, 2:45 PM)
+      {/* The same builder the doctors use, with a doctor picker on top. Two
+          copies of this form is how the admin one ended up still asking for a
+          comma-separated list months after the doctor one stopped. */}
+      <SlotBuilder
+        existingSlots={forDoctor}
+        services={services}
+        busy={submitting}
+        onCreate={handleCreate}
+        header={
+          <label className="field">
+            <span className="label">Doctor</span>
+            <select
+              required
+              className="input"
+              value={createDoctorId}
+              onChange={(e) => setCreateDoctorId(e.target.value)}
+            >
+              <option value="">Select doctor</option>
+              {doctors.map((d) => (
+                <option key={d.uid} value={d.uid}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <span className="field-hint">
+              Times below are checked against this doctor&apos;s calendar only.
+            </span>
           </label>
-          <input
-            required
-            className="input mt-1"
-            placeholder="9:00 AM, 9:30 AM, 2:45 PM"
-            value={form.times}
-            onChange={(e) => setForm({ ...form, times: e.target.value })}
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="rounded-full bg-crimson px-5 py-2.5 text-sm font-medium text-white hover:bg-crimson-deep disabled:opacity-60"
-          >
-            {submitting ? "Adding…" : "Add slot(s)"}
-          </button>
-        </div>
-      </form>
+        }
+      />
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         <SearchInput
