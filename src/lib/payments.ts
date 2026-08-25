@@ -7,6 +7,19 @@ import { sendSms, smsBody } from "@/lib/sms";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
 import { formatClinicTime } from "@/lib/clinic-time";
 
+/**
+ * How the money arrived.
+ *
+ * Widened from "card" | "paypal" when the local gateways landed. Stripe and
+ * PayPal are both unavailable to a merchant registered in Pakistan, so the two
+ * names this started with were the two that could never be used; "card" now
+ * means a card taken through Safepay, and the wallets say what they are.
+ *
+ * Matches Appointment["paymentProvider"] deliberately — this value is written
+ * straight onto the appointment.
+ */
+export type PaymentProviderId = "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
+
 export interface PendingBooking {
   id: string;
   patientId: string;
@@ -120,7 +133,7 @@ export async function releasePendingBooking(pendingBookingId: string): Promise<v
  */
 export async function confirmAppointmentPayment(
   appointmentId: string,
-  opts: { provider: "card" | "paypal"; reference: string }
+  opts: { provider: PaymentProviderId; reference: string }
 ): Promise<Appointment> {
   const ref = adminDb.collection("appointments").doc(appointmentId);
 
@@ -231,7 +244,7 @@ export async function confirmAppointmentPayment(
  */
 export async function finalizePendingBooking(
   pendingBookingId: string,
-  opts: { provider: "card" | "paypal"; reference: string }
+  opts: { provider: PaymentProviderId; reference: string }
 ): Promise<Appointment> {
   const pendingRef = adminDb.collection("pendingBookings").doc(pendingBookingId);
 

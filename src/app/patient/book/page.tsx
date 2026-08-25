@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
-import PaypalButton from "@/components/PaypalButton";
+import PaymentMethods from "@/components/PaymentMethods";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/contexts/ToastContext";
@@ -503,25 +503,6 @@ function BookAppointmentContent() {
     };
   }
 
-  async function handleStripeCheckout() {
-    const payload = bookingPayload();
-    if (!payload) return;
-    setSubmitting(true);
-    try {
-      const res = await authedFetch("/api/payments/stripe/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.url) throw new Error(data.error ?? t("common.somethingWrong"));
-      window.location.href = data.url;
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("common.somethingWrong"));
-      setSubmitting(false);
-    }
-  }
-
   /* ------------------------------- done ------------------------------- */
 
   if (step === "done") {
@@ -964,38 +945,20 @@ function BookAppointmentContent() {
             </button>
           </div>
 
+          {/* JazzCash, EasyPaisa and cards, in whatever combination the clinic
+              has credentials for. The Stripe button and the PayPal button that
+              used to be here could never have worked from Pakistan — neither
+              company onboards a merchant registered here — so they are gone
+              rather than left as two options that fail at the last step. */}
           <div className="card card-pad border-indigo/20">
             <p className="h4 text-ink">{t("book.payNow")}</p>
             <p className="mt-1 text-xs text-ink-soft">{t("book.payNowHint")}</p>
 
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={handleStripeCheckout}
-              className="btn-indigo mt-5 w-full"
-            >
-              {submitting
-                ? t("book.redirecting")
-                : `${t("book.payWithCard")}${
-                    details.amount > 0 ? ` · PKR ${details.amount.toLocaleString()}` : ""
-                  }`}
-            </button>
-
-            <div className="my-4 flex items-center gap-3 text-xs text-ink-soft">
-              <span className="h-px flex-1 bg-line" />
-              {t("book.or")}
-              <span className="h-px flex-1 bg-line" />
-            </div>
-
-            <PaypalButton
+            <PaymentMethods
+              payload={bookingPayload()}
               amount={details.amount}
-              booking={bookingPayload()}
               disabled={submitting}
-              onBusy={setSubmitting}
-              onSuccess={() => {
-                setOutcome("paid");
-                setStep("done");
-              }}
+              onBusyChange={setSubmitting}
               onError={(msg) => toast.error(msg)}
             />
           </div>
