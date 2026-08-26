@@ -83,7 +83,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
             name="category"
             required
             defaultValue={service?.category}
-            placeholder="e.g. Health Care"
+            placeholder="e.g. Mental Health"
             className="input"
             list="category-suggestions"
           />
@@ -92,7 +92,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
               category shouldn't need a developer. */}
           <datalist id="category-suggestions">
             <option value="Diagnosis" />
-            <option value="Health Care" />
+            <option value="Mental Health" />
             <option value="Skin &amp; Aesthetics" />
           </datalist>
         </label>

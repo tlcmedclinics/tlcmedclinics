@@ -93,7 +93,7 @@ function DesktopItem({
           }`}
         >
           <div
-            className={`rounded-2xl border border-line bg-paper p-5 shadow-[0_24px_60px_-24px_rgba(36,31,102,0.45)] ${
+            className={`rounded-2xl border border-line bg-paper p-5 shadow-[0_24px_60px_-24px_rgba(21,86,59,0.45)] ${
               item.width === "lg" ? "w-[42rem]" : "w-[19rem]"
             }`}
           >

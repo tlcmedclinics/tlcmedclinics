@@ -122,7 +122,7 @@ export const expectPages: ContentPage[] = [
       // Whole categories, so a service the clinic adds in the admin panel
       // appears here the same day without anyone editing this file.
       { kind: "prices", caption: "Diagnosis", category: "Diagnosis" },
-      { kind: "prices", caption: "Consultation fees", category: "Health Care" },
+      { kind: "prices", caption: "Consultation fees", category: "Mental Health" },
       { kind: "prices", caption: "Treatments", category: "Skin & Aesthetics" },
       {
         kind: "note",

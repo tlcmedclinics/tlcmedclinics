@@ -22,13 +22,20 @@ import { InlineSpinner } from "@/components/Loader";
  * a second payment against a slot that is already being held for the first.
  */
 
-type Method = { id: string; label: string; blurb: string };
+type Method = {
+  id: string;
+  label: string;
+  blurb: string;
+  /** Which route starts this payment — see /api/payments/methods. */
+  via: "redirect" | "stripe";
+};
 
 /** The wallet logos are text — a wordmark we don't have a licence to ship. */
 const ICON: Record<string, string> = {
   jazzcash: "JC",
   easypaisa: "EP",
   safepay: "＊",
+  stripe: "▮",
 };
 
 export default function PaymentMethods({
@@ -55,23 +62,33 @@ export default function PaymentMethods({
       .catch(() => setMethods([]));
   }, []);
 
-  async function pay(gateway: string) {
+  async function pay(method: Method) {
     if (!payload || starting) return;
-    setStarting(gateway);
+    setStarting(method.id);
     onBusyChange?.(true);
 
     try {
-      const res = await authedFetch("/api/payments/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...payload, gateway }),
-      });
+      // Stripe answers on its own route with `{ url }` and no `kind`, so it is
+      // normalised to the same shape here rather than branching twice further
+      // down. Everything after this point treats all methods alike.
+      const res = await authedFetch(
+        method.via === "stripe" ? "/api/payments/stripe/checkout" : "/api/payments/start",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body:
+            method.via === "stripe"
+              ? JSON.stringify(payload)
+              : JSON.stringify({ ...payload, gateway: method.id }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(await readApiError(res, "Could not start the payment."));
       }
 
-      const handover = await res.json();
+      const raw = await res.json();
+      const handover = raw.kind ? raw : { kind: "url" as const, url: raw.url };
 
       if (handover.kind === "url") {
         window.location.href = handover.url;
@@ -136,7 +153,7 @@ export default function PaymentMethods({
           key={m.id}
           type="button"
           disabled={busy}
-          onClick={() => pay(m.id)}
+          onClick={() => pay(m)}
           className="flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3.5 text-left transition-colors hover:border-indigo hover:bg-indigo/5 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <span

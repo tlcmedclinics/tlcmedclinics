@@ -25,7 +25,7 @@ const CATEGORY_META: Record<
     blurb: "A proper evaluation first — a treatment plan built on a real diagnosis.",
     Icon: StethoscopeIcon,
   },
-  "Health Care": {
+  "Mental Health": {
     blurb:
       "Psychiatry, therapy and ketamine treatment, led by a U.S. board certified physician.",
     Icon: BrainIcon,
@@ -37,7 +37,7 @@ const CATEGORY_META: Record<
 };
 
 /** The order the three areas should be read in. Anything else follows them. */
-const CATEGORY_ORDER = ["Diagnosis", "Health Care", "Skin & Aesthetics"];
+const CATEGORY_ORDER = ["Diagnosis", "Mental Health", "Skin & Aesthetics"];
 
 /** Must match the anchor ids the /services page renders. */
 function categoryId(category: string) {

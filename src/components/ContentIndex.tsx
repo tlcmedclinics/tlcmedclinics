@@ -77,7 +77,7 @@ export default function ContentIndex({
                 <Reveal key={p.slug} delay={Math.min(i, 5) * 70}>
                   <Link
                     href={`${meta.href}/${p.slug}`}
-                    className="group flex h-full flex-col rounded-2xl border border-line/70 bg-paper-dim/40 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo/40 hover:bg-paper-dim hover:shadow-[0_18px_40px_-28px_rgba(36,31,102,0.6)]"
+                    className="group flex h-full flex-col rounded-2xl border border-line/70 bg-paper-dim/40 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo/40 hover:bg-paper-dim hover:shadow-[0_18px_40px_-28px_rgba(21,86,59,0.6)]"
                   >
                     <span className="font-medium text-ink group-hover:text-indigo-deep">
                       {p.title}

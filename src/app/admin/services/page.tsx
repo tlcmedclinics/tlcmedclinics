@@ -12,7 +12,7 @@ import { useConfirm } from "@/contexts/ConfirmContext";
 import { SkeletonRows } from "@/components/Loader";
 
 /** The clinic's three areas of care, in the order they should be offered. */
-const CATEGORY_ORDER = ["Diagnosis", "Health Care", "Skin & Aesthetics"];
+const CATEGORY_ORDER = ["Diagnosis", "Mental Health", "Skin & Aesthetics"];
 
 export default function AdminServicesPage() {
   const t = useT();

@@ -109,7 +109,7 @@ export default async function CareAreas() {
               <Reveal key={category} delay={i * 110}>
                 <Link
                   href={`/services#${categoryId(category)}`}
-                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/70 bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-indigo/30 hover:shadow-[0_24px_50px_-30px_rgba(36,31,102,0.55)]"
+                  className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/70 bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-indigo/30 hover:shadow-[0_24px_50px_-30px_rgba(21,86,59,0.55)]"
                 >
                   <div className="zoom-frame relative aspect-[4/3]">
                     <SiteImage
@@ -120,7 +120,7 @@ export default async function CareAreas() {
                     {/* The icon sits half over the photograph's lower edge, so
                         picture and text read as one card rather than two
                         stacked blocks. */}
-                    <span className="absolute -bottom-6 start-6 grid h-12 w-12 place-items-center rounded-xl bg-paper text-indigo shadow-[0_10px_24px_-12px_rgba(36,31,102,0.6)]">
+                    <span className="absolute -bottom-6 start-6 grid h-12 w-12 place-items-center rounded-xl bg-paper text-indigo shadow-[0_10px_24px_-12px_rgba(21,86,59,0.6)]">
                       <Icon className="h-6 w-6" />
                     </span>
                   </div>

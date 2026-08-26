@@ -70,7 +70,7 @@ export default async function LatestPosts() {
             <Reveal key={post.id} delay={i * 90}>
               <Link
                 href={`/blog/${post.slug}`}
-                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/70 bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-indigo/30 hover:shadow-[0_24px_50px_-30px_rgba(36,31,102,0.55)]"
+                className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line/70 bg-paper transition-all duration-300 hover:-translate-y-1 hover:border-indigo/30 hover:shadow-[0_24px_50px_-30px_rgba(21,86,59,0.55)]"
               >
                 <div className="relative h-44 w-full shrink-0 overflow-hidden bg-mist">
                   {post.coverImage ? (

@@ -139,7 +139,7 @@ export default function ContactPage() {
         </div>
 
         <div>
-          <div className="overflow-hidden rounded-3xl border border-line shadow-[0_24px_60px_-40px_rgba(36,31,102,0.6)]">
+          <div className="overflow-hidden rounded-3xl border border-line shadow-[0_24px_60px_-40px_rgba(21,86,59,0.6)]">
             <iframe
               src={MAP_SRC}
               title={`Map showing ${site.name}, ${site.address}`}

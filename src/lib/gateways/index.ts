@@ -85,11 +85,54 @@ export const GATEWAYS: GatewayMeta[] = [
   },
 ];
 
-/** True when every variable that gateway needs is present and non-empty. */
-export function isConfigured(id: GatewayId): boolean {
+/**
+ * Gateways switched off by hand, whatever their credentials say.
+ *
+ * `PAYMENTS_DISABLED=safepay,jazzcash`. Deleting the credentials would also
+ * work, and is worse: a gateway that starts misbehaving needs turning off in
+ * one line at three in the afternoon, not a hunt for where the keys were
+ * written down so they can be pasted back tomorrow.
+ */
+function disabledIds(): string[] {
+  return (process.env.PAYMENTS_DISABLED ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/** True when every variable that gateway needs is set, and it isn't switched off. */
+export function isConfigured(id: string): boolean {
+  if (disabledIds().includes(id)) return false;
   const meta = GATEWAYS.find((g) => g.id === id);
   if (!meta) return false;
   return meta.requires.every((key) => Boolean(process.env[key]?.trim()));
+}
+
+/**
+ * Stripe, listed alongside the local gateways but reached by a different road.
+ *
+ * It is not in GATEWAYS because it is not one of them: the three above are
+ * redirect gateways this codebase drives itself, while Stripe has its own
+ * route, its own success page and its own verify call, all of which already
+ * work. Bending it into the same shape would mean rewriting a working payment
+ * path to look tidy, and payment paths are the last place to trade working for
+ * tidy.
+ *
+ * One thing to be clear about, because it will matter later: Stripe does not
+ * pay out to a merchant registered in Pakistan. On test keys the whole flow
+ * runs end to end, which is genuinely useful for building and demonstrating
+ * the site. Real money still needs one of the local three.
+ */
+export const STRIPE_METHOD = {
+  id: "stripe",
+  label: "Debit or credit card",
+  blurb: "Visa and Mastercard, processed by Stripe.",
+  requires: ["STRIPE_SECRET_KEY"],
+} as const;
+
+export function isStripeConfigured(): boolean {
+  if (disabledIds().includes("stripe")) return false;
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
 }
 
 /**

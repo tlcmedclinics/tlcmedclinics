@@ -15,14 +15,42 @@
   --ink-soft: #565b66;
   --crimson: #d81f2a;
   --crimson-deep: #a8151e;
-  --indigo: #362f8f;
-  --indigo-deep: #241f66;
-  --indigo-soft: #6c64c2;
+
+  /* The second brand colour is the green from the logo's hand.
+     ------------------------------------------------------------------
+     These three were indigo (#362f8f / #241f66 / #6c64c2), sampled from
+     the logo PNG in public/images — which is red and indigo. The clinic's
+     printed identity is red and *green*, so the website and the letterhead
+     disagreed with each other. Green wins: it is the older mark.
+
+     The names still say "indigo" on purpose. Renaming them means touching
+     `text-indigo`, `btn-indigo` and `pill-indigo` in about fifty files, and
+     a colour change should not be able to break a layout. Renaming is a
+     separate job, done on its own, when nothing else is in flight.
+
+     Contrast, measured against --paper (#fbfaf8) and white:
+       #238055  4.69:1 as text,  4.89:1 for white on it
+       #15563b  8.14:1 as text,  8.66:1 for white on it
+       #2b7d59  4.82:1 as text,  5.02:1 for white on it
+
+     --indigo is the green sampled straight out of the logo (#278a5f),
+     darkened by four percent. That sounds like fussing, and it is the
+     difference between passing and failing: the logo green measures 4.12:1
+     against this page, and small text needs 4.5:1. Four percent is not
+     visible side by side; failing text is visible to anyone reading on a
+     phone outdoors.
+
+     --indigo-soft is not lighter than --indigo, despite the name. It has
+     one job — the ::selection highlight, which draws white text on it — so
+     it has to stay dark enough to carry white. */
+  --indigo: #238055;
+  --indigo-deep: #15563b;
+  --indigo-soft: #2b7d59;
   --line: #dfe1e6;
 
   /* Semantic states — derived from the palette, not new brand colours. */
-  --success: #10796b;
-  --success-soft: #e6f4f1;
+  --success: #0d7a72;
+  --success-soft: #e3f3f1;
   --warning: #9a6410;
   --warning-soft: #fdf3e2;
   --danger: var(--crimson-deep);
@@ -33,9 +61,9 @@
   --radius-lg: 1.25rem;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 12px 30px -18px rgba(36, 31, 102, 0.35);
-  --shadow-card: 0 1px 2px rgba(25, 27, 31, 0.04), 0 8px 24px -16px rgba(36, 31, 102, 0.22);
-  --shadow-pop: 0 20px 60px -25px rgba(36, 31, 102, 0.4);
+  --shadow-soft: 0 12px 30px -18px rgba(21, 86, 59, 0.35);
+  --shadow-card: 0 1px 2px rgba(25, 27, 31, 0.04), 0 8px 24px -16px rgba(21, 86, 59, 0.22);
+  --shadow-pop: 0 20px 60px -25px rgba(21, 86, 59, 0.4);
   --shadow-crimson: 0 8px 24px -8px rgba(216, 31, 42, 0.55);
 
   --shell-sidebar: 16rem;
@@ -242,7 +270,7 @@ html[lang="ur"] .numeric {
   }
   .input:focus-visible {
     border-color: var(--indigo);
-    box-shadow: 0 0 0 3px rgba(54, 47, 143, 0.12);
+    box-shadow: 0 0 0 3px rgba(35, 128, 85, 0.12);
   }
   .input:disabled {
     background: var(--paper-dim);
@@ -310,7 +338,7 @@ html[lang="ur"] .numeric {
   .btn-outline { border: 1px solid var(--line); color: var(--ink); background: transparent; }
   .btn-outline:hover:not(:disabled) { border-color: var(--indigo); color: var(--indigo); }
 
-  .btn-ghost { border: 1px solid rgba(54, 47, 143, 0.3); color: var(--indigo); background: transparent; }
+  .btn-ghost { border: 1px solid rgba(35, 128, 85, 0.3); color: var(--indigo); background: transparent; }
   .btn-ghost:hover:not(:disabled) { background: var(--indigo); color: white; }
 
   .btn-danger { border: 1px solid var(--line); color: var(--ink-soft); background: transparent; }
@@ -360,7 +388,7 @@ html[lang="ur"] .numeric {
     white-space: nowrap;
   }
   .pill-neutral { background: var(--mist); color: var(--ink-soft); }
-  .pill-indigo { background: rgba(54, 47, 143, 0.1); color: var(--indigo); }
+  .pill-indigo { background: rgba(35, 128, 85, 0.1); color: var(--indigo); }
   .pill-success { background: var(--success-soft); color: var(--success); }
   .pill-warning { background: var(--warning-soft); color: var(--warning); }
   .pill-danger { background: var(--danger-soft); color: var(--danger); }
@@ -485,7 +513,7 @@ html[lang="ur"] .numeric {
   overflow: hidden;
   /* A tinted panel behind the picture, so a missing or still-loading image
      reads as an empty space in the layout rather than a broken icon. */
-  background: var(--mist, rgba(54, 47, 143, 0.06));
+  background: var(--mist, rgba(35, 128, 85, 0.06));
 }
 .zoom-frame img {
   transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.3, 1);

@@ -39,7 +39,18 @@ export default function Footer() {
                 height={35}
                 className="h-9 w-auto"
               />
-              <p className="h3 text-paper">{site.name}</p>
+              {/* The same two-line lockup the header uses, set in white.
+                  This was one line of `.h3` — the body heading style, dark
+                  ink, sentence case — and on the green it read as a smudge
+                  rather than as the clinic's name. The mark should look like
+                  itself wherever it appears; only its colour changes with
+                  the background. */}
+              <span className="flex flex-col leading-none">
+                <span className="text-lg font-extrabold tracking-tight text-paper">TLC</span>
+                <span className="font-mono text-[0.5rem] uppercase tracking-[0.16em] text-paper/70">
+                  Med Clinics
+                </span>
+              </span>
             </div>
 
             <p className="mt-3 max-w-xs text-sm text-paper/65">{site.tagline}</p>
