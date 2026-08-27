@@ -219,6 +219,11 @@ export interface BlogPost {
   slug: string;
   excerpt: string;
   content: string;
+
+  /** The Urdu version, optional — see the note on Service, and lib/bilingual.ts. */
+  titleUr?: string;
+  excerptUr?: string;
+  contentUr?: string;
   coverImage?: string; // Cloudinary URL
   authorName: string;
   published: boolean;
@@ -276,6 +281,24 @@ export interface Service {
   intro: string;
   points: string[];
   treatments: string[];
+
+  /**
+   * The same five fields in Urdu, written by the clinic in the admin panel.
+   *
+   * All optional, and read through src/lib/bilingual.ts, which falls back to
+   * the English when one is missing. That matters: a catalogue is translated a
+   * service at a time over weeks, and during those weeks a patient reading
+   * Urdu should see English treatment names rather than gaps.
+   *
+   * The suffix convention (`x` / `xUr`) is deliberately dull. It means a new
+   * translatable field costs one line here and no change anywhere else — the
+   * helpers find the pair by name.
+   */
+  nameUr?: string;
+  shortUr?: string;
+  introUr?: string;
+  pointsUr?: string[];
+  treatmentsUr?: string[];
   price?: number; // full price in PKR, shown on the booking form
   /**
    * What is taken online to hold the appointment, when that is less than the

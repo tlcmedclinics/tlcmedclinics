@@ -4,7 +4,18 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
+import BilingualField, { type BilingualValue } from "@/components/BilingualField";
 import type { Service } from "@/types";
+
+/** English and Urdu together, so one piece of state holds one field. */
+const pair = (en?: string, ur?: string): BilingualValue => ({ en: en ?? "", ur: ur ?? "" });
+const listPair = (en?: string[], ur?: string[]): BilingualValue => ({
+  en: (en ?? []).join("\n"),
+  ur: (ur ?? []).join("\n"),
+});
+/** "a\nb\n\nc" -> ["a","b","c"]. Blank lines are typing, not content. */
+const lines = (value: string) =>
+  value.split("\n").map((l) => l.trim()).filter(Boolean);
 
 export default function ServiceForm({ service }: { service?: Service }) {
   const router = useRouter();
@@ -12,6 +23,17 @@ export default function ServiceForm({ service }: { service?: Service }) {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // The translatable fields are controlled state rather than form inputs read
+  // at submit: each holds two values that have to travel together, and the
+  // "draft the Urdu" button writes into one of them from outside the form.
+  const [name, setName] = useState(pair(service?.name, service?.nameUr));
+  const [short, setShort] = useState(pair(service?.short, service?.shortUr));
+  const [intro, setIntro] = useState(pair(service?.intro, service?.introUr));
+  const [points, setPoints] = useState(listPair(service?.points, service?.pointsUr));
+  const [treatments, setTreatments] = useState(
+    listPair(service?.treatments, service?.treatmentsUr)
+  );
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -35,12 +57,17 @@ export default function ServiceForm({ service }: { service?: Service }) {
 
     const form = new FormData(e.currentTarget);
     const payload = {
-      name: form.get("name"),
+      name: name.en,
+      nameUr: name.ur,
       category: form.get("category"),
-      short: form.get("short"),
-      intro: form.get("intro"),
-      points: form.get("points"),
-      treatments: form.get("treatments"),
+      short: short.en,
+      shortUr: short.ur,
+      intro: intro.en,
+      introUr: intro.ur,
+      points: points.en,
+      pointsUr: lines(points.ur),
+      treatments: treatments.en,
+      treatmentsUr: lines(treatments.ur),
       price: form.get("price"),
       advancePayment: form.get("advancePayment"),
       durationMinutes: form.get("durationMinutes"),
@@ -72,18 +99,22 @@ export default function ServiceForm({ service }: { service?: Service }) {
 
   return (
     <form onSubmit={handleSubmit} className="mt-8 max-w-2xl space-y-5">
+      <BilingualField
+        label="Service name"
+        required
+        value={name}
+        onChange={setName}
+        placeholder="e.g. Ketamine Therapy"
+      />
+
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Service name</span>
-          <input name="name" required defaultValue={service?.name} placeholder="e.g. Ketamine Therapy" className="input" />
-        </label>
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-soft">Category</span>
           <input
             name="category"
             required
             defaultValue={service?.category}
-            placeholder="e.g. Mental Health"
+            placeholder="e.g. Health Care"
             className="input"
             list="category-suggestions"
           />
@@ -92,48 +123,46 @@ export default function ServiceForm({ service }: { service?: Service }) {
               category shouldn't need a developer. */}
           <datalist id="category-suggestions">
             <option value="Diagnosis" />
-            <option value="Mental Health" />
+            <option value="Health Care" />
             <option value="Skin &amp; Aesthetics" />
           </datalist>
         </label>
       </div>
 
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-ink-soft">Short description (shown on cards)</span>
-        <textarea name="short" rows={2} defaultValue={service?.short} className="input resize-none" />
-      </label>
+      <BilingualField
+        label="Short description (shown on cards)"
+        multiline
+        rows={2}
+        value={short}
+        onChange={setShort}
+      />
 
-      <label className="block">
-        <span className="mb-1.5 block text-xs font-medium text-ink-soft">Full introduction</span>
-        <textarea name="intro" rows={3} defaultValue={service?.intro} className="input resize-none" />
-      </label>
+      <BilingualField
+        label="Full introduction"
+        multiline
+        rows={4}
+        value={intro}
+        onChange={setIntro}
+      />
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
-            Good-to-know points (one per line)
-          </span>
-          <textarea
-            name="points"
-            rows={4}
-            defaultValue={service?.points?.join("\n")}
-            className="input resize-none"
-            placeholder={"Common signs...\nDiagnosis method...\nWhat to expect..."}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">
-            Treatments offered (one per line)
-          </span>
-          <textarea
-            name="treatments"
-            rows={4}
-            defaultValue={service?.treatments?.join("\n")}
-            className="input resize-none"
-            placeholder={"Treatment A\nTreatment B"}
-          />
-        </label>
-      </div>
+      <BilingualField
+        label="Good-to-know points (one per line)"
+        multiline
+        rows={4}
+        value={points}
+        onChange={setPoints}
+        placeholder={"Common signs...\nDiagnosis method...\nWhat to expect..."}
+        hint="One point per line. Keep the same number of lines in both columns — they are shown as one list, not paired up."
+      />
+
+      <BilingualField
+        label="Treatments offered (one per line)"
+        multiline
+        rows={4}
+        value={treatments}
+        onChange={setTreatments}
+        placeholder={"Treatment A\nTreatment B"}
+      />
 
       <div className="grid gap-5 sm:grid-cols-3">
         <label className="block">

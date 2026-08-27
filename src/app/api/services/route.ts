@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import type { Service } from "@/types";
-import { optionalNumber } from "@/lib/service-fields";
+import { optionalNumber, optionalText, toLines } from "@/lib/service-fields";
 
 function slugify(input: string) {
   return String(input)
@@ -39,18 +39,16 @@ export async function POST(req: NextRequest) {
     name: body.name,
     short: body.short ?? "",
     intro: body.intro ?? "",
-    points: Array.isArray(body.points)
-      ? body.points
-      : String(body.points ?? "")
-          .split("\n")
-          .map((p: string) => p.trim())
-          .filter(Boolean),
-    treatments: Array.isArray(body.treatments)
-      ? body.treatments
-      : String(body.treatments ?? "")
-          .split("\n")
-          .map((t: string) => t.trim())
-          .filter(Boolean),
+    points: toLines(body.points),
+    treatments: toLines(body.treatments),
+
+    // The Urdu columns. Absent rather than "" when the clinic hasn't written
+    // them yet — see optionalText, and lib/bilingual.ts for what reads them.
+    nameUr: optionalText(body.nameUr),
+    shortUr: optionalText(body.shortUr),
+    introUr: optionalText(body.introUr),
+    pointsUr: toLines(body.pointsUr),
+    treatmentsUr: toLines(body.treatmentsUr),
     price: optionalNumber(body.price),
     advancePayment: optionalNumber(body.advancePayment),
     durationMinutes: optionalNumber(body.durationMinutes),

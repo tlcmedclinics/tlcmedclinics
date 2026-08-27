@@ -56,7 +56,7 @@ export default async function ContentLayout({ page }: { page: ContentPage }) {
             </div>
             <div
               aria-hidden
-              className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,52,0.95)_0%,rgba(20,17,52,0.88)_45%,rgba(20,17,52,0.55)_100%)]"
+              className="absolute inset-0 bg-[linear-gradient(100deg,rgba(13,61,42,0.95)_0%,rgba(13,61,42,0.88)_45%,rgba(13,61,42,0.55)_100%)]"
             />
           </>
         )}

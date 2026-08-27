@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Bilingual, BilingualList } from "@/components/Bilingual";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
@@ -95,11 +96,17 @@ export default async function ServiceDetailPage({
       </Link>
 
       <p className="eyebrow mt-6 text-indigo">{service.category}</p>
-      <h1 className="mt-3 h1-hero">{service.name}</h1>
+      <h1 className="mt-3 h1-hero">
+        <Bilingual en={service.name} ur={service.nameUr} />
+      </h1>
       <VitalsLine className="mt-5 h-3 w-40" />
 
       {service.intro && (
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink-soft">{service.intro}</p>
+        <Bilingual
+          en={service.intro}
+          ur={service.introUr}
+          className="mt-6 block max-w-2xl text-lg leading-relaxed text-ink-soft"
+        />
       )}
       {typeof service.price === "number" && (
         <p className="mt-4 font-mono text-sm text-ink">
@@ -111,30 +118,36 @@ export default async function ServiceDetailPage({
         {service.points.length > 0 && (
           <div>
             <h2 className="h4 text-indigo-deep">Good to know</h2>
-            <ul className="mt-4 space-y-3">
-              {service.points.map((point) => (
-                <li key={point} className="flex gap-3 text-sm text-ink-soft">
+            <BilingualList
+              en={service.points}
+              ur={service.pointsUr}
+              className="mt-4 space-y-3"
+              renderItem={(point, i) => (
+                <li key={`${point}-${i}`} className="flex gap-3 text-sm text-ink-soft">
                   <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-crimson" />
                   {point}
                 </li>
-              ))}
-            </ul>
+              )}
+            />
           </div>
         )}
 
         {service.treatments.length > 0 && (
           <div>
             <h2 className="h4 text-indigo-deep">Treatments offered</h2>
-            <ul className="mt-4 space-y-2">
-              {service.treatments.map((t) => (
+            <BilingualList
+              en={service.treatments}
+              ur={service.treatmentsUr}
+              className="mt-4 space-y-2"
+              renderItem={(t, i) => (
                 <li
-                  key={t}
+                  key={`${t}-${i}`}
                   className="rounded-xl border border-line/70 bg-paper-dim/40 px-4 py-3 text-sm text-ink"
                 >
                   {t}
                 </li>
-              ))}
-            </ul>
+              )}
+            />
           </div>
         )}
       </div>

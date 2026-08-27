@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
+import { Bilingual } from "@/components/Bilingual";
 import SiteImage from "@/components/SiteImage";
 import { ArrowRightIcon, BrainIcon, SparkleIcon, StethoscopeIcon } from "@/components/Icons";
 import type { IconProps } from "@/components/Icons";
@@ -135,9 +136,11 @@ export default async function CareAreas() {
 
                     {featured && (
                       <span className="mt-5 block rounded-xl border border-line/70 bg-paper-dim/40 px-4 py-3">
-                        <span className="block text-sm font-medium text-ink">
-                          {featured.name}
-                        </span>
+                        <Bilingual
+                          en={featured.name}
+                          ur={featured.nameUr}
+                          className="block text-sm font-medium text-ink"
+                        />
                         {typeof featured.price === "number" && (
                           <span className="numeric mt-1 block text-xs text-ink-soft">
                             From PKR {featured.price.toLocaleString()}

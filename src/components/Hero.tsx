@@ -42,10 +42,14 @@ export default function Hero() {
         />
       </div>
 
-      {/* Ink behind the type, transparent over the picture. */}
+      {/* Deep behind the type, transparent over the picture.
+          rgb(13,61,42) is the brand green at its darkest. This was
+          rgba(20,17,52) — navy — left over from the indigo palette. Once the
+          rest of the site turned green, that navy was the only blue thing on
+          the page, and it covered the largest area of it. */}
       <div
         aria-hidden
-        className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,52,0.94)_0%,rgba(20,17,52,0.86)_38%,rgba(20,17,52,0.45)_70%,rgba(20,17,52,0.30)_100%)]"
+        className="absolute inset-0 bg-[linear-gradient(100deg,rgba(13,61,42,0.95)_0%,rgba(13,61,42,0.88)_38%,rgba(13,61,42,0.48)_70%,rgba(13,61,42,0.28)_100%)]"
       />
 
       <div className="relative mx-auto max-w-[88rem] px-6 py-20 sm:px-10 lg:py-28">

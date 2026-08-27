@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FieldValue } from "firebase-admin/firestore";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
-import { optionalNumber } from "@/lib/service-fields";
+import { optionalNumber, optionalText, toLines } from "@/lib/service-fields";
 
 export async function GET(
   _req: NextRequest,
@@ -31,21 +31,20 @@ export async function PUT(
     updatedAt: new Date().toISOString(),
   };
 
-  if (body.points !== undefined) {
-    updates.points = Array.isArray(body.points)
-      ? body.points
-      : String(body.points)
-          .split("\n")
-          .map((p: string) => p.trim())
-          .filter(Boolean);
+  // The four list fields, English and Urdu. `...body` above already copied
+  // whatever the form sent; these normalise the shape so a textarea's string
+  // and an already-split array both end up as a clean array of lines.
+  for (const key of ["points", "treatments", "pointsUr", "treatmentsUr"] as const) {
+    if (body[key] !== undefined) updates[key] = toLines(body[key]);
   }
-  if (body.treatments !== undefined) {
-    updates.treatments = Array.isArray(body.treatments)
-      ? body.treatments
-      : String(body.treatments)
-          .split("\n")
-          .map((t: string) => t.trim())
-          .filter(Boolean);
+
+  // An emptied Urdu box has to remove the field, not store "". Otherwise
+  // every service carries a blank Urdu column and the admin list can no
+  // longer tell which ones still need translating.
+  for (const key of ["nameUr", "shortUr", "introUr"] as const) {
+    if (body[key] === undefined) continue;
+    const text = optionalText(body[key]);
+    updates[key] = text ?? FieldValue.delete();
   }
   /**
    * The three numeric fields, each of which can legitimately be cleared.

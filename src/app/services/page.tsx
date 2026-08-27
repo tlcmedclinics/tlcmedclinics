@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Bilingual } from "@/components/Bilingual";
 import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
@@ -100,9 +101,13 @@ export default async function ServicesPage() {
                       {/* h3 under the category's h2 — heading levels are how a
                           crawler reads the page's structure. */}
                       <h3 className="h4 text-ink group-hover:text-indigo-deep">
-                        {s.name}
+                        <Bilingual en={s.name} ur={s.nameUr} />
                       </h3>
-                      <p className="mt-2 text-sm leading-relaxed text-ink-soft">{s.short}</p>
+                      <Bilingual
+                        en={s.short}
+                        ur={s.shortUr}
+                        className="mt-2 block text-sm leading-relaxed text-ink-soft"
+                      />
                       {typeof s.price === "number" && (
                         <p className="mt-3 font-mono text-xs text-ink-soft">
                           From PKR {s.price.toLocaleString()}

@@ -8,8 +8,13 @@
    ============================================================ */
 
 :root {
-  --paper: #fbfaf8;
-  --paper-dim: #f2f1ee;
+  /* Pure white, not the warm off-white this started with (#fbfaf8).
+     A clinic site is judged on looking clean before it is read, and a cream
+     cast reads as "slightly dirty screen" next to the white of a browser's own
+     chrome. --paper-dim keeps a faint tint so panels, table stripes and the
+     inputs still separate from the page without needing a border everywhere. */
+  --paper: #ffffff;
+  --paper-dim: #f4f6f5;
   --mist: #eef0f4;
   --ink: #191b1f;
   --ink-soft: #565b66;
