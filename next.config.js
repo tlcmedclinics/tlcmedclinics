@@ -21,6 +21,19 @@ const { version } = require("./package.json");
  */
 const BUILD_STAMP = process.env.NEXT_PUBLIC_BUILD_STAMP || `v${version}`;
 
+/**
+ * The same thing, but with a clock on it — for the X-TLC-Build response header.
+ *
+ * BUILD_STAMP above must not use a clock, for the reason spelled out there: it
+ * is inlined into client modules, and the server and client compilations would
+ * disagree. This one never reaches the browser bundle. It is baked into the
+ * routes manifest once, at build time, and only ever appears as a response
+ * header — so a clock is safe here and is exactly what is wanted: two deploys
+ * an hour apart get different values, which is what makes "is this edge serving
+ * my latest build?" a question with an answer.
+ */
+const RESPONSE_STAMP = `${BUILD_STAMP}-${new Date().toISOString().slice(0, 16).replace(/\D/g, "")}`;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   env: {
@@ -74,6 +87,67 @@ const nextConfig = {
 
   // Nothing gains from advertising the framework in a response header.
   poweredByHeader: false,
+
+  /**
+   * Cache rules, written for the CDN sitting in front of this site.
+   *
+   * WHY. tlcmedclinics.com resolves through Hostinger's CDN —
+   * `www.tlcmedclinics.com` is a CNAME to `www.tlcmedclinics.com.cdn.hstgr.net`,
+   * and the apex answers from a rotating pool of edge addresses. An edge that
+   * has never been told otherwise will hold a page it fetched days ago, and
+   * different edges hold different days. That is exactly the fault this site
+   * has been showing: the same URL serving the current build on one request and
+   * a previous deployment on the next, with a reload sometimes "fixing" it —
+   * a reload that is really just landing on a different edge.
+   *
+   * So every response now says how long it may be kept:
+   *
+   *   HTML          revalidate every time. A patient must never be shown a
+   *                 price, a slot or a signed-in page that was true last week.
+   *   /api          never stored at all. These are per-patient and often
+   *                 authenticated; a cached one is a data leak, not a stale
+   *                 page.
+   *   /_next/static forever. Those filenames contain a content hash, so a new
+   *                 build produces new names and an old file can never be the
+   *                 wrong answer.
+   *
+   * COST: the CDN stops absorbing HTML requests, so pages come from the origin
+   * every time and are a little slower. That is the right trade here. The site
+   * is small, most of its weight is images and scripts (still cached), and
+   * "slightly slower" is worth incomparably more than "sometimes last week's
+   * site".
+   *
+   * This does not switch the CDN off — only hPanel can do that. It tells the
+   * CDN how to behave while it is on.
+   */
+  async headers() {
+    return [
+      {
+        // Everything except the API and the hashed build output.
+        source: "/((?!api/|_next/static/|_next/image).*)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, must-revalidate" },
+          // Which build actually answered. Open DevTools → Network → the
+          // document request → Response Headers, and this says whether you
+          // are looking at the deploy you just made or something an edge kept.
+          // Two different values on two reloads is a caching problem, full
+          // stop, and no longer needs guessing at.
+          { key: "X-TLC-Build", value: RESPONSE_STAMP },
+        ],
+      },
+      {
+        source: "/api/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, no-cache, must-revalidate" },
+          { key: "X-TLC-Build", value: RESPONSE_STAMP },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }],
+      },
+    ];
+  },
 
   // Every URL is generated without a trailing slash (sitemap, canonicals,
   // internal links). Stating it here stops the host redirecting between the two
