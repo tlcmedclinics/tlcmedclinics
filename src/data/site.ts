@@ -19,7 +19,7 @@ export const site = {
    */
   description:
     "TLC Med Clinics, Lahore — mental health, ketamine therapy and skin care under one roof, led by U.S. board-certified physicians. In-clinic visits and telemedicine appointments.",
-  phone: "0310-040-4444",
+  phone: "+92 310 040 4444",
   /**
    * The same number in E.164. Structured data and Google Business Profile both
    * want the international form; `phone` above is what patients read.
