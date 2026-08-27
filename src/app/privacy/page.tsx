@@ -1,75 +1,56 @@
-"use client";
-
-import { site } from "@/data/site";
-import { useT } from "@/contexts/LanguageContext";
+import type { Metadata } from "next";
+import Link from "next/link";
+import LegalDocument from "@/components/LegalDocument";
+import JsonLd from "@/components/JsonLd";
+import { privacyDoc } from "@/data/legal";
+import { pageMetadata, breadcrumbSchema } from "@/lib/seo";
 
 /**
- * Privacy policy.
+ * The clinic's privacy practices.
  *
- * Written as i18n keys rather than prose in the component so it reads in Urdu
- * too — a patient consenting to how their medical data is handled should be
- * able to read that in their own language.
+ * This replaces a plain-language summary written from the app's behaviour —
+ * "Firebase for accounts, Stripe for payments" — which its own comment marked
+ * as not legal advice. It read well, and it was not the document the clinic's
+ * lawyer wrote, which is the one that governs. Two descriptions of how a clinic
+ * handles medical records, quietly disagreeing, is a worse position than one
+ * that is dry.
  *
- * This is a plain-language description of what the app actually does today:
- * Firebase Auth for accounts, Firestore for records, Cloudinary for images,
- * Stripe/PayPal for payments, Daily.co for video, and per-session encryption
- * on chat. It is not legal advice — have a lawyer review it before launch.
+ * The sections here come from the same source as /terms. The note at the top
+ * says so and links to the whole thing, so nobody is left wondering whether
+ * this page is all of it.
  */
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Practices",
+  description:
+    "How TLC Med Clinics collects, uses and protects your personal and health information — secure messaging, email containing PHI, and who may access your records.",
+  path: "/privacy",
+});
 
-const SECTIONS = [
-  "collect",
-  "use",
-  "share",
-  "security",
-  "retention",
-  "rights",
-  "cookies",
-  "children",
-  "changes",
-] as const;
-
-export default function PrivacyPolicyPage() {
-  const t = useT();
-
+export default function PrivacyPage() {
   return (
-    <div className="mx-auto max-w-2xl px-6 py-14 animate-fade-up">
-      <p className="eyebrow text-indigo">{t("privacy.eyebrow")}</p>
-      <h1 className="mt-3 h1-hero">{t("privacy.title")}</h1>
-      <p className="lede mt-4">{t("privacy.intro")}</p>
-      <p className="mt-2 text-xs text-ink-soft">
-        {t("privacy.lastUpdated")} <span className="numeric">2026-08-19</span>
-      </p>
-
-      <div className="mt-10 space-y-8">
-        {SECTIONS.map((key) => (
-          <section key={key}>
-            <h2 className="h3 text-ink">{t(`privacy.${key}.title`)}</h2>
-            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              {t(`privacy.${key}.body`)}
-            </p>
-          </section>
-        ))}
-
-        <section className="card card-pad">
-          <h2 className="h4 text-ink">{t("privacy.contact.title")}</h2>
-          <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            {t("privacy.contact.body")}
+    <>
+      <JsonLd
+        data={[
+          breadcrumbSchema([
+            { name: "Home", path: "/" },
+            { name: "Privacy Practices", path: "/privacy" },
+          ]),
+        ]}
+      />
+      <LegalDocument
+        doc={privacyDoc}
+        note={
+          <p className="rounded-2xl border border-line bg-paper-dim/50 px-5 py-4 text-sm leading-relaxed text-ink-soft">
+            These practices are part of our{" "}
+            <Link href="/terms" className="font-medium text-indigo hover:text-indigo-deep">
+              Terms of Service
+            </Link>
+            , not a separate agreement. The sections below are the ones that
+            govern your personal and health information; the full document
+            contains them along with everything else you agree to.
           </p>
-          <ul className="mt-3 space-y-1 text-sm">
-            <li>
-              <a href={`mailto:${site.email}`} className="font-semibold text-indigo hover:text-indigo-deep">
-                {site.email}
-              </a>
-            </li>
-            <li>
-              <a href={`tel:${site.phone}`} className="numeric text-ink-soft hover:text-indigo">
-                {site.phone}
-              </a>
-            </li>
-            <li className="text-ink-soft">{site.address}</li>
-          </ul>
-        </section>
-      </div>
-    </div>
+        }
+      />
+    </>
   );
 }

@@ -81,7 +81,21 @@ export const GATEWAYS: GatewayMeta[] = [
     id: "safepay",
     label: "Debit or credit card",
     blurb: "Visa, Mastercard and UnionPay, secured by Safepay.",
-    requires: ["SAFEPAY_API_KEY", "SAFEPAY_SECRET_KEY"],
+    // SAFEPAY_CHECKOUT_URL is in this list on purpose, and it is not optional.
+    //
+    // The other two credentials were set and the gateway still could not take
+    // a payment: Safepay's tracker call was refused, and before that a guessed
+    // checkout path landed patients on Safepay's dashboard login. Neither
+    // failure looked like a failure from the booking page — one showed a toast,
+    // the other showed a perfectly ordinary login screen belonging to somebody
+    // else's product.
+    //
+    // Until Safepay support supply the hosted-checkout URL for this account,
+    // this integration is not finished, and an unfinished payment button is
+    // worse than no button. Listing the URL as a requirement states that in the
+    // one place that decides whether it appears. Set it and the option returns
+    // on the next restart.
+    requires: ["SAFEPAY_API_KEY", "SAFEPAY_SECRET_KEY", "SAFEPAY_CHECKOUT_URL"],
   },
 ];
 

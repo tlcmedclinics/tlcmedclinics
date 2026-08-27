@@ -30,13 +30,59 @@ type Method = {
   via: "redirect" | "stripe";
 };
 
-/** The wallet logos are text — a wordmark we don't have a licence to ship. */
-const ICON: Record<string, string> = {
-  jazzcash: "JC",
-  easypaisa: "EP",
-  safepay: "＊",
-  stripe: "▮",
+/**
+ * How each method looks.
+ *
+ * The badge is initials rather than a logo: JazzCash and EasyPaisa wordmarks
+ * are their trademarks and this project has no licence to redistribute them.
+ * Each keeps its own colour, though — JazzCash red, EasyPaisa green — because
+ * that is how a patient recognises the one they use, at a glance, without
+ * reading. Cards get the clinic's own colour, since no single card brand owns
+ * that row.
+ */
+const STYLE: Record<string, { badge: string; tint: string; ring: string }> = {
+  jazzcash: {
+    badge: "JC",
+    tint: "bg-crimson/10 text-crimson-deep",
+    ring: "hover:border-crimson/60 hover:bg-crimson/[0.04]",
+  },
+  easypaisa: {
+    badge: "EP",
+    tint: "bg-indigo/10 text-indigo-deep",
+    ring: "hover:border-indigo/60 hover:bg-indigo/[0.04]",
+  },
+  safepay: {
+    badge: "SP",
+    tint: "bg-indigo/10 text-indigo-deep",
+    ring: "hover:border-indigo/60 hover:bg-indigo/[0.04]",
+  },
+  stripe: {
+    badge: "CARD",
+    tint: "bg-ink/[0.06] text-ink",
+    ring: "hover:border-ink/40 hover:bg-ink/[0.03]",
+  },
 };
+
+const FALLBACK = { badge: "PAY", tint: "bg-indigo/10 text-indigo-deep", ring: "hover:border-indigo/60" };
+
+/** A small padlock, so "secure" is shown rather than only claimed. */
+function LockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+      className={className}
+    >
+      <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
+      <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
 
 export default function PaymentMethods({
   /** The booking to pay for, or `{ appointmentId }` for an unpaid follow-up. */
@@ -125,62 +171,96 @@ export default function PaymentMethods({
 
   if (methods === null) {
     return (
-      <div className="mt-5 space-y-2">
+      <div className="mt-5 space-y-2.5" aria-busy>
         {[0, 1].map((i) => (
-          <div key={i} className="h-14 animate-pulse rounded-xl bg-paper-dim" />
+          <div key={i} className="h-[4.25rem] animate-pulse rounded-2xl bg-paper-dim" />
         ))}
       </div>
     );
   }
 
   if (methods.length === 0) {
-    // Said plainly. A booking page with no way to pay and no explanation is
-    // read as a broken site rather than as a clinic that takes payment by phone.
+    // Said plainly, and pointed somewhere. A booking page with no way to pay
+    // and no explanation reads as a broken site rather than as a clinic that
+    // happens to take payment by phone.
     return (
-      <p className="mt-4 rounded-xl border border-line bg-paper-dim/50 px-4 py-3 text-sm text-ink-soft">
-        Online payment isn&apos;t switched on yet. Use &ldquo;Request a call
-        back&rdquo; below and the clinic will confirm your appointment by phone.
-      </p>
+      <div className="mt-5 rounded-2xl border border-line bg-paper-dim/40 px-5 py-4">
+        <p className="text-sm font-semibold text-ink">Online payment isn&apos;t open yet</p>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          Your slot can still be held. Use{" "}
+          <span className="font-medium text-ink">Request a call-back</span> below
+          and the clinic will confirm it with you by phone — nothing to pay now.
+        </p>
+      </div>
     );
   }
 
   const busy = Boolean(starting) || disabled;
 
   return (
-    <div className="mt-5 space-y-2.5">
-      {methods.map((m) => (
-        <button
-          key={m.id}
-          type="button"
-          disabled={busy}
-          onClick={() => pay(m)}
-          className="flex w-full items-center gap-3 rounded-xl border border-line px-4 py-3.5 text-left transition-colors hover:border-indigo hover:bg-indigo/5 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span
-            aria-hidden
-            className="numeric grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-indigo/10 text-xs font-bold text-indigo"
-          >
-            {ICON[m.id] ?? "PK"}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-ink">{m.label}</span>
-            <span className="block text-xs text-ink-soft">{m.blurb}</span>
-          </span>
-          {starting === m.id ? (
-            <InlineSpinner />
-          ) : (
-            amount > 0 && (
-              <span className="numeric shrink-0 text-sm font-semibold text-indigo">
-                PKR {amount.toLocaleString()}
-              </span>
-            )
-          )}
-        </button>
-      ))}
+    <div className="mt-5">
+      <ul className="space-y-2.5">
+        {methods.map((m) => {
+          const style = STYLE[m.id] ?? FALLBACK;
+          const isStarting = starting === m.id;
 
-      <p className="pt-1 text-center text-xs text-ink-soft">
-        You&apos;ll finish paying on the provider&apos;s own secure page. TLC
-        never sees your card or wallet PIN.
+          return (
+            <li key={m.id}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => pay(m)}
+                className={`group flex w-full items-center gap-3.5 rounded-2xl border border-line bg-paper px-4 py-3.5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55 ${
+                  busy ? "" : `${style.ring} hover:-translate-y-px hover:shadow-[0_10px_24px_-18px_rgba(21,86,59,0.6)]`
+                }`}
+              >
+                <span
+                  aria-hidden
+                  className={`numeric grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[0.65rem] font-bold tracking-tight ${style.tint}`}
+                >
+                  {style.badge}
+                </span>
+
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-ink">{m.label}</span>
+                  <span className="mt-0.5 block text-xs leading-snug text-ink-soft">{m.blurb}</span>
+                </span>
+
+                <span className="flex shrink-0 items-center gap-2.5">
+                  {amount > 0 && (
+                    <span className="numeric text-sm font-semibold text-ink">
+                      PKR {amount.toLocaleString()}
+                    </span>
+                  )}
+                  {/* The chevron only moves on hover, so the row reads as
+                      "this takes you somewhere" rather than as a static box. */}
+                  {isStarting ? (
+                    <InlineSpinner />
+                  ) : (
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                      className="h-4 w-4 text-ink-soft/50 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink-soft"
+                    >
+                      <path d="m9 6 6 6-6 6" />
+                    </svg>
+                  )}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-ink-soft">
+        <LockIcon />
+        You finish paying on the provider&apos;s own page. TLC never sees your
+        card number or wallet PIN.
       </p>
     </div>
   );

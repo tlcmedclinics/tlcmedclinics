@@ -124,9 +124,17 @@ export default function Footer() {
             © <span className="numeric">{new Date().getFullYear()}</span> {site.name}.{" "}
             {t("footer.rights")}
           </p>
-          <Link href="/privacy" className="transition-colors hover:text-paper">
-            {t("nav.privacy")}
-          </Link>
+          {/* Both, on every page. Payment gateways look for these two links
+              during merchant onboarding, and a patient handing over medical
+              details should not have to hunt for them either. */}
+          <span className="flex items-center gap-4">
+            <Link href="/privacy" className="transition-colors hover:text-paper">
+              {t("nav.privacy")}
+            </Link>
+            <Link href="/terms" className="transition-colors hover:text-paper">
+              Terms of Service
+            </Link>
+          </span>
         </div>
       </div>
     </footer>

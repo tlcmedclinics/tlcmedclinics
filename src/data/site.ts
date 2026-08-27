@@ -302,7 +302,8 @@ export const footerColumns: { heading: string; links: { href: string; label: str
       { href: "/telemedicine/benefits", label: "Benefits" },
       { href: "/telemedicine/how-it-works", label: "How does it work?" },
       { href: "/patient/book", label: "Schedule & pay online" },
-      { href: "/privacy", label: "Privacy policy" },
+      { href: "/privacy", label: "Privacy practices" },
+      { href: "/terms", label: "Terms of service" },
     ],
   },
   {
