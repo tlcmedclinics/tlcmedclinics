@@ -25,8 +25,15 @@
  */
 
 export const images = {
-  /** The home hero, used full-bleed behind the headline. */
-  heroCover: "/images/bg-doctor-cover-1-scaled.jpg",
+  /**
+   * The home hero, used full-bleed behind the headline.
+   *
+   * Pointed at hero-img.jpg, which was added to public/images and was sitting
+   * there unused — the site was still loading the old cover. Next re-encodes
+   * it to AVIF/WebP at the size each device asks for, so the 2 MB original is
+   * not what a visitor downloads; it is only the master.
+   */
+  heroCover: "/images/hero-img.jpg",
 
   /** The three care areas on the home page. */
   mental: "/images/mental-care.jpg",
@@ -62,18 +69,28 @@ export type ImageKey = keyof typeof images;
  *
  * `images.clinic` above is the first of these, and stays as the single-image
  * fallback for anywhere that wants one photograph rather than a loop.
+ *
+ * ── Changing what the About slideshow shows ──
+ * This list is the whole control. Add a line, remove a line, reorder them —
+ * the loop follows. Every filename here must exist in public/images; a missing
+ * one costs a slide, not the section, because SiteImage draws a tinted panel
+ * instead of a broken icon.
+ *
+ * Four became ten because four photographs of one clinic cycle back round
+ * before a reader has finished the paragraph beside them, which makes the
+ * place look smaller than it is.
  */
 export const clinicGallery: string[] = [
-  "/images/beauty_clinic-min-860x645.jpeg",
-  "/images/skin_glow-min-860x645.jpeg",
-  "/images/beauty_care-min-860x645.jpeg",
-  "/images/skin_care-min-860x645.jpeg",
-  "/images/face_fillers-min-860x645.jpeg",
-  "/images/spider_veins-min-860x645.jpeg",
-  "/images/skin_clinic-min-860x645.jpeg",
-  "/images/acne-min-860x645.jpeg",
-  "/images/hair_loss-min-860x645.jpeg",
-  "/images/aesthetic-min-860x645.jpeg",
+  "/images/clinic (1).jpeg",
+  "/images/clinic (2).jpeg",
+  "/images/clinic (3).jpeg",
+  "/images/clinic (4).jpeg",
+  "/images/clinic (5).jpeg",
+  "/images/clinic (6).jpeg",
+  "/images/clinic (7).jpeg",
+  "/images/clinic (8).jpeg",
+  "/images/clinic (9).jpeg",
+  "/images/clinic (10).jpeg",
 ];
 
 /**
@@ -128,3 +145,30 @@ export const certificates: string[] = [
   "/images/frame-9.png",
   "/images/frame-10.png",
 ];
+
+
+/**
+ * The looping clip on the home page.
+ *
+ * Empty until a file exists, and the section renders nothing while it is —
+ * which is the point. A <video> pointing at a missing file shows a black
+ * rectangle with a broken-play icon, and that is worse than no video at all.
+ *
+ * ── What to put here ──
+ * An MP4 (H.264) of the clinic — the waiting room, a consultation being set
+ * up, hands preparing a treatment. Ten to twenty seconds is plenty: it loops,
+ * so a longer clip mostly means a longer download before anything moves.
+ *
+ * Keep it under about 4 MB. This plays on Pakistani mobile data, and a 30 MB
+ * hero video is a home page that stays blank for fifteen seconds on 3G. If the
+ * export is bigger, run it through HandBrake at 1280×720 and a bitrate around
+ * 2000 kbps — nobody will see the difference at this size.
+ *
+ * `poster` is the still shown before the video is ready. Without one there is
+ * a flash of empty box on every load. Point it at any frame of the clip.
+ */
+export const videos = {
+  /** e.g. "/videos/clinic-loop.mp4" — put the file in public/videos/. */
+  clinicLoop: "",
+  clinicLoopPoster: "/images/bg-doctor-cover-1-scaled.jpg",
+};

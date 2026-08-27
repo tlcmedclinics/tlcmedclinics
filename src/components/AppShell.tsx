@@ -45,6 +45,14 @@ const iconProps = {
 };
 
 export const icons = {
+  /** Translation. A globe with its meridians — the usual sign for language. */
+  globe: (
+    <svg {...iconProps}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3.2 9.5h17.6M3.2 14.5h17.6" />
+      <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18Z" />
+    </svg>
+  ),
   overview: (
     <svg {...iconProps}>
       <rect x="3" y="3" width="7" height="9" rx="1.5" />

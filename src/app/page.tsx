@@ -6,6 +6,7 @@ import StatsBand from "@/components/StatsBand";
 import CareAreas from "@/components/CareAreas";
 import AboutClinic from "@/components/AboutClinic";
 import HowItWorks from "@/components/HowItWorks";
+import LoopVideo from "@/components/LoopVideo";
 import WhyUs from "@/components/WhyUs";
 import Testimonials from "@/components/Testimonials";
 import LatestPosts from "@/components/LatestPosts";
@@ -40,6 +41,11 @@ export default function Home() {
           one, and ServicesOverview is gone. */}
       <CareAreas />
       <HowItWorks />
+
+      {/* Renders nothing until videos.clinicLoop points at a real file —
+          see the note in data/images.ts. */}
+      <LoopVideo />
+
       <AboutClinic />
       <WhyUs />
       <Testimonials />

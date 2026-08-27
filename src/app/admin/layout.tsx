@@ -10,6 +10,7 @@ const nav: NavItem[] = [
   { href: "/admin/services", labelKey: "nav.services", icon: icons.doc },
   { href: "/admin/coupons", labelKey: "nav.coupons", icon: icons.tag },
   { href: "/admin/blogs", labelKey: "nav.blogs", icon: icons.doc },
+  { href: "/admin/translations", labelKey: "nav.translations", icon: icons.globe },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

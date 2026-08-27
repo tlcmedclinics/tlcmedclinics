@@ -1,10 +1,12 @@
 import Reveal from "@/components/Reveal";
+import Link from "next/link";
 import SiteImage from "@/components/SiteImage";
 import VitalsLine from "@/components/VitalsLine";
 import { AwardIcon, CheckIcon } from "@/components/Icons";
 import Slideshow from "@/components/Slideshow";
 import { certificates, clinicGallery, images } from "@/data/images";
 import { site } from "@/data/site";
+import { leadDoctor } from "@/data/doctors";
 
 /**
  * Who the clinic is, and the outcome figures behind the telemedicine claim.
@@ -94,40 +96,83 @@ export default function AboutClinic() {
       </Reveal>
 
       {/* ---- Medical director ---- */}
-      <Reveal className="mt-20 grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
-        <div>
-          <div className="zoom-frame relative aspect-[3/4] rounded-3xl">
+      {/* The portrait was half the width and the text the other half, which
+          left a very large photograph beside a short list. Capped at 13rem
+          and squared off to 4:5, it reads as a profile photograph rather than
+          as an image the section is built around — which is what it is. The
+          first attempt at this used 16rem and 3:4; 341px tall still dominated
+          the row it sat in.
+
+          The column width is `13rem`, not `minmax(0,13rem)`. Tailwind cannot
+          build a class from an arbitrary value containing a comma, so the
+          second version generated no rule at all — the grid silently fell back
+          to one column, the portrait stacked above the text, and the section
+          looked as though the image had failed to load. A layout that
+          disappears is a worse failure than one that is the wrong size,
+          because there is nothing on screen to point at.
+
+          The name links to the full profile. Someone deciding whether to book
+          with a psychiatrist wants the training and the certifications, and
+          that is more than belongs on a home page. */}
+      <Reveal className="mt-20 grid gap-10 lg:grid-cols-[13rem_1fr] lg:items-start">
+        <div className="mx-auto w-full max-w-[13rem] lg:mx-0">
+          <Link
+            href={`/doctors/${leadDoctor.slug}`}
+            className="zoom-frame relative block aspect-[4/5] rounded-2xl"
+          >
             <SiteImage
               src={images.doctor}
-              alt={site.doctor.name}
-              sizes="(min-width: 1024px) 30vw, 100vw"
+              alt={leadDoctor.name}
+              sizes="(min-width: 1024px) 13rem, 45vw"
             />
-          </div>
+          </Link>
 
+          <div className="mt-4 space-y-1.5 text-sm">
+            <a
+              href={`tel:${site.phoneE164}`}
+              className="numeric block font-medium text-indigo hover:text-indigo-deep"
+            >
+              {site.phone}
+            </a>
+            <a
+              href={`mailto:${site.email}`}
+              className="block text-ink-soft transition-colors hover:text-indigo"
+            >
+              {site.email}
+            </a>
+          </div>
         </div>
 
         <div>
-          <p className="eyebrow text-indigo">{site.doctor.title}</p>
-          <h3 className="mt-3 h1 text-2xl sm:text-3xl">{site.doctor.name}</h3>
+          <p className="eyebrow text-indigo">{leadDoctor.title}</p>
+          <h3 className="mt-3 h1 text-2xl sm:text-3xl">
+            <Link
+              href={`/doctors/${leadDoctor.slug}`}
+              className="transition-colors hover:text-indigo-deep"
+            >
+              {leadDoctor.name}
+            </Link>
+          </h3>
           <p className="mt-1.5 font-mono text-xs uppercase tracking-wider text-ink-soft">
-            {site.doctor.credentials}
+            {leadDoctor.credentials}
           </p>
 
           <ul className="mt-6 space-y-3.5">
-            {[
-              "Graduated with honours from King Edward Medical College, Lahore.",
-              "Awarded the “Best Doctor” award and nominated as a “Top Doctor” in Chicago, U.S.A.",
-              "Over 35 years of experience practising across a variety of medical fields in the U.S.A.",
-              "Extensively trained in General Medicine, Psychiatry & Neurology, and Aesthetic Medicine.",
-              "Certified by the American Board of Psychiatry and Neurology, and the American Academy of Aesthetic Medicine.",
-            ].map((line) => (
+            {leadDoctor.highlights.map((line) => (
               <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
                 <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-                {line}
+                <span>{line}</span>
               </li>
             ))}
           </ul>
 
+          <Link
+            href={`/doctors/${leadDoctor.slug}`}
+            className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-indigo transition-colors hover:text-indigo-deep"
+          >
+            Full profile &amp; certifications
+            <span aria-hidden>→</span>
+          </Link>
         </div>
       </Reveal>
 

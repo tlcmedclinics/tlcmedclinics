@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import SiteImage from "@/components/SiteImage";
 import VitalsLine from "@/components/VitalsLine";
 import { AwardIcon, ShieldIcon, VideoIcon } from "@/components/Icons";
 import { images } from "@/data/images";
 import { site } from "@/data/site";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * The home page hero.
@@ -24,13 +27,23 @@ import { site } from "@/data/site";
  * worse than one that promises less.
  */
 
+/**
+ * The three claims under the hero.
+ *
+ * Keys, not sentences. This component became a client component to reach the
+ * translation dictionary — it is static markup with no data fetching, so the
+ * only cost is a few kilobytes of bundle, against a hero that was in English
+ * for an Urdu reader no matter which toggle they pressed.
+ */
 const BADGES = [
-  { Icon: AwardIcon, label: "U.S. board certified" },
-  { Icon: VideoIcon, label: "Telemedicine, 6 days a week" },
-  { Icon: ShieldIcon, label: "Confidential by design" },
+  { Icon: AwardIcon, key: "hero.badge.certified" },
+  { Icon: VideoIcon, key: "hero.badge.telemedicine" },
+  { Icon: ShieldIcon, key: "hero.badge.confidential" },
 ];
 
 export default function Hero() {
+  const t = useT();
+
   return (
     <section className="relative isolate overflow-hidden bg-indigo-deep text-paper">
       <div className="absolute inset-0">
@@ -54,21 +67,17 @@ export default function Hero() {
 
       <div className="relative mx-auto max-w-[88rem] px-6 py-20 sm:px-10 lg:py-28">
         <div className="max-w-2xl">
-          <p className="eyebrow text-paper/70">
-            Lahore, Pakistan · U.S.-Trained Physicians
-          </p>
+          <p className="eyebrow text-paper/70">{t("hero.eyebrow")}</p>
 
           <h1 className="mt-5 text-4xl font-extrabold leading-[1.08] tracking-tight sm:text-5xl lg:text-[3.5rem]">
-            A personalised approach to mental health
-            <span className="block text-paper/75">and skin care.</span>
+            {t("hero.title.a")}
+            <span className="block text-paper/75">{t("hero.title.b")}</span>
           </h1>
 
           <VitalsLine className="mt-7 h-3 w-40" color="rgba(255,255,255,0.6)" />
 
           <p className="mt-7 max-w-xl text-base leading-relaxed text-paper/85">
-            Psychiatry, ketamine therapy and aesthetic medicine under one roof,
-            led by {site.doctor.name} — American Board Certified, with over 35
-            years in practice. In the clinic, or by telemedicine.
+            {t("hero.lede", { doctor: site.doctor.name })}
           </p>
 
           <div className="mt-9 flex flex-wrap items-center gap-4">
@@ -76,23 +85,23 @@ export default function Hero() {
               href="/patient/book"
               className="rounded-full bg-crimson px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-crimson-deep"
             >
-              Schedule Appointment
+              {t("hero.cta.book")}
             </Link>
             <a
               href={`tel:${site.phoneE164}`}
               className="rounded-full border border-paper/40 px-8 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-paper hover:text-indigo-deep"
             >
-              Call <span className="numeric ms-1">{site.phone}</span>
+              {t("hero.cta.call")} <span className="numeric ms-1">{site.phone}</span>
             </a>
           </div>
 
           {/* Three claims, each one checkable — the badges a patient uses to
               decide whether the rest of the page is worth reading. */}
           <ul className="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-paper/15 pt-7">
-            {BADGES.map(({ Icon, label }) => (
-              <li key={label} className="flex items-center gap-2 text-sm text-paper/85">
+            {BADGES.map(({ Icon, key }) => (
+              <li key={key} className="flex items-center gap-2 text-sm text-paper/85">
                 <Icon className="h-[1.15rem] w-[1.15rem] shrink-0 text-paper/70" />
-                {label}
+                {t(key)}
               </li>
             ))}
           </ul>

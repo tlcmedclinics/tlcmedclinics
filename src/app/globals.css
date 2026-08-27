@@ -51,6 +51,7 @@
   --indigo: #238055;
   --indigo-deep: #15563b;
   --indigo-soft: #2b7d59;
+
   --line: #dfe1e6;
 
   /* Semantic states — derived from the palette, not new brand colours. */
@@ -554,3 +555,93 @@ a:focus-visible > .logo-zoom {
     transform: none;
   }
 }
+
+
+/* ── "How it works" step icons ────────────────────────────────────────────
+   Each icon is drawn correctly in its resting state; these rules only add
+   movement. That ordering is the whole accessibility story: everything below
+   sits inside `prefers-reduced-motion: no-preference`, so a reader who has
+   asked their system for stillness gets a finished picture rather than a
+   half-drawn one.
+
+   The tick and the signal arcs animate with stroke-dashoffset, which draws a
+   line rather than fading one in. A fade says "something appeared"; a draw
+   says "this happened", which is what a step in a sequence means.
+
+   Cycles are long — 3 to 4.5 seconds with most of that spent still. Anything
+   quicker sits beside the text arguing with it for attention, and the text is
+   the part that has to be read. */
+
+.step-book-day { fill: currentColor; opacity: 0; }
+.step-book-tick,
+.step-clock-ring,
+.step-wave { opacity: 0; }
+.step-book-tick { stroke: var(--paper); stroke-width: 2.4; --dash: 12; }
+.step-clock-hand { transform-origin: 24px 25px; }
+.step-heart { fill: currentColor; transform-origin: 33px 36px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .step-book-day {
+    animation: step-fill 4s ease-in-out infinite;
+  }
+  .step-book-tick {
+    stroke-dasharray: 12;
+    stroke-dashoffset: 12;
+    animation: step-draw 4s ease-out infinite;
+  }
+
+  .step-clock-hand {
+    animation: step-sweep 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+  .step-clock-ring {
+    animation: step-pulse 4s ease-out infinite;
+  }
+
+  .step-wave {
+    stroke-dasharray: 26;
+    stroke-dashoffset: 26;
+    --dash: 26;
+  }
+  .step-wave-1 { animation: step-draw 3.4s ease-out infinite; }
+  /* The outer arc starts after the inner one, so the signal reads as leaving
+     the screen rather than as two arcs blinking together. */
+  .step-wave-2 { animation: step-draw 3.4s ease-out 0.35s infinite; }
+
+  .step-heart { animation: step-beat 4.5s ease-in-out infinite; }
+}
+
+@keyframes step-fill {
+  0%, 12%   { opacity: 0; }
+  26%, 78%  { opacity: 0.18; }
+  100%      { opacity: 0; }
+}
+
+@keyframes step-draw {
+  0%, 22%   { stroke-dashoffset: var(--dash, 26); opacity: 0; }
+  30%       { opacity: 1; }
+  48%, 76%  { stroke-dashoffset: 0; opacity: 1; }
+  92%, 100% { stroke-dashoffset: 0; opacity: 0; }
+}
+
+@keyframes step-sweep {
+  0%, 10%   { transform: rotate(-70deg); }
+  46%, 82%  { transform: rotate(0deg); }
+  100%      { transform: rotate(-70deg); }
+}
+
+@keyframes step-pulse {
+  0%, 44%  { opacity: 0; transform: scale(1); }
+  56%      { opacity: 0.5; }
+  84%, 100% { opacity: 0; transform: scale(1.18); }
+}
+
+@keyframes step-beat {
+  0%, 40%          { transform: scale(1); }
+  46%              { transform: scale(1.22); }
+  52%              { transform: scale(1); }
+  58%              { transform: scale(1.16); }
+  64%, 100%        { transform: scale(1); }
+}
+
+
+

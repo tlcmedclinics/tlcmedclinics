@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { doctors } from "@/data/doctors";
 import { adminDb } from "@/lib/firebase/admin";
 import { absoluteUrl } from "@/lib/seo";
 import { contentPages, GROUP_META } from "@/data/content";
@@ -35,6 +36,13 @@ const STATIC_ROUTES: {
   { path: "/blog", changeFrequency: "weekly", priority: 0.7 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
+  // Physician profiles. Small, fixed list, and the pages Google's local panel
+  // draws a doctor's details from — worth listing explicitly.
+  ...doctors.map((d) => ({
+    path: `/doctors/${d.slug}`,
+    changeFrequency: "yearly" as const,
+    priority: 0.7,
+  })),
 ];
 
 /**

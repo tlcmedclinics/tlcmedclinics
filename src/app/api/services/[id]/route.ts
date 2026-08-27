@@ -46,6 +46,26 @@ export async function PUT(
     const text = optionalText(body[key]);
     updates[key] = text ?? FieldValue.delete();
   }
+
+  /**
+   * Saving the form means a person has read the Urdu.
+   *
+   * `urSource: "machine"` is set by the bulk translation route and is what the
+   * admin panel counts as "still needs a read". Only this route can clear it,
+   * and only here — the moment an admin submits the edit form, which they
+   * cannot do without the Urdu having been on screen in front of them.
+   *
+   * Guarded on an Urdu field actually being present so that an unrelated
+   * update — reordering services, changing a price through some future screen —
+   * doesn't quietly mark a machine translation as checked.
+   */
+  const touchedUrdu = ["nameUr", "shortUr", "introUr", "pointsUr", "treatmentsUr"].some(
+    (key) => body[key] !== undefined
+  );
+  if (touchedUrdu) {
+    updates.urSource = "human";
+    updates.urDraftedAt = FieldValue.delete();
+  }
   /**
    * The three numeric fields, each of which can legitimately be cleared.
    *
