@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
+import { StarScore } from "@/components/RatingStars";
+import { RATING_QUESTIONS } from "@/lib/rating";
 import Link from "next/link";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useLiveAppointments } from "@/lib/use-live-appointments";
@@ -19,6 +21,9 @@ type Analytics = {
   refunded: number;
   completed: number;
   avgRating: number | null;
+  ratingCount: number;
+  /** One row per survey question — see src/lib/rating.ts. */
+  ratingQuestions: { key: string; responses: number; average: number | null }[];
   doctorRows: { name: string; completed: number; avgRating: number | null }[];
 };
 
@@ -35,8 +40,35 @@ const EMPTY_ANALYTICS: Analytics = {
   refunded: 0,
   completed: 0,
   avgRating: null,
+  ratingCount: 0,
+  ratingQuestions: [],
   doctorRows: [],
 };
+
+/**
+ * The satisfaction bars.
+ *
+ * Written as inline styles rather than utility classes on purpose: a bar needs
+ * a width computed from a number, and the rest of it is two rules. Tailwind in
+ * this project does not reliably build a class that appears in no other file,
+ * and a bar chart whose track never got a background is a page with nothing on
+ * it and no error to explain why.
+ */
+const BAR_TRACK: CSSProperties = {
+  height: 6,
+  borderRadius: 999,
+  background: "var(--mist)",
+  overflow: "hidden",
+};
+
+function barFill(average: number): CSSProperties {
+  return {
+    width: `${(average / 5) * 100}%`,
+    height: "100%",
+    borderRadius: 999,
+    background: "var(--crimson)",
+  };
+}
 
 export default function AdminOverviewPage() {
   const toast = useToast();
@@ -135,6 +167,41 @@ export default function AdminOverviewPage() {
           <p className="mt-1 text-sm text-ink-soft">Average patient rating</p>
         </div>
       </div>
+
+      <h2 className="mt-10 h3 text-ink">Patient satisfaction</h2>
+      <p className="mt-1 text-xs text-ink-soft">
+        {analytics.ratingCount === 0
+          ? "No visits rated yet."
+          : `Average of every answer given, across ${analytics.ratingCount} rated ${
+              analytics.ratingCount === 1 ? "visit" : "visits"
+            }. Each question is averaged over the answers it actually received.`}
+      </p>
+      {analytics.ratingQuestions.some((q) => q.responses > 0) && (
+        <div className="mt-4 rounded-2xl border border-line/70 p-6">
+          {analytics.ratingQuestions.map((q, i) => {
+            const question = RATING_QUESTIONS.find((r) => r.key === q.key);
+            return (
+              <div key={q.key} className={i === 0 ? "" : "mt-4"}>
+                <p className="text-sm text-ink">{question ? question.en : q.key}</p>
+                <div className="mt-2 flex flex-wrap items-center gap-3">
+                  <span className="text-sm font-medium text-ink">
+                    {q.average === null ? "—" : q.average.toFixed(1)}
+                  </span>
+                  {q.average !== null && <StarScore value={q.average} />}
+                  <span className="text-xs text-ink-soft">
+                    {q.responses} {q.responses === 1 ? "answer" : "answers"}
+                  </span>
+                </div>
+                {q.average !== null && (
+                  <div className="mt-2" style={BAR_TRACK}>
+                    <div style={barFill(q.average)} />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <h2 className="mt-10 h3 text-ink">Doctor performance</h2>
       {analytics.doctorRows.length === 0 ? (

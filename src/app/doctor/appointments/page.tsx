@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { RatingBreakdown, StarScore } from "@/components/RatingStars";
 import { SearchInput } from "@/components/ListControls";
 import LoadErrorNotice from "@/components/LoadErrorNotice";
 import { authedFetch } from "@/lib/authed-fetch";
@@ -330,13 +331,22 @@ export default function DoctorAppointmentsPage() {
 
                 {a.status === "completed" && (
                   <>
-                    {a.rating && (
-                      <p className="mt-3 text-xs text-ink-soft">
-                        Patient rated this session {"★".repeat(a.rating)}
-                        {"☆".repeat(5 - a.rating)}
-                        {a.ratingComment && <span> — &ldquo;{a.ratingComment}&rdquo;</span>}
-                      </p>
-                    )}
+                    {a.rating ? (
+                      <div className="mt-3">
+                        <p className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+                          <StarScore value={a.rating} />
+                          <span>{a.rating.toFixed(1)} / 5</span>
+                          {a.ratingComment && (
+                            <span>&ldquo;{a.ratingComment}&rdquo;</span>
+                          )}
+                        </p>
+                        {/* Which part of the visit earned which score. A mean
+                            of 3.6 tells a doctor nothing; "waiting time: Poor,
+                            quality of care: Excellent" tells them what to fix
+                            and what not to change. */}
+                        {a.ratings && <RatingBreakdown answers={a.ratings} />}
+                      </div>
+                    ) : null}
                     <PrescriptionEditor
                       appointment={a}
                       onSaved={(patch) =>

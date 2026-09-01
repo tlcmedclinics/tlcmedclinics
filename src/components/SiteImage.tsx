@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 /**
  * A photograph that cannot break the page.
@@ -17,18 +17,29 @@ import { useState } from "react";
  * through the wrapping element. That keeps the fallback exactly the same shape
  * as the picture it replaces, which is why the layout doesn't move when one
  * fails.
+ *
+ * ── Why there is a `style` prop as well as `className` ──
+ * Tailwind only builds the classes it can find written out in the source, and
+ * in this project a class that appears nowhere else has a habit of not being
+ * built at all until the dev server is restarted — which shows up as a picture
+ * that ignores its own object-fit and sits in the wrong place, with no error
+ * anywhere. For the one or two callers that need a fit or a position no other
+ * component uses, `style` says it in CSS the browser cannot fail to receive.
+ * Everything else should keep using `className`.
  */
 export default function SiteImage({
   src,
   alt,
   sizes,
   className = "object-cover",
+  style,
   priority,
 }: {
   src: string;
   alt: string;
   sizes?: string;
   className?: string;
+  style?: CSSProperties;
   priority?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
@@ -51,6 +62,7 @@ export default function SiteImage({
       fill
       sizes={sizes}
       className={className}
+      style={style}
       priority={priority}
       onError={() => setFailed(true)}
     />

@@ -144,7 +144,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "hero.eyebrow": "Lahore, Pakistan · U.S.-Trained Physicians",
     "hero.title.a": "A personalised approach to mental health",
     "hero.title.b": "and skin care.",
-    "hero.lede": "Psychiatry, ketamine therapy and aesthetic medicine under one roof, led by {doctor} — American Board Certified, with over 35 years in practice. In the clinic, or by telemedicine.",
+    "hero.lede": "Psychiatry, ketamine therapy and aesthetic medicine under one roof, led by {{doctor}} — American Board Certified, with over 35 years in practice. In the clinic, or by telemedicine.",
     "hero.cta.book": "Schedule Appointment",
     "hero.cta.call": "Call",
     "hero.badge.certified": "U.S. board certified",
@@ -368,6 +368,30 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "patient.dashboard.cancelled": "Appointment cancelled.",
     "patient.dashboard.prescription": "Prescription from your doctor",
     "patient.dashboard.rated": "You rated this session",
+
+    // ---- Patient satisfaction survey (src/lib/rating.ts) ----
+    // The five question keys must stay in step with RATING_QUESTIONS there;
+    // the component falls back to the English written in that file if one of
+    // these is ever missing, so a new question is never shown as a raw key.
+    "rating.title": "How was your visit?",
+    "rating.scaleHint": "1 = {{low}} · 5 = {{high}}",
+    "rating.scale.1": "Very Poor",
+    "rating.scale.2": "Poor",
+    "rating.scale.3": "Average",
+    "rating.scale.4": "Good",
+    "rating.scale.5": "Excellent",
+    "rating.q.care": "How would you rate the quality of medical care you received?",
+    "rating.q.listening": "How well did our doctor and medical staff listen to and address your concerns?",
+    "rating.q.courtesy": "How would you rate the courtesy and professionalism of our staff?",
+    "rating.q.efficiency": "How satisfied were you with the waiting time and overall efficiency of your visit?",
+    "rating.q.recommend": "How likely are you to recommend our practice to your family or friends?",
+    "rating.commentPlaceholder": "Anything you'd like to add (optional)",
+    "rating.submit": "Submit rating",
+    "rating.submitting": "Submitting…",
+    "rating.thanks": "Thanks for your feedback!",
+    "rating.incomplete": "{{answered}} of {{total}} answered — please answer them all.",
+    "rating.average": "Average {{value}} / 5",
+    "rating.youRated": "You rated this visit {{value}} / 5",
     "patient.dashboard.loadError":
       "Couldn't load your appointments. Pull to refresh or try again.",
 
@@ -657,7 +681,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "hero.eyebrow": "لاہور، پاکستان · امریکہ سے تربیت یافتہ معالجین",
     "hero.title.a": "ذہنی صحت اور جلد کی دیکھ بھال کے لیے",
     "hero.title.b": "ہر مریض کا اپنا لائحۂ عمل۔",
-    "hero.lede": "نفسیات، کیٹامین تھراپی اور جمالیاتی علاج — سب ایک ہی چھت کے نیچے، {doctor} کی نگرانی میں، جو امریکن بورڈ سرٹیفائیڈ ہیں اور پینتیس برس سے زائد کا تجربہ رکھتے ہیں۔ کلینک میں تشریف لائیں یا ٹیلی میڈیسن کے ذریعے رابطہ کریں۔",
+    "hero.lede": "نفسیات، کیٹامین تھراپی اور جمالیاتی علاج — سب ایک ہی چھت کے نیچے، {{doctor}} کی نگرانی میں، جو امریکن بورڈ سرٹیفائیڈ ہیں اور پینتیس برس سے زائد کا تجربہ رکھتے ہیں۔ کلینک میں تشریف لائیں یا ٹیلی میڈیسن کے ذریعے رابطہ کریں۔",
     "hero.cta.book": "اپائنٹمنٹ لیں",
     "hero.cta.call": "کال کریں",
     "hero.badge.certified": "امریکن بورڈ سرٹیفائیڈ",
@@ -881,6 +905,27 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "patient.dashboard.cancelled": "ملاقات منسوخ ہو گئی۔",
     "patient.dashboard.prescription": "آپ کے ڈاکٹر کا نسخہ",
     "patient.dashboard.rated": "آپ نے اس سیشن کو ریٹنگ دی",
+
+    // ---- مریض کی رائے کا سروے ----
+    "rating.title": "آپ کا وزٹ کیسا رہا؟",
+    "rating.scaleHint": "۱ = {{low}} · ۵ = {{high}}",
+    "rating.scale.1": "بہت خراب",
+    "rating.scale.2": "خراب",
+    "rating.scale.3": "درمیانہ",
+    "rating.scale.4": "اچھا",
+    "rating.scale.5": "بہترین",
+    "rating.q.care": "آپ کو جو طبی نگہداشت ملی، اُسے آپ کیا درجہ دیں گے؟",
+    "rating.q.listening": "ہمارے ڈاکٹر اور طبی عملے نے آپ کی بات کتنے غور سے سنی اور آپ کے خدشات کا کتنا ازالہ کیا؟",
+    "rating.q.courtesy": "ہمارے عملے کے اخلاق اور پیشہ ورانہ رویّے کو آپ کیا درجہ دیں گے؟",
+    "rating.q.efficiency": "انتظار کے دورانیے اور وزٹ کی مجموعی روانی سے آپ کتنے مطمئن رہے؟",
+    "rating.q.recommend": "آپ ہمارا کلینک اپنے گھر والوں یا دوستوں کو تجویز کرنے کا کتنا امکان رکھتے ہیں؟",
+    "rating.commentPlaceholder": "کچھ اور کہنا چاہیں تو یہاں لکھیے (اختیاری)",
+    "rating.submit": "رائے بھیجیں",
+    "rating.submitting": "بھیجی جا رہی ہے…",
+    "rating.thanks": "آپ کی رائے کا شکریہ!",
+    "rating.incomplete": "{{total}} میں سے {{answered}} سوالوں کے جواب دیے ہیں — براہِ کرم سب کے جواب دیجیے۔",
+    "rating.average": "اوسط {{value}} / ۵",
+    "rating.youRated": "آپ نے اس وزٹ کو {{value}} / ۵ دیا",
     "patient.dashboard.loadError": "آپ کی اپائنٹمنٹس لوڈ نہیں ہو سکیں۔ دوبارہ کوشش کریں۔",
 
     /* ---------- booking ---------- */

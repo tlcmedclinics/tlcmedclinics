@@ -37,24 +37,27 @@
 
 export const images = {
   /**
-   * The doctor on the home hero — a cut-out, standing at the right of the
-   * green band.
+   * The doctor on the home hero — a cut-out, filling the right of the green
+   * band from its top edge to its floor.
    *
-   * Two things were wrong before. The path said hero-img.jpg and the file is
-   * hero-img.png, so nothing loaded at all; and hero-img.png is not a cover
-   * photograph, it is a PNG cut-out — 63% of it is transparent, all of it on
-   * the left — which was being stretched full-bleed across the section and
-   * then covered by the dark scrim. A cut-out used as a background picture
-   * is a background picture of nothing.
+   * Two things were wrong with what this pointed at before. The path said
+   * hero-img.jpg and the file is hero-img.png, so nothing loaded at all; and
+   * hero-img.png is not a cover photograph, it is a PNG cut-out — 63% of it
+   * transparent, all of it on the left — which was being stretched full-bleed
+   * across the section and then covered by a dark scrim. A cut-out used as a
+   * background picture is a background picture of nothing.
    *
-   * hero-doctor.png is the same file with the empty left half trimmed off
-   * (352×307, the alpha bounding box). Trimming is what lets it be placed:
-   * with the transparent margin still attached, "align this to the right
-   * edge" aligns the emptiness, not the doctor.
+   * hero-doctor.png is that file with the empty left half trimmed off (the
+   * alpha bounding box, 352×307), then doubled to 704×614 with Lanczos and
+   * given a light unsharp mask. The upscale adds no detail — nothing can add
+   * detail that was never captured — but it means the browser DOWNscales to
+   * the ~560px the hero draws it at, instead of upscaling, and the unsharp
+   * mask puts back the local contrast that any resize washes out. Between them
+   * that is the difference between "slightly soft" and "low resolution", and
+   * it is as far as this photograph can be taken.
    *
-   * It is small, so it is used small — about 26rem at its widest. Blowing a
-   * 352px picture up to fill a 1920px screen is how a professional site
-   * starts looking like a photocopy.
+   * Trimming is what lets it be placed at all: with the transparent margin
+   * still attached, "align this to the right edge" aligns the emptiness.
    */
   heroDoctor: "/images/hero-doctor.png",
 

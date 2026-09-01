@@ -10,35 +10,50 @@ import { site } from "@/data/site";
 import { useT } from "@/contexts/LanguageContext";
 
 /**
- * The home page hero.
+ * The home page hero: words on the left, the doctor on the right, on green.
  *
- * ── Why this is no longer a full-bleed photograph ──
+ * ── The one idea the layout is built around ──
  *
- * It used to stretch images.heroCover across the whole section and lay a dark
- * green scrim over it. That only works if the file is a photograph. The file
- * the clinic supplied is a cut-out: a doctor with folded arms and a
- * stethoscope, 813×307, of which the left 388 columns are fully transparent.
- * Stretched to the width of a monitor it became a 2.4× upscale of a small PNG,
- * anchored so that the empty half sat behind the headline and the doctor was
- * pushed off the edge — and then the scrim went over the top of him.
+ * The picture fills the band from its top edge to its floor. Getting there is
+ * not a matter of making the picture bigger — the file is small, and past a
+ * point every extra pixel is an upscale that shows. It is a matter of making
+ * the BAND the height the picture can honestly fill.
  *
- * So the picture is now what it actually is: a person standing at the right of
- * a green band, at roughly his own size. The green is the background in its
- * own right rather than a filter over a photograph, which is also why the type
- * passes contrast at every width without a scrim fighting the image for it.
+ * So the type and the spacing on the left are kept tight, the band's padding
+ * is modest, and the picture's column is 38rem wide — which at the
+ * photograph's own 352:307 is about 33rem tall. The negative margins let it
+ * reach into the padding at both ends, so it meets the section's top edge and
+ * its floor.
  *
- * ── The layer order, and why it is this way round ──
+ * 38rem is also what closes the hole in the middle. At 35rem the picture was
+ * exactly the band's height, which was tidy, but it sat pinned to the right
+ * margin with about 86px of bare green between it and the text — a gap you
+ * read as a mistake. Widening it walks the doctor left until the two columns
+ * meet, and the band grows a little to suit him rather than the other way
+ * round.
  *
- * 1. The green field.
- * 2. The doctor.
- * 3. A gradient that is opaque on the left and clears by the middle.
- * 4. The words.
+ * ── Why the layout is written in CSS instead of Tailwind classes ──
  *
- * The gradient sits above the doctor, not below him. On a wide screen the two
- * never meet, so it does nothing; on a phone the text runs the full width and
- * the picture would otherwise be behind the paragraph. Above him, the gradient
- * simply dissolves whatever part of the picture reaches the text — a phone
- * shows a shoulder at the right edge and nothing behind the words.
+ * This section broke twice in the same way: the markup was right, the classes
+ * were right, and the browser received a stylesheet in which half of them did
+ * not exist. Tailwind builds only the classes it can find written out in the
+ * source, and in this project a class that appears in no other file has a
+ * habit of not being built until the dev server is restarted. There is no
+ * error — the page simply renders as though those attributes were never
+ * written.
+ *
+ * So the rule here: a Tailwind class is used ONLY if it is already used
+ * somewhere else in the project. Everything this hero needs that nothing else
+ * needs is an inline style, which reaches the browser inside the HTML and
+ * cannot go missing.
+ *
+ * ── Why there are no breakpoints ──
+ *
+ * clamp() handles the type and the spacing — one declaration that is already
+ * right at 360px and at 1920px. The stacking is flex-wrap: when 20rem of text
+ * and 38rem of picture no longer fit side by side — around 1050px — the
+ * picture drops below the text on its own. Between them they replace every
+ * media query this section used to need.
  *
  * Vein care is deliberately absent from the copy. The clinic no longer offers
  * it, and a hero that promises a service the booking form cannot fulfil is
@@ -59,155 +74,163 @@ const BADGES = [
   { Icon: ShieldIcon, key: "hero.badge.confidential" },
 ];
 
+/** The brand green, lighter towards the top right so the band has a direction. */
+const FIELD: CSSProperties = {
+  backgroundImage:
+    "radial-gradient(120% 120% at 88% 0%, #2b7d59 0%, #1b6746 38%, #0d3d2a 100%)",
+};
+
 /**
- * The cut-out's geometry, as a style object rather than utility classes.
+ * A soft light behind the doctor.
  *
- * Three things have to be true at once and only CSS can say all three:
- *
- *   · the box is exactly the picture's own aspect ratio, 352:307. Without
- *     that, object-contain leaves transparent margin inside the box, and the
- *     mask below fades empty space instead of the doctor's shoulders.
- *   · the width follows the viewport — clamp() does it in one declaration and
- *     needs no breakpoints, which is also why it cannot go out of step with
- *     the `sizes` attribute the way three Tailwind breakpoints could.
- *   · the top 15% fades out. The photograph is cropped straight across the
- *     shoulders, and a hard horizontal edge in mid-air reads as a mistake.
- *     Faded, he simply emerges from the green.
- *
- * 26rem is the ceiling on purpose: the file is 352px wide, and past about
- * 420px on screen it stops looking like a photograph and starts looking like
- * a photocopy.
+ * The photograph is being drawn slightly larger than its own pixels, and an
+ * upscaled picture sitting hard against a flat colour is exactly the condition
+ * under which the eye notices. A little light behind it reads as lighting
+ * rather than as resolution, and the figure stops looking pasted on.
  */
-const FADE_TOP = "linear-gradient(to bottom, transparent 0%, #000 15%)";
-
-const DOCTOR_BOX: CSSProperties = {
-  width: "clamp(14rem, 30vw, 26rem)",
-  aspectRatio: "352 / 307",
-  maskImage: FADE_TOP,
-  WebkitMaskImage: FADE_TOP,
+const GLOW: CSSProperties = {
+  backgroundImage:
+    "radial-gradient(38% 78% at 78% 62%, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.07) 45%, rgba(255,255,255,0) 72%)",
 };
 
-const DOCTOR_BOX_SMALL: CSSProperties = {
-  width: "clamp(11rem, 48vw, 18rem)",
-  aspectRatio: "352 / 307",
-  maskImage: FADE_TOP,
-  WebkitMaskImage: FADE_TOP,
+/**
+ * The band's vertical padding, named because the picture's column has to
+ * cancel exactly this much of it, twice, to reach both edges.
+ */
+const PAD_Y = "clamp(2rem, 3.2vw, 2.25rem)";
+
+const SHELL: CSSProperties = {
+  margin: "0 auto",
+  maxWidth: "88rem",
+  paddingInline: "clamp(1.5rem, 4vw, 2.5rem)",
+  paddingBlock: PAD_Y,
 };
+
+const ROW: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "flex-end",
+  justifyContent: "space-between",
+  // Row gap and column gap are deliberately different numbers.
+  //
+  // The column gap (2.5rem) is the space between the text and the doctor when
+  // they sit side by side. It is small on purpose: the picture is anchored to
+  // the right margin, so every pixel of gap is a pixel of bare green in the
+  // middle of the band.
+  //
+  // The row gap (4.5rem) only applies once the row has wrapped, and it has to
+  // be much bigger because the picture's column carries a negative top margin
+  // of one PAD_Y. Stacked, that margin eats into whatever separates it from
+  // the text above — at an equal gap the doctor's shoulder landed on top of
+  // the badges.
+  gap: "4.5rem 2.5rem",
+};
+
+const TEXT_COL: CSSProperties = {
+  // The basis only decides when the row gives up and stacks; the width the
+  // text actually gets comes from flex-grow and the max below.
+  flex: "1 1 20rem",
+  minWidth: 0,
+  maxWidth: "42rem",
+};
+
+const IMG_COL: CSSProperties = {
+  position: "relative",
+  flex: "0 1 38rem",
+  aspectRatio: "352 / 307",
+  marginTop: `calc(-1 * ${PAD_Y})`,
+  marginBottom: `calc(-1 * ${PAD_Y})`,
+};
+
+const IMG_FIT: CSSProperties = {
+  objectFit: "contain",
+  objectPosition: "right bottom",
+};
+
+const H1: CSSProperties = {
+  marginTop: "0.85rem",
+  fontSize: "clamp(1.7rem, 3vw, 2.35rem)",
+  lineHeight: 1.12,
+};
+
+const LEDE: CSSProperties = {
+  marginTop: "1.25rem",
+  fontSize: "clamp(0.88rem, 1vw, 0.97rem)",
+  maxWidth: "32rem",
+};
+
+const ACTIONS: CSSProperties = { marginTop: "1.5rem" };
+
+const BADGE_ROW: CSSProperties = { marginTop: "1.75rem", paddingTop: "1.5rem" };
+
+/** Lifts the primary action off the green instead of letting it lie flat on it. */
+const BOOK: CSSProperties = { boxShadow: "0 10px 26px -10px rgba(216,31,42,0.7)" };
 
 export default function Hero() {
   const t = useT();
 
   return (
-    <section className="relative isolate overflow-hidden bg-indigo-deep text-paper">
-      {/* 1. The green field. Two stops of the brand green, lighter towards the
-             top right so the section has a direction and the cut-out has
-             something to stand against instead of a flat wall. */}
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "radial-gradient(120% 120% at 88% 0%, #2b7d59 0%, #1b6746 38%, #0d3d2a 100%)",
-        }}
-      />
+    <section className="relative isolate overflow-hidden text-paper">
+      <div aria-hidden className="absolute inset-0" style={FIELD} />
+      <div aria-hidden className="absolute inset-0" style={GLOW} />
 
-      {/* 2. The doctor.
-             Anchored inside a centred 88rem box rather than to the window, so
-             on a very wide monitor he stays beside the text instead of drifting
-             to the far edge of the screen with a metre of green between them.
-             object-contain, bottom-aligned: he is standing on the floor of the
-             section, and object-cover would crop his arms to fill the box. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
-        <div className="relative mx-auto h-full max-w-[88rem]">
-          <div className="absolute bottom-0 right-10" style={DOCTOR_BOX}>
+      <div className="relative" style={SHELL}>
+        <div style={ROW}>
+          <div style={TEXT_COL}>
+            <p className="eyebrow text-paper/70">{t("hero.eyebrow")}</p>
+
+            <h1 className="font-extrabold tracking-tight" style={H1}>
+              {t("hero.title.a")}
+              <span className="block text-paper/75">{t("hero.title.b")}</span>
+            </h1>
+
+            <VitalsLine className="mt-6 h-3 w-40" color="rgba(255,255,255,0.6)" />
+
+            <p className="leading-relaxed text-paper/85" style={LEDE}>
+              {t("hero.lede", { doctor: site.doctor.name })}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-4" style={ACTIONS}>
+              <Link
+                href="/patient/book"
+                style={BOOK}
+                className="rounded-full bg-crimson px-8 py-3.5 text-sm font-medium text-white transition-colors hover:bg-crimson-deep"
+              >
+                {t("hero.cta.book")}
+              </Link>
+              <a
+                href={`tel:${site.phoneE164}`}
+                className="rounded-full border border-paper/40 px-8 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-paper hover:text-indigo-deep"
+              >
+                {t("hero.cta.call")} <span className="numeric ms-1">{site.phone}</span>
+              </a>
+            </div>
+
+            {/* Three claims, each one checkable — the badges a patient uses to
+                decide whether the rest of the page is worth reading. */}
+            <ul
+              className="flex flex-wrap gap-x-8 gap-y-3 border-t border-paper/15"
+              style={BADGE_ROW}
+            >
+              {BADGES.map(({ Icon, key }) => (
+                <li key={key} className="flex items-center gap-2 text-sm text-paper/85">
+                  <Icon className="h-[1.15rem] w-[1.15rem] shrink-0 text-paper/70" />
+                  {t(key)}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div aria-hidden style={IMG_COL}>
             <SiteImage
               src={images.heroDoctor}
               alt=""
-              sizes="26rem"
-              className="object-contain object-bottom"
+              sizes="(min-width: 66rem) 38rem, 92vw"
+              className=""
+              style={IMG_FIT}
+              priority
             />
           </div>
-        </div>
-      </div>
-
-      {/* 3. The wash. Solid green behind the text column, clearing to nothing
-             by 74% — the width at which the doctor begins on a large screen, so
-             he is never washed out and the type is never over him. */}
-      <div
-        aria-hidden
-        className="absolute inset-0"
-        style={{
-          backgroundImage:
-            "linear-gradient(100deg, rgba(13,61,42,0.96) 0%, rgba(13,61,42,0.92) 34%, rgba(13,61,42,0.55) 52%, rgba(13,61,42,0) 74%)",
-        }}
-      />
-
-      {/* 4. The words. max-w-xl on large screens rather than 2xl: the column has
-             to stop before the doctor starts. */}
-      <div className="relative mx-auto max-w-[88rem] px-6 py-16 sm:px-10 sm:py-20 lg:py-28">
-        <div className="max-w-lg xl:max-w-xl">
-          <p className="eyebrow text-paper/70">{t("hero.eyebrow")}</p>
-
-          {/* text-3xl on a phone. The old floor was text-4xl, and at 360px a
-              four-word Urdu headline at that size wrapped to four lines and
-              pushed the buttons under the fold. */}
-          <h1 className="mt-4 text-3xl font-extrabold leading-[1.12] tracking-tight sm:mt-5 sm:text-5xl sm:leading-[1.08] lg:text-[3.5rem]">
-            {t("hero.title.a")}
-            <span className="block text-paper/75">{t("hero.title.b")}</span>
-          </h1>
-
-          <VitalsLine className="mt-6 h-3 w-32 sm:mt-7 sm:w-40" color="rgba(255,255,255,0.6)" />
-
-          <p className="mt-6 max-w-xl text-[0.95rem] leading-relaxed text-paper/85 sm:mt-7 sm:text-base">
-            {t("hero.lede", { doctor: site.doctor.name })}
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-center gap-3 sm:mt-9 sm:gap-4">
-            <Link
-              href="/patient/book"
-              className="rounded-full bg-crimson px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-crimson-deep sm:px-8 sm:py-3.5"
-            >
-              {t("hero.cta.book")}
-            </Link>
-            <a
-              href={`tel:${site.phoneE164}`}
-              className="rounded-full border border-paper/40 px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-paper hover:text-indigo-deep sm:px-8 sm:py-3.5"
-            >
-              {t("hero.cta.call")} <span className="numeric ms-1">{site.phone}</span>
-            </a>
-          </div>
-
-          {/* Three claims, each one checkable — the badges a patient uses to
-              decide whether the rest of the page is worth reading. */}
-          <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-3 border-t border-paper/15 pt-6 sm:mt-12 sm:gap-x-8 sm:pt-7">
-            {BADGES.map(({ Icon, key }) => (
-              <li
-                key={key}
-                className="flex items-center gap-2 text-[0.8rem] text-paper/85 sm:text-sm"
-              >
-                <Icon className="h-[1.05rem] w-[1.05rem] shrink-0 text-paper/70 sm:h-[1.15rem] sm:w-[1.15rem]" />
-                {t(key)}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* The same picture, below the words instead of beside them, for every
-            width narrower than lg.
-            Putting him at the right of a phone screen was the obvious thing and
-            it does not work: the text column is the full width of the viewport
-            there, so the headline and the badges run straight across his coat —
-            white type on white cloth with nothing behind it. Fading him back far
-            enough to fix that left no picture worth showing. He does not fit
-            beside the text at that width, so he goes underneath it, at his own
-            size, over nothing. */}
-        <div aria-hidden className="relative ms-auto mt-10 lg:hidden" style={DOCTOR_BOX_SMALL}>
-          <SiteImage
-            src={images.heroDoctor}
-            alt=""
-            sizes="(min-width: 640px) 18rem, 48vw"
-            className="object-contain object-bottom"
-          />
         </div>
       </div>
     </section>

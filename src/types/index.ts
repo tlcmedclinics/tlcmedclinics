@@ -1,3 +1,5 @@
+import type { RatingAnswers } from "@/lib/rating";
+
 export type UserRole = "patient" | "doctor" | "admin";
 
 export interface UserProfile {
@@ -164,9 +166,17 @@ export interface Appointment {
   preferredWhen?: string;
 
   createdAt: string;
-  // Patient's rating of the doctor after a completed session — set once,
-  // via /api/appointments/[id]/rate.
-  rating?: number; // 1-5
+  // Patient's rating of the visit after a completed session — set once, via
+  // /api/appointments/[id]/rate.
+  //
+  // `ratings` holds the five survey answers (see src/lib/rating.ts) and
+  // `rating` holds their mean, to two decimals. The mean lives in the field
+  // the dashboards already read, which is why the survey could grow from one
+  // question to five without any of them changing — and why a visit rated
+  // before the survey existed, which has `rating` but no `ratings`, still
+  // counts in every average.
+  ratings?: RatingAnswers;
+  rating?: number; // 1-5, the mean of `ratings`
   ratingComment?: string;
   ratedAt?: string;
   // Doctor's e-prescription for this appointment, shown to the patient once saved.

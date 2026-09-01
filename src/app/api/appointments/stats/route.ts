@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import { isMissingIndexError, missingIndexMessage } from "@/lib/firestore-errors";
+import { RATING_QUESTION_KEYS, type RatingQuestionKey } from "@/lib/rating";
 
 // GET /api/appointments/stats
 //
@@ -28,9 +29,47 @@ type AnalyticsRow = {
   paymentStatus?: string;
   status?: string;
   rating?: number;
+  ratings?: Partial<Record<RatingQuestionKey, number>>;
   doctorId?: string;
   doctorName?: string;
 };
+
+/**
+ * Running mean per survey question.
+ *
+ * Counted per question rather than per response, because the two are not the
+ * same number: every visit rated before the five-question survey existed has
+ * a `rating` and no `ratings`, and dividing those questions by the total
+ * number of ratings would quietly drag every average down. Each question is
+ * only ever divided by the answers it actually received.
+ */
+function makeQuestionAverages() {
+  const sum = new Map<RatingQuestionKey, number>();
+  const n = new Map<RatingQuestionKey, number>();
+
+  function add(answers: AnalyticsRow["ratings"]) {
+    if (!answers) return;
+    for (const key of RATING_QUESTION_KEYS) {
+      const score = answers[key];
+      if (typeof score !== "number" || score < 1 || score > 5) continue;
+      sum.set(key, (sum.get(key) ?? 0) + score);
+      n.set(key, (n.get(key) ?? 0) + 1);
+    }
+  }
+
+  function result() {
+    return RATING_QUESTION_KEYS.map((key) => {
+      const count = n.get(key) ?? 0;
+      return {
+        key,
+        responses: count,
+        average: count ? Math.round(((sum.get(key) ?? 0) / count) * 100) / 100 : null,
+      };
+    });
+  }
+
+  return { add, result };
+}
 
 // Runs each figure independently and remembers the first missing-index error,
 // so one undeployed index degrades one number instead of the whole response.
@@ -94,7 +133,15 @@ async function adminStats() {
         .where("createdAt", ">=", cutoff)
         // Projection — we only need six fields, not the whole appointment
         // (notes, prescription, room URLs and the rest stay on the server).
-        .select("amount", "paymentStatus", "status", "rating", "doctorId", "doctorName")
+        .select(
+          "amount",
+          "paymentStatus",
+          "status",
+          "rating",
+          "ratings",
+          "doctorId",
+          "doctorName"
+        )
     ),
   ]);
 
@@ -103,6 +150,7 @@ async function adminStats() {
   let completed = 0;
   let ratingSum = 0;
   let ratingCount = 0;
+  const questions = makeQuestionAverages();
   const byDoctor = new Map<
     string,
     { name: string; completed: number; ratingSum: number; ratingCount: number }
@@ -115,6 +163,7 @@ async function adminStats() {
     if (a.rating) {
       ratingSum += a.rating;
       ratingCount += 1;
+      questions.add(a.ratings);
     }
     if (!a.doctorId) continue;
     const entry =
@@ -145,6 +194,11 @@ async function adminStats() {
       refunded,
       completed,
       avgRating: ratingCount ? ratingSum / ratingCount : null,
+      ratingCount,
+      // Per-question breakdown — which part of a visit the clinic is actually
+      // being marked down on. The overall average cannot answer that, and it
+      // is the only number the dashboard had.
+      ratingQuestions: questions.result(),
       doctorRows: Array.from(byDoctor.values())
         .map((d) => ({
           name: d.name,

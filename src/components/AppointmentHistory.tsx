@@ -80,7 +80,7 @@ export function buildAppointmentHistory(a: Appointment, showInternal: boolean): 
   push(
     events,
     a.ratedAt,
-    a.rating ? `Rated ${a.rating}/5` : "Rated",
+    a.rating ? `Rated ${a.rating.toFixed(1)}/5` : "Rated",
     a.ratingComment || undefined
   );
   push(

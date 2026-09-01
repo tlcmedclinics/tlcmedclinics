@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VideoCallModal from "@/components/VideoCallModal";
 import ChatPanel from "@/components/ChatPanel";
-import RatingStars from "@/components/RatingStars";
+import RatingStars, { RatingBreakdown, StarScore } from "@/components/RatingStars";
 import AppointmentHistory from "@/components/AppointmentHistory";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useLiveAppointments } from "@/lib/use-live-appointments";
@@ -16,6 +16,7 @@ import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import type { Appointment } from "@/types";
+import type { RatingAnswers } from "@/lib/rating";
 import { formatClinicTime } from "@/lib/clinic-time";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { SkeletonRows } from "@/components/Loader";
@@ -142,12 +143,12 @@ function PatientDashboardContent() {
     }
   }
 
-  async function handleRate(a: Appointment, rating: number, comment: string) {
+  async function handleRate(a: Appointment, answers: RatingAnswers, comment: string) {
     try {
       const res = await authedFetch(`/api/appointments/${a.id}/rate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rating, comment }),
+        body: JSON.stringify({ answers, comment }),
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
@@ -375,14 +376,23 @@ function PatientDashboardContent() {
                 )}
 
                 {a.status === "completed" && !a.rating && (
-                  <RatingStars onSubmit={(rating, comment) => handleRate(a, rating, comment)} />
+                  <RatingStars
+                    onSubmit={(answers, comment) => handleRate(a, answers, comment)}
+                  />
                 )}
-                {a.status === "completed" && a.rating && (
-                  <p className="mt-3 text-xs text-ink-soft">
-                    You rated this session {"★".repeat(a.rating)}
-                    {"☆".repeat(5 - a.rating)}
-                  </p>
-                )}
+                {a.status === "completed" && a.rating ? (
+                  <div className="mt-3">
+                    <p className="flex flex-wrap items-center gap-2 text-xs text-ink-soft">
+                      <StarScore value={a.rating} />
+                      <span>{t("rating.youRated", { value: a.rating.toFixed(1) })}</span>
+                    </p>
+                    {/* The five answers, for a visit rated on the current
+                        survey. A visit rated before it existed has the mean
+                        above and nothing to break down, which is why this is
+                        guarded rather than assumed. */}
+                    {a.ratings && <RatingBreakdown answers={a.ratings} />}
+                  </div>
+                ) : null}
               </div>
             );
           })}
