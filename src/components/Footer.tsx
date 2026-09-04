@@ -1,11 +1,12 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { footerColumns, site } from "@/data/site";
 import { useT } from "@/contexts/LanguageContext";
 import { images } from "@/data/images";
-import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/Icons";
+import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon, socialIcons } from "@/components/Icons";
 
 /**
  * One band, not three.
@@ -22,6 +23,18 @@ import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/Icons";
  * Client component so the labels translate — as a server component it printed
  * raw keys like "nav.privacy".
  */
+/**
+ * A 2.25rem tap target for the social links.
+ *
+ * Inline rather than utility classes because nothing else in this project is
+ * this size, and a Tailwind class that appears in exactly one file has a habit
+ * of not being generated here until the dev server restarts — which would show
+ * up as three flattened icons in the footer and no error anywhere.
+ *
+ * 36px is also the floor for something a thumb has to hit on a phone.
+ */
+const SOCIAL_BUTTON: CSSProperties = { height: "2.25rem", width: "2.25rem" };
+
 export default function Footer() {
   const t = useT();
 
@@ -91,6 +104,38 @@ export default function Footer() {
                 </span>
               </li>
             </ul>
+
+            {/* ---- Where else the clinic is ----
+                Drawn from site.socials, which is the same list lib/seo.ts
+                hands to schema.org `sameAs`. One list: a profile added for
+                Google appears here too, and a profile added here is one Google
+                is told about.
+
+                The icon is the only label, so each link carries a visible-to-
+                screen-readers name of its own. `rel` is not decoration either:
+                noopener closes the tab-hijack hole that target="_blank" opens,
+                and these all leave the site. */}
+            {site.socials.length > 0 && (
+              <div className="mt-7 flex items-center gap-3">
+                {site.socials.map((profile) => {
+                  const Icon = socialIcons[profile.icon];
+                  return (
+                    <a
+                      key={profile.href}
+                      href={profile.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={profile.label}
+                      className="flex items-center justify-center rounded-full border border-paper/20 text-paper/70 transition-colors hover:bg-paper/10 hover:text-paper"
+                      style={SOCIAL_BUTTON}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="sr-only">{profile.label}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* ---- Deep links ----

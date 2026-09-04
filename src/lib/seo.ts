@@ -257,7 +257,11 @@ export function clinicSchema() {
       name: "Telemedicine",
       serviceUrl: absoluteUrl("/contact"),
     },
-    ...(site.socials.length > 0 ? { sameAs: site.socials } : {}),
+    // sameAs wants bare URLs; site.socials carries a label and an icon too,
+    // because the footer draws from the same list.
+    ...(site.socials.length > 0
+      ? { sameAs: site.socials.map((profile) => profile.href) }
+      : {}),
   };
 }
 

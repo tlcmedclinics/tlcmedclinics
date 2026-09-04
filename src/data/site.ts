@@ -63,13 +63,38 @@ export const site = {
    */
   telemedicineWindow: { opens: "11:00", closes: "21:30" },
   /**
-   * Public profiles that belong to this clinic — Facebook, Instagram, the
-   * Google Business Profile link, a Marham/Oladoc listing. Google uses these
-   * (schema.org `sameAs`) to confirm the website and the listings are the same
-   * business, which is one of the strongest local ranking signals there is.
-   * Empty until real URLs exist — a wrong link is worse than none.
+   * Public profiles that belong to this clinic.
+   *
+   * One list, two jobs, and that is deliberate. The footer renders these as
+   * icons, and lib/seo.ts feeds the same URLs to schema.org `sameAs` — which
+   * is how Google confirms that this website and those profiles are the same
+   * business, one of the strongest local ranking signals there is. Keeping
+   * them in two lists would mean adding a profile in one place and wondering
+   * six months later why the other never knew about it.
+   *
+   * `icon` names an icon in components/Icons.tsx. Add a network here and the
+   * footer picks it up; there is nothing else to edit.
+   *
+   * Only real, verified URLs. A wrong link in `sameAs` tells Google this site
+   * belongs to somebody else, which is worse than telling it nothing.
    */
-  socials: [] as string[],
+  socials: [
+    {
+      label: "Facebook",
+      href: "https://www.facebook.com/share/19Hce2nCE9/",
+      icon: "facebook" as const,
+    },
+    {
+      label: "Instagram",
+      href: "https://www.instagram.com/tlcmedclinics/",
+      icon: "instagram" as const,
+    },
+    {
+      label: "LinkedIn",
+      href: "https://www.linkedin.com/company/tlc-med-clinics/",
+      icon: "linkedin" as const,
+    },
+  ],
   /**
    * Exact map coordinates, optional. Left undefined until they're copied from
    * the clinic's own Google Business Profile, because a guessed pin is worse

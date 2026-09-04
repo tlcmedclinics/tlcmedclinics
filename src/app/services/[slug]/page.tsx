@@ -14,11 +14,46 @@ import type { Service } from "@/types";
 // them.
 export const revalidate = 3600;
 
+/**
+ * A Firestore document, made safe to render.
+ *
+ * `as Service` is a promise the database never made. The Service interface says
+ * `points: string[]`, but Firestore is schemaless and a document written before
+ * that field existed — or created by hand in the console, or by an old seed
+ * script — simply has no `points` key. The cast makes TypeScript stop asking;
+ * it does not put an array there. So `service.points.length` read undefined and
+ * threw, and because this is a server component the whole page came back as a
+ * 500: a black browser error screen on a public treatment page that patients
+ * reach from Google.
+ *
+ * Everything the template touches without a guard is normalised here, once.
+ * A service with a field missing should render a shorter page, never no page.
+ */
+function normaliseService(raw: FirebaseFirestore.DocumentData): Service {
+  const list = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map((v) => String(v)).filter(Boolean) : [];
+  const text = (value: unknown): string => (typeof value === "string" ? value : "");
+
+  return {
+    ...raw,
+    id: text(raw.id),
+    slug: text(raw.slug),
+    category: text(raw.category),
+    name: text(raw.name),
+    short: text(raw.short),
+    intro: text(raw.intro),
+    points: list(raw.points),
+    treatments: list(raw.treatments),
+    pointsUr: Array.isArray(raw.pointsUr) ? list(raw.pointsUr) : undefined,
+    treatmentsUr: Array.isArray(raw.treatmentsUr) ? list(raw.treatmentsUr) : undefined,
+  } as Service;
+}
+
 async function getServiceBySlug(slug: string): Promise<Service | null> {
   try {
     const snap = await adminDb.collection("services").where("slug", "==", slug).limit(1).get();
     if (snap.empty) return null;
-    return snap.docs[0].data() as Service;
+    return normaliseService(snap.docs[0].data());
   } catch (err) {
     console.error("[ServiceDetailPage] Failed to load service:", err);
     return null;
@@ -26,11 +61,15 @@ async function getServiceBySlug(slug: string): Promise<Service | null> {
 }
 
 async function getRelated(category: string, excludeId: string): Promise<Service[]> {
+  // No category on the document means there is no such thing as "related in
+  // it". Asking Firestore for `category == ""` is a query that returns nothing
+  // at best, so it is skipped rather than run.
+  if (!category) return [];
   try {
     const snap = await adminDb.collection("services").where("category", "==", category).get();
     return snap.docs
-      .map((d) => d.data() as Service)
-      .filter((s) => s.id !== excludeId);
+      .map((d) => normaliseService(d.data()))
+      .filter((s) => s.id !== excludeId && Boolean(s.slug));
   } catch (err) {
     console.error("[ServiceDetailPage] Failed to load related services:", err);
     return [];
@@ -95,7 +134,9 @@ export default async function ServiceDetailPage({
         ← All services
       </Link>
 
-      <p className="eyebrow mt-6 text-indigo">{service.category}</p>
+      {service.category && (
+        <p className="eyebrow mt-6 text-indigo">{service.category}</p>
+      )}
       <h1 className="mt-3 h1-hero">
         <Bilingual en={service.name} ur={service.nameUr} />
       </h1>
