@@ -10,7 +10,7 @@ import {
   where,
   type Query,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase/db";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Appointment, AppointmentStatus } from "@/types";
 

@@ -10,7 +10,7 @@ import {
   query,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase/db";
 import Overlay from "@/components/Overlay";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";

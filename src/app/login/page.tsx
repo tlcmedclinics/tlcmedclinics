@@ -9,7 +9,8 @@ import {
   GoogleAuthProvider,
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase/client";
+import { auth } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase/db";
 import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
