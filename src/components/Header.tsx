@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
@@ -13,6 +13,47 @@ import { images } from "@/data/images";
 import { site } from "@/data/site";
 import { useAuth } from "@/contexts/AuthContext";
 import { useT } from "@/contexts/LanguageContext";
+
+/**
+ * The dropdown panel's shape.
+ *
+ * ── columnCount, not a two-column grid ──
+ *
+ * This was `grid grid-cols-2`, and with a grid the sections are laid into
+ * cells in order: the little "All conditions we treat" link took the whole of
+ * the first cell, Mental Health took the second, and Skin — the third section
+ * — was pushed onto a second grid row. A grid row is as tall as its tallest
+ * cell, and Mental Health has twelve links, so Skin began about 450px below
+ * the top of the panel: off the bottom of a laptop screen, with no scrollbar
+ * to hint it was there. The menu looked like it simply had no skin conditions.
+ *
+ * CSS columns pour the sections into two balanced tracks instead of parking
+ * each one in a cell, so Skin sits beside Mental Health rather than under it,
+ * and it keeps working whatever number of sections a group grows to.
+ * `breakInside: avoid` is what stops a section being split down the middle
+ * with its heading in one column and half its links in the other.
+ *
+ * ── maxHeight ──
+ *
+ * A belt for the same braces. However the sections balance, a long enough menu
+ * on a short enough window would still run past the bottom of the screen; this
+ * makes it scroll inside itself instead of disappearing. 9rem is the header and
+ * the utility bar above it.
+ *
+ * All three are inline styles rather than utility classes because they are used
+ * in one file, and a Tailwind class that appears nowhere else in this project
+ * has a habit of not being generated — which here would mean a menu with no
+ * columns and no scroll, i.e. exactly the bug this fixes.
+ */
+const MENU_PANEL: CSSProperties = {
+  maxHeight: "calc(100vh - 9rem)",
+  overflowY: "auto",
+};
+
+const MENU_COLUMNS: CSSProperties = { columnCount: 2, columnGap: "2rem" };
+
+const MENU_SECTION: CSSProperties = { breakInside: "avoid", paddingBottom: "1.25rem" };
+
 
 const dashboardPath: Record<string, string> = {
   patient: "/patient/dashboard",
@@ -93,13 +134,20 @@ function DesktopItem({
           }`}
         >
           <div
+            style={MENU_PANEL}
             className={`rounded-2xl border border-line bg-paper p-5 shadow-[0_24px_60px_-24px_rgba(21,86,59,0.45)] ${
               item.width === "lg" ? "w-[42rem]" : "w-[19rem]"
             }`}
           >
-            <div className={item.width === "lg" ? "grid grid-cols-2 gap-x-8 gap-y-5" : "space-y-4"}>
+            <div
+              className={item.width === "lg" ? undefined : "space-y-4"}
+              style={item.width === "lg" ? MENU_COLUMNS : undefined}
+            >
               {item.sections.map((section, i) => (
-                <div key={section.heading ?? `s${i}`}>
+                <div
+                  key={section.heading ?? `s${i}`}
+                  style={item.width === "lg" ? MENU_SECTION : undefined}
+                >
                   {section.heading && (
                     <p className="eyebrow mb-2 text-indigo">{section.heading}</p>
                   )}
