@@ -163,12 +163,7 @@ export default async function ServiceDetailPage({
               en={service.points}
               ur={service.pointsUr}
               className="mt-4 space-y-3"
-              renderItem={(point, i) => (
-                <li key={`${point}-${i}`} className="flex gap-3 text-sm text-ink-soft">
-                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-crimson" />
-                  {point}
-                </li>
-              )}
+              variant="bullet"
             />
           </div>
         )}
@@ -180,14 +175,7 @@ export default async function ServiceDetailPage({
               en={service.treatments}
               ur={service.treatmentsUr}
               className="mt-4 space-y-2"
-              renderItem={(t, i) => (
-                <li
-                  key={`${t}-${i}`}
-                  className="rounded-xl border border-line/70 bg-paper-dim/40 px-4 py-3 text-sm text-ink"
-                >
-                  {t}
-                </li>
-              )}
+              variant="card"
             />
           </div>
         )}

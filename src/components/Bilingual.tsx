@@ -49,20 +49,46 @@ export function Bilingual({
   );
 }
 
-/** The list form — a service's points or treatments. */
+/**
+ * The list form — a service's points or treatments.
+ *
+ * ── Why `variant` and not a `renderItem` callback ──
+ *
+ * This had a `renderItem?: (text, index) => ReactNode` prop, and the one page
+ * that used it — /services/[slug] — is a SERVER component. Passing a function
+ * from a server component to a client component is not allowed; React throws
+ *
+ *   Functions cannot be passed directly to Client Components unless you
+ *   explicitly expose it by marking it with "use server"
+ *
+ * and because that happens while the page is rendering on the server, the
+ * whole page comes back as a 500. It only fired when the list had something in
+ * it — `{service.points.length > 0 && <BilingualList …/>}` — so a service with
+ * no points rendered perfectly and one with points was a black error screen.
+ * That is why it looked like bad data rather than bad code.
+ *
+ * A `variant` string crosses the server/client boundary because it is just a
+ * string. The markup that used to live in the caller now lives here, where it
+ * is allowed to be a function of the item. If a third shape is ever needed,
+ * add a variant — do not add the callback back.
+ */
 export function BilingualList({
   en,
   ur,
   className,
   itemClassName,
-  renderItem,
+  variant = "plain",
 }: {
   en?: string[] | null;
   ur?: string[] | null;
   className?: string;
   itemClassName?: string;
-  /** Lets the caller keep its own bullet markup. */
-  renderItem?: (text: string, index: number) => React.ReactNode;
+  /**
+   * plain  — bare <li>, styled by itemClassName
+   * bullet — a small crimson dot and the text beside it
+   * card   — each item in its own bordered panel
+   */
+  variant?: "plain" | "bullet" | "card";
 }) {
   const { locale } = useLanguage();
   const items = pickList(locale, en, ur);
@@ -75,15 +101,38 @@ export function BilingualList({
       lang={showingUrdu ? "ur" : undefined}
       suppressHydrationWarning
     >
-      {items.map((text, i) =>
-        renderItem ? (
-          renderItem(text, i)
-        ) : (
-          <li key={`${text}-${i}`} className={itemClassName}>
+      {items.map((text, i) => {
+        const key = `${text}-${i}`;
+
+        if (variant === "bullet") {
+          return (
+            <li key={key} className="flex gap-3 text-sm text-ink-soft">
+              <span
+                aria-hidden
+                className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-crimson"
+              />
+              <span>{text}</span>
+            </li>
+          );
+        }
+
+        if (variant === "card") {
+          return (
+            <li
+              key={key}
+              className="rounded-xl border border-line/70 bg-paper-dim/40 px-4 py-3 text-sm text-ink"
+            >
+              {text}
+            </li>
+          );
+        }
+
+        return (
+          <li key={key} className={itemClassName}>
             {text}
           </li>
-        )
-      )}
+        );
+      })}
     </ul>
   );
 }
