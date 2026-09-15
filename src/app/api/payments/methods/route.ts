@@ -18,14 +18,41 @@ import { STRIPE_METHOD, enabledGateways, isStripeConfigured } from "@/lib/gatewa
  * rather than inferred from the id in three places.
  */
 export async function GET() {
+  const gateways = enabledGateways();
+
+  /**
+   * Stripe only appears when nothing else can take a card.
+   *
+   * Safepay and Stripe are both "Debit or credit card" to a patient, and
+   * offering both put two rows on the booking page with the same name, the
+   * same icon and the same amount — differing only in a line of small print
+   * naming a company the patient has no opinion about. Faced with two
+   * identical buttons, the honest reaction is to wonder which one is the real
+   * site.
+   *
+   * There is also a right answer, so the page should not be asking. Stripe
+   * does not pay out to a merchant registered in Pakistan: on test keys it
+   * completes beautifully and on live keys the money has nowhere to land. It
+   * stays in the codebase because it is genuinely useful for building and
+   * demonstrating the site — which is exactly what "only when no other card
+   * gateway is configured" means.
+   *
+   * `PAYMENTS_DISABLED=stripe` still works and still wins. This is the rule
+   * for everyone who has not set it, including a deploy whose environment was
+   * copied before that line existed — which is how the live site came to show
+   * two card buttons while the laptop showed one.
+   */
+  const CARD_GATEWAYS = ["safepay"];
+  const hasLocalCard = gateways.some((g) => CARD_GATEWAYS.includes(g.id));
+
   const methods = [
-    ...enabledGateways().map(({ id, label, blurb }) => ({
+    ...gateways.map(({ id, label, blurb }) => ({
       id,
       label,
       blurb,
       via: "redirect" as const,
     })),
-    ...(isStripeConfigured()
+    ...(isStripeConfigured() && !hasLocalCard
       ? [
           {
             id: STRIPE_METHOD.id,

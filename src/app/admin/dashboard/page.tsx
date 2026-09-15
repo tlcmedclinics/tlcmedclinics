@@ -207,8 +207,13 @@ export default function AdminOverviewPage() {
       {analytics.doctorRows.length === 0 ? (
         <p className="mt-4 text-sm text-ink-soft">No completed sessions with an assigned doctor yet.</p>
       ) : (
-        <div className="mt-4 overflow-hidden rounded-2xl border border-line/70">
-          <table className="w-full text-sm">
+        {/* Scrolls sideways rather than squashing.
+            `overflow-hidden` on a table is fine at desk width and wrong on a
+            phone: the columns compress until the headings wrap letter by
+            letter and the numbers stop lining up. A table is the one thing on
+            a page that is allowed its own horizontal scroll. */}
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-line/70">
+          <table className="w-full min-w-[34rem] text-sm">
             <thead className="bg-mist/50 text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>
                 <th className="px-5 py-3">Doctor</th>

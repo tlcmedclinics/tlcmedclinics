@@ -13,6 +13,7 @@ import {
 import { auth } from "@/lib/firebase/client";
 import { authedFetch } from "@/lib/authed-fetch";
 import PhoneAuthForm from "@/components/PhoneAuthForm";
+import RedirectIfSignedIn from "@/components/RedirectIfSignedIn";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
@@ -51,7 +52,7 @@ function GoogleIcon() {
   );
 }
 
-export default function RegisterPage() {
+function RegisterPage() {
   const nextQuery = useNextQuery();
   const router = useRouter();
   const toast = useToast();
@@ -308,5 +309,22 @@ export default function RegisterPage() {
         </Link>
       </p>
     </div>
+  );
+}
+
+/**
+ * The route.
+ *
+ * The sign-up form itself is above; this only decides whether it should be on
+ * screen at all. Somebody who is already signed in is sent to where they were
+ * going, or to their own panel — signing in over an existing session replaces
+ * it without asking, and the usual way to do that by accident is to click
+ * "Sign in" while a slow dashboard is still loading.
+ */
+export default function RegisterRoute() {
+  return (
+    <RedirectIfSignedIn>
+      <RegisterPage />
+    </RedirectIfSignedIn>
   );
 }

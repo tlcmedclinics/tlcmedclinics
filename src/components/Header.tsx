@@ -251,7 +251,24 @@ export default function Header() {
 
   const signedIn = !loading && user && profile;
 
-  const authButtons = (
+  /**
+   * Sign in / Register — but not while we are still finding out.
+   *
+   * `signedIn` is false during `loading`, so the old version offered "Sign in"
+   * to somebody who was already signed in and simply had a slow connection.
+   * Clicking it is how a second account ends up replacing the first in the same
+   * tab: Firebase keeps one signed-in user per browser, and signing in again
+   * quietly swaps it.
+   *
+   * A placeholder of roughly the right size holds the space instead, so the
+   * header does not jump when the real state arrives.
+   */
+  const authButtons = loading ? (
+    <span
+      aria-hidden
+      className="h-8 w-[10.5rem] animate-pulse rounded-full bg-mist/70"
+    />
+  ) : (
     <>
       <Link href="/login" className="btn-outline btn-sm">
         {t("nav.login")}
