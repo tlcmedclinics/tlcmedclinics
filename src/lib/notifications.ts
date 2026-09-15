@@ -1,4 +1,5 @@
 import { adminDb } from "@/lib/firebase/admin";
+import { sendPush } from "@/lib/push";
 import type { AppNotification, NotificationType, UserRole } from "@/types";
 
 type NotifyInput = {
@@ -24,6 +25,32 @@ function buildDoc(ref: FirebaseFirestore.DocumentReference, input: NotifyInput):
   };
 }
 
+/**
+ * The push that goes with a written notification.
+ *
+ * Deliberately every notification rather than a chosen few. The bell is a
+ * record; the push is the part that reaches somebody who is not looking at the
+ * app — and which notifications matter enough to interrupt for is a decision
+ * already made upstream, at the point where someone decided to write one at
+ * all. Splitting that decision across two files means the day a new
+ * notification type is added, it silently is not pushed.
+ *
+ * Never allowed to throw: the row is already written, and a phone that could
+ * not be reached is not a reason to fail a booking.
+ */
+function push(input: NotifyInput): Promise<void> {
+  return sendPush(input.userId, {
+    title: input.title,
+    body: input.message,
+    data: {
+      type: input.type,
+      // The app uses this to open straight onto the appointment instead of
+      // dropping the patient on a list to find it themselves.
+      ...(input.appointmentId ? { appointmentId: input.appointmentId } : {}),
+    },
+  });
+}
+
 // Fire-and-forget by design — a notification failing to write should never
 // block or fail the appointment action that triggered it.
 export async function notify(input: NotifyInput): Promise<void> {
@@ -33,6 +60,9 @@ export async function notify(input: NotifyInput): Promise<void> {
   } catch (err) {
     console.error("[notify] failed to write notification", err);
   }
+  // Outside the try above, on purpose. A push is worth attempting even if the
+  // write failed — the person still needs to know their session has started.
+  await push(input);
 }
 
 /** Several notifications in one round trip instead of one write each. */
@@ -48,6 +78,7 @@ export async function notifyMany(inputs: NotifyInput[]): Promise<void> {
   } catch (err) {
     console.error("[notifyMany] failed to write notifications", err);
   }
+  await Promise.all(inputs.map(push));
 }
 
 // The admin list changes maybe twice a year, but every booking, cancellation,

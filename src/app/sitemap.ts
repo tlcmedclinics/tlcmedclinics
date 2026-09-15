@@ -36,6 +36,7 @@ const STATIC_ROUTES: {
   { path: "/blog", changeFrequency: "weekly", priority: 0.7 },
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/refund-policy", changeFrequency: "yearly", priority: 0.2 },
   // Physician profiles. Small, fixed list, and the pages Google's local panel
   // draws a doctor's details from — worth listing explicitly.
   ...doctors.map((d) => ({

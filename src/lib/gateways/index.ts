@@ -29,9 +29,19 @@ export type GatewayId = "jazzcash" | "easypaisa" | "safepay";
  * hosted page. Safepay hands back a URL. The client component that receives
  * this does not need to know which gateway it is talking to.
  */
-export type Handover =
+export type Handover = (
   | { kind: "form"; action: string; fields: Record<string, string> }
-  | { kind: "url"; url: string };
+  | { kind: "url"; url: string }
+) & {
+  /**
+   * The gateway's own id for this payment, when it hands one over up front.
+   *
+   * Safepay does: the tracker token is minted before the patient leaves.
+   * Storing it means the callback can ask Safepay about the payment even if
+   * the redirect comes back missing a parameter.
+   */
+  gatewayReference?: string;
+};
 
 export type StartArgs = {
   /** Our own id for this payment. Comes back with the gateway's answer. */
@@ -51,6 +61,17 @@ export type CallbackResult = {
   reference: string;
   /** The gateway's own transaction id, stored for reconciliation. */
   gatewayReference?: string;
+  /**
+   * Not paid — but not refused either. Undecided.
+   *
+   * The difference matters more than it looks. A refusal means let the slot
+   * go; an undecided answer — the gateway unreachable, the payment still
+   * being processed — means leave everything exactly as it is, because the
+   * money may yet arrive and the slot must still be there when it does.
+   */
+  pending?: boolean;
+  /** What the gateway says was charged, in whole rupees, when it says. */
+  amountPkr?: number;
   /** Safe to show a patient. */
   message: string;
 };

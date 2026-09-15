@@ -8,6 +8,8 @@ import { useT } from "@/contexts/LanguageContext";
 import { auth } from "@/lib/firebase/client";
 import type { UserRole, DoctorProfile } from "@/types";
 import Loader from "@/components/Loader";
+import VerifyEmail from "@/components/VerifyEmail";
+import { needsEmailVerification } from "@/lib/email-verification";
 
 export default function RequireRole({
   role,
@@ -51,6 +53,18 @@ export default function RequireRole({
         <Loader label={t("common.loading")} />
       </div>
     );
+  }
+
+  // Checked here rather than inside the sign-in page, because there are three
+  // ways to arrive signed in — creating an account, signing in, and simply
+  // coming back tomorrow — and all three have to end at the same place. One
+  // gate is also one thing to get right.
+  //
+  // It sits above the doctor-approval branch on purpose: a doctor whose email
+  // has never been proved should not be told they are waiting for the clinic,
+  // because they are not. They are waiting for themselves.
+  if (needsEmailVerification(user)) {
+    return <VerifyEmail />;
   }
 
   // A doctor who self-registered but hasn't been approved yet gets a

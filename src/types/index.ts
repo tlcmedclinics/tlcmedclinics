@@ -38,6 +38,20 @@ export interface DoctorProfile extends UserProfile {
   role: "doctor";
   specialization?: string;
   bio?: string;
+
+  // ---- Urdu ----
+  // The same `x` / `xUr` pair the services and blog posts use, so `field()`
+  // and <Bilingual> read a doctor without knowing it is a doctor.
+  //
+  // `nameUr` is here and is deliberately never machine-translated: a person's
+  // name is not a phrase, and an API asked to translate "Dr Ayesha Khan" will
+  // return something confident and wrong. The box exists so the clinic can
+  // write the spelling the doctor uses themselves.
+  nameUr?: string;
+  specializationUr?: string;
+  bioUr?: string;
+  /** "machine" until a human has read it — see the backfill route. */
+  urSource?: "machine" | "human";
   active: boolean; // admin can suspend a doctor without deleting the account
 
   // ---- Presence ----
@@ -147,6 +161,19 @@ export interface Appointment {
   paymentDueAt?: string;
   paymentStatus: "unpaid" | "paid" | "refunded";
   paymentProvider?: "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
+  /**
+   * Which gateway the money actually went through.
+   *
+   * Separate from `paymentProvider`, which says what the patient *paid with* —
+   * both Stripe and Safepay are a card to them, and both are stored as "card".
+   * A refund is not the same question: it has to be issued through the company
+   * that holds the money, and issuing a Safepay charge's refund against
+   * Stripe's API simply fails. This field is the one the refund path reads.
+   *
+   * Absent on bookings taken before it existed, which is why the refund route
+   * falls back to asking rather than guessing.
+   */
+  paymentGateway?: "stripe" | "paypal" | "safepay" | "jazzcash" | "easypaisa" | "cash";
   paymentReference?: string;
   /** When the money actually arrived, ISO. Set on pay-after-booking follow-ups. */
   paidAt?: string;
@@ -251,6 +278,9 @@ export type NotificationType =
   | "appointment-cancelled"
   | "appointment-reminder"
   | "appointment-starting-soon"
+  // The clinic opened the session — possibly before the booked time. The
+  // patient cannot be expected to sit refreshing a screen waiting for it.
+  | "session-started"
   // The doctor booked a follow-up and the patient needs to pay to hold it.
   | "appointment-awaiting-payment"
   // That hold ran out before they did.

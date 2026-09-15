@@ -19,7 +19,9 @@ const MODULES = {
   GatewayId,
   {
     startPayment: (args: StartArgs) => Handover | Promise<Handover>;
-    verifyCallback: (params: Record<string, string>) => CallbackResult;
+    verifyCallback: (
+      params: Record<string, string>
+    ) => CallbackResult | Promise<CallbackResult>;
   }
 >;
 
@@ -31,6 +33,14 @@ export async function startPayment(id: GatewayId, args: StartArgs): Promise<Hand
   return MODULES[id].startPayment(args);
 }
 
-export function verifyCallback(id: GatewayId, params: Record<string, string>): CallbackResult {
+/**
+ * Async because Safepay is now asked directly rather than trusted from a
+ * query string. The two wallets still answer synchronously; a promise around
+ * a value costs nothing and keeps one signature for all three.
+ */
+export async function verifyCallback(
+  id: GatewayId,
+  params: Record<string, string>
+): Promise<CallbackResult> {
   return MODULES[id].verifyCallback(params);
 }

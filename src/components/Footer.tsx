@@ -172,12 +172,18 @@ export default function Footer() {
           {/* Both, on every page. Payment gateways look for these two links
               during merchant onboarding, and a patient handing over medical
               details should not have to hunt for them either. */}
-          <span className="flex items-center gap-4">
+          <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <Link href="/privacy" className="transition-colors hover:text-paper">
               {t("nav.privacy")}
             </Link>
             <Link href="/terms" className="transition-colors hover:text-paper">
-              Terms of Service
+              {t("nav.terms")}
+            </Link>
+            {/* A payment provider's onboarding review asks for this at a link
+                of its own, and a patient wondering whether they can get their
+                money back should not have to open the Terms to find out. */}
+            <Link href="/refund-policy" className="transition-colors hover:text-paper">
+              {t("nav.refund")}
             </Link>
           </span>
         </div>

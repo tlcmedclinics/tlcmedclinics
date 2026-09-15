@@ -151,17 +151,50 @@ export default function AdminAppointmentsPage() {
       !(await confirm({
         title: "Issue a refund?",
         message:
-          "This sends a real refund through Stripe or PayPal. It cannot be undone from here.",
+          "Stripe and PayPal payments are refunded straight away. A Safepay, JazzCash or EasyPaisa payment has to be refunded in that provider's own dashboard — you'll be told exactly where, and can record it here afterwards.",
         confirmLabel: "Refund",
         destructive: true,
       }))
     )
       return;
-    try {
-      const res = await authedFetch(`/api/appointments/${id}/refund`, { method: "POST" });
+
+    async function send(manual: boolean) {
+      const res = await authedFetch(`/api/appointments/${id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(manual ? { manual: true } : {}),
+      });
       const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
+
+    try {
+      const { res, data } = await send(false);
+
+      // 409 with `needsManualRefund` is not a failure — it is the gateway
+      // saying "not through an API, through my dashboard". The admin is told
+      // where, with the reference and the amount, and can then confirm that
+      // they have done it so the record here matches the money.
+      if (res.status === 409 && data?.needsManualRefund) {
+        toast.error(data.error ?? "This payment must be refunded in the provider's dashboard.");
+        const recorded = await confirm({
+          title: "Already refunded it there?",
+          message:
+            "Only confirm once the refund is actually showing in the provider's dashboard. This marks the booking as refunded here; it does not move any money.",
+          confirmLabel: "Yes, mark as refunded",
+          cancelLabel: "Not yet",
+        });
+        if (!recorded) return;
+
+        const second = await send(true);
+        if (!second.res.ok) throw new Error(second.data?.error ?? "Couldn't record the refund");
+        toast.success("Recorded as refunded.");
+        load();
+        return;
+      }
+
       if (!res.ok) throw new Error(data.error ?? "Refund failed");
-      toast.success("Refund issued.");
+      toast.success(data?.alreadyRefunded ? "Already refunded." : "Refund issued.");
       load();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Couldn't issue the refund.");

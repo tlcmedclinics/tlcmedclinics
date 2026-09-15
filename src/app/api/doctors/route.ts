@@ -14,7 +14,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
-  const { email, password, name, specialization, bio } = await req.json();
+  const { email, password, name, nameUr, specialization, specializationUr, bio, bioUr } =
+    await req.json();
   if (!email || !password || !name) {
     return NextResponse.json({ error: "Name, email and password are required" }, { status: 400 });
   }
@@ -40,8 +41,11 @@ export async function POST(req: NextRequest) {
     role: "doctor",
     name,
     email,
+    nameUr: nameUr || undefined,
     specialization: specialization || undefined,
+    specializationUr: specializationUr || undefined,
     bio: bio || undefined,
+    bioUr: bioUr || undefined,
     active: true,
     approvalStatus: "approved",
     createdAt: new Date().toISOString(),
@@ -74,11 +78,14 @@ export async function GET(req: NextRequest) {
   if (auth.role === "patient") {
     doctors = doctors
       .filter((d) => d.active && d.approvalStatus === "approved")
-      .map(({ uid, name, specialization, bio, photoURL, active, online, approvalStatus }) => ({
+      .map(({ uid, name, nameUr, specialization, specializationUr, bio, bioUr, photoURL, active, online, approvalStatus }) => ({
         uid,
         name,
+        nameUr,
         specialization,
+        specializationUr,
         bio,
+        bioUr,
         photoURL,
         active,
         online,

@@ -5,7 +5,7 @@ import type { Slot } from "@/types/slot";
 import { sendMail } from "@/lib/mailer";
 import { sendSms, smsBody } from "@/lib/sms";
 import { notify, notifyAllAdmins } from "@/lib/notifications";
-import { formatClinicTime } from "@/lib/clinic-time";
+import { formatClinicTime, isSlotPast } from "@/lib/clinic-time";
 
 /**
  * How the money arrived.
@@ -19,6 +19,9 @@ import { formatClinicTime } from "@/lib/clinic-time";
  * straight onto the appointment.
  */
 export type PaymentProviderId = "card" | "paypal" | "jazzcash" | "easypaisa" | "cash";
+
+/** Who holds the money — the only thing a refund can be issued against. */
+export type PaymentGatewayId = NonNullable<Appointment["paymentGateway"]>;
 
 export interface PendingBooking {
   id: string;
@@ -65,6 +68,18 @@ export async function createPendingBooking(
     const slot = slotSnap.data() as Slot;
     if (slot.status !== "available") {
       throw new Error("This slot was just booked by someone else — please pick another.");
+    }
+
+    // Refused here as well as hidden in the list.
+    //
+    // The booking page already drops times that have gone, but a page left
+    // open since the morning has not: at 16:00 its 11:00 button is still
+    // there, still clickable, and the only thing standing between it and a
+    // paid appointment for a time that is over is this line. A filter decides
+    // what is offered; a check decides what is allowed, and they are not the
+    // same job.
+    if (isSlotPast(slot.date, slot.time)) {
+      throw new Error("That time has already passed — please pick another.");
     }
 
     // The doctor comes from the slot, never from the request body.
@@ -133,7 +148,7 @@ export async function releasePendingBooking(pendingBookingId: string): Promise<v
  */
 export async function confirmAppointmentPayment(
   appointmentId: string,
-  opts: { provider: PaymentProviderId; reference: string }
+  opts: { provider: PaymentProviderId; reference: string; gateway?: PaymentGatewayId }
 ): Promise<Appointment> {
   const ref = adminDb.collection("appointments").doc(appointmentId);
 
@@ -159,6 +174,7 @@ export async function confirmAppointmentPayment(
       status: "confirmed",
       paymentStatus: "paid",
       paymentProvider: opts.provider,
+      ...(opts.gateway ? { paymentGateway: opts.gateway } : {}),
       paymentReference: opts.reference,
       paidAt,
       // The hold is over. Left in place, the expiry sweep would later cancel an
@@ -244,7 +260,7 @@ export async function confirmAppointmentPayment(
  */
 export async function finalizePendingBooking(
   pendingBookingId: string,
-  opts: { provider: PaymentProviderId; reference: string }
+  opts: { provider: PaymentProviderId; reference: string; gateway?: PaymentGatewayId }
 ): Promise<Appointment> {
   const pendingRef = adminDb.collection("pendingBookings").doc(pendingBookingId);
 
@@ -292,6 +308,7 @@ export async function finalizePendingBooking(
       bookingType: "online-payment",
       paymentStatus: "paid",
       paymentProvider: opts.provider,
+      ...(opts.gateway ? { paymentGateway: opts.gateway } : {}),
       paymentReference: opts.reference,
       notes: pending.notes,
       slotId: pending.slotId,

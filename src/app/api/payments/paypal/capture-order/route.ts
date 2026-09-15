@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
 
     const appointment = await finalizePendingBooking(result.referenceId, {
       provider: "paypal",
+      gateway: "paypal",
       reference: result.transactionId,
     });
 

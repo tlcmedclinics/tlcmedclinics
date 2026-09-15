@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
-import { formatClinicTime, normaliseClinicTime } from "@/lib/clinic-time";
+import { clinicToday, formatClinicTime, isSlotPast, normaliseClinicTime } from "@/lib/clinic-time";
 import { overlaps } from "@/lib/slot-grid";
 import { isOnLeave } from "@/lib/leaves";
 import { verifyRequest } from "@/lib/auth-server";
@@ -43,7 +43,7 @@ export async function GET(req: NextRequest) {
       // A single explicit day — equality, no range needed.
       query = query.where("date", "==", date);
     } else {
-      query = query.where("date", ">=", from || new Date().toISOString().slice(0, 10));
+      query = query.where("date", ">=", from || clinicToday());
       if (to) query = query.where("date", "<=", to);
       // Firestore requires the range field to be ordered first; ordering by
       // date here also means the JS sort below only has to settle times.
@@ -62,6 +62,22 @@ export async function GET(req: NextRequest) {
     if (mode === "in-clinic" || mode === "online") {
       // Missing mode on older slots defaults to "online".
       slots = slots.filter((s) => (s.mode ?? "online") === mode);
+    }
+
+    // Times that have already gone, dropped — but only for the people being
+    // offered a booking.
+    //
+    // A doctor adds 11:00 to 20:00 in the morning; a patient opens the page at
+    // 16:00 and is shown 11:00 as bookable. They can select it, pay for it, and
+    // arrive to find it was over five hours ago. Firestore cannot express this
+    // filter (it is a comparison against *now*, per row, only for today), so it
+    // is done here, once, where every caller passes through.
+    //
+    // `onlyAvailable` is the tell for "somebody is choosing a time". A doctor
+    // looking at their own calendar and an admin reconciling the day both need
+    // to see what already happened, so this must not apply to them.
+    if (onlyAvailable) {
+      slots = slots.filter((s) => !isSlotPast(s.date, s.time));
     }
 
     slots.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));

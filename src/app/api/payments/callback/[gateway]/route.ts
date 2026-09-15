@@ -38,6 +38,8 @@ type Attempt = {
   targetId: string;
   amount: number;
   status: "started" | "completed" | "failed";
+  /** The gateway's own token, written down before the patient left. */
+  gatewayReference?: string;
 };
 
 /** Both shapes turn up: a form post from the wallets, a query from Safepay. */
@@ -78,27 +80,119 @@ async function handle(req: NextRequest, gatewayParam: string) {
   const gateway = gatewayParam;
 
   const params = await readParams(req);
-  const outcome = verifyCallback(gateway, params);
 
-  if (!outcome.reference) {
-    return resultPage("failed", "That payment could not be matched to a booking.");
+  // Every parameter, every time, on one line.
+  //
+  // This endpoint is the one place in the system where a mistake costs real
+  // money, and it is also the one place that cannot be stepped through: the
+  // request is made by somebody else's server, once, and if it is not
+  // understood the patient is already staring at an answer. Guessing what a
+  // gateway sends has now cost two captured payments. It does not need to be
+  // guessed at.
+  console.log(`[payments/callback] ${gateway} ←`, JSON.stringify(params));
+
+  let outcome = await verifyCallback(gateway, params);
+
+  // ── Finding the attempt ───────────────────────────────────────────────────
+  //
+  // Two ways in, on purpose.
+  //
+  // The reference is the front door: we gave it to the gateway and the gateway
+  // gives it back. The tracker is the back door, and it exists because the
+  // front door has failed twice — once mangled, once absent — and each failure
+  // took a captured payment with it. A gateway that says "this tracker was
+  // paid" is naming a payment we started, and we wrote the tracker down before
+  // the patient left, so it identifies the booking just as surely as our own
+  // reference does.
+  let attemptSnap = outcome.reference
+    ? await adminDb.collection("paymentAttempts").doc(outcome.reference).get()
+    : null;
+
+  if (!attemptSnap?.exists) {
+    const tracker = params.tracker || params.beacon || params.tracker_token || "";
+    if (tracker) {
+      const found = await adminDb
+        .collection("paymentAttempts")
+        .where("gatewayReference", "==", tracker)
+        .limit(1)
+        .get();
+      if (!found.empty) {
+        attemptSnap = found.docs[0];
+        console.warn(
+          `[payments/callback] reference "${outcome.reference}" did not resolve; ` +
+            `matched on tracker instead → ${attemptSnap.id}`
+        );
+      }
+    }
   }
 
-  const attemptRef = adminDb.collection("paymentAttempts").doc(outcome.reference);
-  const attemptSnap = await attemptRef.get();
-  if (!attemptSnap.exists) {
+  if (!attemptSnap?.exists) {
     // Either a stale callback for something long since cleaned up, or someone
     // poking at the endpoint. Same answer for both.
-    console.warn("[payments/callback] unknown reference", outcome.reference);
+    console.warn("[payments/callback] unknown reference", outcome.reference, JSON.stringify(params));
     return resultPage("failed", "That payment could not be matched to a booking.");
   }
+
+  const attemptRef = attemptSnap.ref;
   const attempt = attemptSnap.data() as Attempt;
+  // From here on the attempt's own reference is authoritative — the one we
+  // wrote, not the one that came back over the wire.
+  outcome = { ...outcome, reference: attempt.reference ?? attemptSnap.id };
 
   // The gateway may deliver the same result twice — a browser redirect and a
   // server notification, or a patient hitting back. Finalising is idempotent
   // underneath, but there is no reason to make it prove that every time.
   if (attempt.status === "completed") {
     return resultPage("ok", "Your appointment is confirmed.");
+  }
+
+  // Second chance, and the reason the tracker is stored at all.
+  //
+  // Safepay is asked about the payment by token, and the token normally
+  // comes back on the redirect. When it does not — a parameter renamed, a
+  // browser that dropped the query string — the answer is not "unverified",
+  // it is "ask about the token we wrote down before they left".
+  if (!outcome.ok && attempt.gatewayReference && !params.tracker) {
+    outcome = await verifyCallback(gateway, {
+      ...params,
+      tracker: attempt.gatewayReference,
+    });
+  }
+
+  // Paid, but for less than we asked. The tracker is fetched from the
+  // gateway rather than read off the browser, so this is not a forgery so
+  // much as a mismatch — but an appointment must never be confirmed against
+  // a smaller charge, and a human should look at it either way.
+  if (
+    outcome.ok &&
+    typeof outcome.amountPkr === "number" &&
+    outcome.amountPkr + 0.5 < attempt.amount
+  ) {
+    console.error(
+      "[payments/callback] AMOUNT MISMATCH",
+      outcome.reference,
+      `expected ${attempt.amount}, gateway reported ${outcome.amountPkr}`
+    );
+    await attemptRef.update({
+      status: "failed",
+      failedAt: new Date().toISOString(),
+      needsAttention: true,
+      reportedAmount: outcome.amountPkr,
+    });
+    return resultPage(
+      "attention",
+      "The amount paid does not match the booking. Please call the clinic — do not pay again."
+    );
+  }
+
+  if (!outcome.ok && outcome.pending) {
+    // Undecided. Nothing is written down as failed and nothing is released:
+    // the attempt stays open, the slot stays held, and a later callback — or
+    // the patient reloading — can still finish the job. Releasing here is how
+    // a payment that succeeds thirty seconds late ends up with no slot to go
+    // into.
+    console.warn("[payments/callback] undecided, holding", outcome.reference);
+    return resultPage("attention", outcome.message);
   }
 
   if (!outcome.ok) {
@@ -118,11 +212,13 @@ async function handle(req: NextRequest, gatewayParam: string) {
     if (attempt.kind === "booking") {
       await finalizePendingBooking(attempt.targetId, {
         provider: PROVIDER[gateway],
+        gateway,
         reference: outcome.gatewayReference || outcome.reference,
       });
     } else {
       await confirmAppointmentPayment(attempt.targetId, {
         provider: PROVIDER[gateway],
+        gateway,
         reference: outcome.gatewayReference || outcome.reference,
       });
     }

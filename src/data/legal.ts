@@ -179,6 +179,63 @@ const contactingUs: LegalSection = {
 };
 
 /** The complete document, in the order the clinic's own copy sets out. */
+/**
+ * Cancellations and refunds.
+ *
+ * Shared between /terms and the standalone /refund-policy page rather than
+ * written twice. Two copies of a refund policy is two policies, and the day
+ * they disagree is the day somebody is owed money by one of them.
+ *
+ * Written against what the software actually does — payment is taken before a
+ * slot is held, the hold is released if it is not paid, and a cancelled
+ * appointment's refund is issued by whichever gateway took the money. A policy
+ * that describes something else is not a policy, it is a complaint waiting to
+ * be made.
+ */
+const cancellationAndRefunds: LegalSection = {
+  id: "cancellations-and-refunds",
+  heading: "Cancellations and refunds",
+  blocks: [
+    {
+      kind: "p",
+      text: "All amounts are charged and refunded in Pakistani Rupees (PKR). Payment is taken when you book: for some services this is the full fee, and for others an advance shown on the booking page before you pay. Your appointment time is only held once that payment succeeds.",
+    },
+    {
+      kind: "p",
+      text: "You can cancel an appointment yourself from your dashboard, or by calling the clinic. What happens to the money depends on when you cancel:",
+    },
+    {
+      kind: "ul",
+      items: [
+        "More than 24 hours before the appointment — the amount you paid is refunded in full.",
+        "Less than 24 hours before, or if you do not attend — the advance is retained, as set out in the Missed appointments section of our Terms of Service.",
+        "If TLC Med Clinics cancels, or the treating clinician becomes unavailable and you do not wish to be rescheduled — the amount you paid is refunded in full, whenever the cancellation happens.",
+        "If you were charged but no appointment was created, for any technical reason — the charge is refunded in full. Please call the clinic rather than paying again.",
+      ],
+    },
+    {
+      kind: "alert",
+      text: "If money has left your account and you cannot see a confirmed appointment, call the clinic before making a second payment. We would rather trace one payment than refund two.",
+    },
+    {
+      kind: "p",
+      text: "Refunds are returned to the same card or mobile wallet you paid from. We cannot send a refund to a different account, and we never ask for your card number, wallet PIN or one-time password in order to process one — no member of clinic staff will ever request them.",
+    },
+    {
+      kind: "p",
+      text: "Once we approve a refund it is issued to your payment provider within two working days. How long it then takes to appear on your statement is decided by your bank or wallet provider, and is commonly seven to ten working days. The delay after we have issued it is not something the clinic can shorten.",
+    },
+    {
+      kind: "p",
+      text: "A consultation that has taken place cannot be refunded on the basis of its outcome. Clinical judgement — including a clinician concluding that a treatment is not appropriate for you — is the service you paid for, not a failure to deliver it. If you believe a session did not take place as booked, or was cut short for a reason within our control, contact us and we will look at it individually.",
+    },
+    {
+      kind: "p",
+      text: "To request a refund, or to raise a problem with one, call +92 310 040 4444 or email info@tlcmedclinics.com with the date of the appointment and the name it was booked under. We respond to refund requests within two working days.",
+    },
+  ],
+};
+
 export const termsDoc: LegalDoc = {
   title: "Terms of Service and Privacy Practices",
   summary:
@@ -313,6 +370,7 @@ export const termsDoc: LegalDoc = {
         },
       ],
     },
+    cancellationAndRefunds,
     {
       id: "accounts",
       heading: "Registered user accounts",
@@ -617,4 +675,20 @@ export const privacyDoc: LegalDoc = {
     userSuppliedMaterial,
     contactingUs,
   ],
+};
+
+/**
+ * The cancellation and refund policy on its own page.
+ *
+ * It lives inside the Terms as well, and this is not duplication for its own
+ * sake: a payment gateway's onboarding review asks for a refund policy at a
+ * single, linkable URL, and a patient looking for "can I get my money back"
+ * should not have to read a contract to find out. Same text, both places.
+ */
+export const refundDoc: LegalDoc = {
+  title: "Cancellation and Refund Policy",
+  summary:
+    "When an appointment can be cancelled, what is refunded, how the money is returned and how long it takes.",
+  lastRevised: LAST_REVISED,
+  sections: [cancellationAndRefunds, contactingUs],
 };

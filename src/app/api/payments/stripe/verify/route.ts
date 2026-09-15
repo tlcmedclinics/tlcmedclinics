@@ -41,9 +41,14 @@ export async function POST(req: NextRequest) {
     }
 
     const appointment = pendingBookingId
-      ? await finalizePendingBooking(pendingBookingId, { provider: "card", reference })
+      ? await finalizePendingBooking(pendingBookingId, {
+          provider: "card",
+          gateway: "stripe",
+          reference,
+        })
       : await confirmAppointmentPayment(appointmentId as string, {
           provider: "card",
+          gateway: "stripe",
           reference,
         });
 

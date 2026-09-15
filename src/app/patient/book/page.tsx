@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Avatar from "@/components/Avatar";
+import { Bilingual } from "@/components/Bilingual";
 import PaymentMethods from "@/components/PaymentMethods";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useAuth } from "@/contexts/AuthContext";
@@ -691,7 +692,7 @@ function BookAppointmentContent() {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold text-ink">
-                          Dr. {d.name.replace(/^Dr\.?\s*/i, "")}
+                          Dr. <Bilingual en={d.name.replace(/^Dr\.?\s*/i, "")} ur={d.nameUr} />
                         </span>
                         {d.online && (
                           <span className="pill pill-success">
@@ -701,7 +702,9 @@ function BookAppointmentContent() {
                         )}
                       </span>
                       {d.specialization && (
-                        <span className="mt-0.5 block text-xs text-ink-soft">{d.specialization}</span>
+                        <span className="mt-0.5 block text-xs text-ink-soft">
+                          <Bilingual en={d.specialization} ur={d.specializationUr} />
+                        </span>
                       )}
                       {d.bio && (
                         <span className="mt-1.5 line-clamp-2 block text-xs leading-relaxed text-ink-soft/90">
@@ -788,7 +791,12 @@ function BookAppointmentContent() {
                 Dr. {selectedDoctor.name.replace(/^Dr\.?\s*/i, "")}
               </span>
               {selectedDoctor.specialization && (
-                <span className="block text-xs text-ink-soft">{selectedDoctor.specialization}</span>
+                <span className="block text-xs text-ink-soft">
+                  <Bilingual
+                    en={selectedDoctor.specialization}
+                    ur={selectedDoctor.specializationUr}
+                  />
+                </span>
               )}
             </span>
           </div>

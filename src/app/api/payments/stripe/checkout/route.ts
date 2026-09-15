@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRequest } from "@/lib/auth-server";
+import { isStripeConfigured } from "@/lib/gateways";
 import { getStripe, PAYMENT_CURRENCY, toMinorUnits } from "@/lib/stripe";
 import { createPendingBooking } from "@/lib/payments";
 import { publicOrigin } from "@/lib/public-url";
@@ -15,6 +16,21 @@ export async function POST(req: NextRequest) {
   const auth = await verifyRequest(req, ["patient"]);
   if ("error" in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
+  // Switched off means switched off, wherever the request comes from.
+  //
+  // `PAYMENTS_DISABLED=stripe` already keeps Stripe out of
+  // /api/payments/methods, so no button offers it — but a route that is only
+  // hidden is not disabled. The patient dashboard called this one directly for
+  // months after the booking page had moved on, which is exactly how a clinic
+  // that had turned Stripe off still sent patients to a Stripe page. The check
+  // belongs here, at the door, not only in the list of buttons.
+  if (!isStripeConfigured()) {
+    return NextResponse.json(
+      { error: "That payment method isn't available. Please choose another." },
+      { status: 400 }
+    );
   }
 
   const body = await req.json();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import BilingualField from "@/components/BilingualField";
 import { EmptyState, Pagination, SearchInput } from "@/components/ListControls";
 import { authedFetch } from "@/lib/authed-fetch";
 import { usePagedList } from "@/lib/use-paged-list";
@@ -16,7 +17,16 @@ export default function AdminDoctorsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", password: "", specialization: "" });
+  const [form, setForm] = useState({
+    name: "",
+    nameUr: "",
+    email: "",
+    password: "",
+    specialization: "",
+    specializationUr: "",
+    bio: "",
+    bioUr: "",
+  });
 
   async function load() {
     setLoading(true);
@@ -47,7 +57,16 @@ export default function AdminDoctorsPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Couldn't create doctor");
       toast.success(`${form.name}'s account is ready. Share the password with them securely.`);
-      setForm({ name: "", email: "", password: "", specialization: "" });
+      setForm({
+        name: "",
+        nameUr: "",
+        email: "",
+        password: "",
+        specialization: "",
+        specializationUr: "",
+        bio: "",
+        bioUr: "",
+      });
       setShowForm(false);
       load();
     } catch (err) {
@@ -123,22 +142,42 @@ export default function AdminDoctorsPage() {
           onSubmit={handleCreate}
           className="mt-6 grid gap-4 rounded-2xl border border-line/70 p-6 sm:grid-cols-2"
         >
-          <div>
-            <label className="text-xs font-medium text-ink-soft">Full name</label>
-            <input
+          {/* Both languages, side by side, the same way a service is written.
+              A doctor's name and speciality are what a patient reads first on
+              the booking page, so leaving them English-only meant an Urdu
+              reader met English at exactly the moment they were choosing who
+              to trust with their care. */}
+          <div className="sm:col-span-2">
+            <BilingualField
+              label="Full name"
               required
-              className="input mt-1"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              /* Never machine-translated. "Dr Ayesha Khan" put through a
+                 translation API comes back confident and wrong; the Urdu box
+                 is for the spelling the doctor uses themselves. */
+              translatable={false}
+              hint="Type the Urdu spelling the doctor uses. Leave it blank and the English name is shown in both languages."
+              value={{ en: form.name, ur: form.nameUr }}
+              onChange={(next) => setForm({ ...form, name: next.en, nameUr: next.ur })}
             />
           </div>
-          <div>
-            <label className="text-xs font-medium text-ink-soft">Specialization</label>
-            <input
-              className="input mt-1"
+          <div className="sm:col-span-2">
+            <BilingualField
+              label="Specialization"
               placeholder="e.g. Psychiatry"
-              value={form.specialization}
-              onChange={(e) => setForm({ ...form, specialization: e.target.value })}
+              value={{ en: form.specialization, ur: form.specializationUr }}
+              onChange={(next) =>
+                setForm({ ...form, specialization: next.en, specializationUr: next.ur })
+              }
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <BilingualField
+              label="Short bio"
+              multiline
+              rows={3}
+              hint="Shown on the doctor's card. Two or three sentences is plenty."
+              value={{ en: form.bio, ur: form.bioUr }}
+              onChange={(next) => setForm({ ...form, bio: next.en, bioUr: next.ur })}
             />
           </div>
           <div>

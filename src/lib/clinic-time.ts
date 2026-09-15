@@ -100,3 +100,51 @@ export function clinicInstant(date?: string, time?: string): Date | null {
     Date.UTC(y, m - 1, d, parts.hh, parts.mm) - CLINIC_UTC_OFFSET_MIN * 60_000
   );
 }
+
+/**
+ * Today's date in the clinic's own calendar, as "YYYY-MM-DD".
+ *
+ * Not `new Date().toISOString().slice(0,10)`, which is today *in UTC*. Between
+ * midnight and 5am in Lahore those are different days, and the difference
+ * shows up as the whole of today's schedule vanishing from the booking page
+ * for five hours every night.
+ */
+export function clinicToday(now: Date = new Date()): string {
+  const shifted = new Date(now.getTime() + CLINIC_UTC_OFFSET_MIN * 60_000);
+  return shifted.toISOString().slice(0, 10);
+}
+
+/**
+ * True when this slot's start time has already gone by — or is so close that
+ * offering it would be a promise the clinic cannot keep.
+ *
+ * ── Why a lead time and not simply "is it past" ──
+ *
+ * A patient arriving at 10:58 for an 11:00 slot has two minutes to read the
+ * summary, type their name and finish a card payment. They will not make it,
+ * and what they get instead is a payment that succeeds against a slot the
+ * doctor is already sitting in. `leadMinutes` is how long the booking itself
+ * plausibly takes; thirty is generous to the patient and still honest to the
+ * doctor.
+ *
+ * Slots on a later date are never past, so the cheap string comparison runs
+ * first and most calls stop there.
+ */
+export function isSlotPast(
+  date: string,
+  time: string,
+  leadMinutes = 30,
+  now: Date = new Date()
+): boolean {
+  const today = clinicToday(now);
+  if (date > today) return false;
+  if (date < today) return true;
+
+  const at = clinicInstant(date, time);
+  // An unreadable time is not evidence that the slot has gone. Hiding it would
+  // silently remove a bookable appointment from the calendar over a formatting
+  // problem, which is the more expensive mistake of the two.
+  if (!at) return false;
+
+  return at.getTime() - now.getTime() < leadMinutes * 60_000;
+}

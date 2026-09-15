@@ -3,6 +3,9 @@ import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
 import { createDailyRoom, createDailyToken } from "@/lib/daily";
 import { canJoinSession } from "@/lib/session-window";
+import { notify } from "@/lib/notifications";
+import { sendSms, smsBody } from "@/lib/sms";
+import { clinicInstant, formatClinicTime } from "@/lib/clinic-time";
 import type { Appointment } from "@/types";
 
 export async function POST(
@@ -83,6 +86,57 @@ export async function POST(
     }
 
     await ref.update(updates);
+
+    // ── Telling the patient the session has opened ────────────────────────
+    //
+    // This is the whole reason a clinic is allowed to start early. Without it,
+    // "the doctor is free now" is information the clinic has and the patient
+    // does not, and the only way for them to find out is to keep opening the
+    // app and looking — which turns a courtesy into a chore and means most
+    // early starts are simply wasted.
+    //
+    // Two conditions, both necessary:
+    //
+    //   · only when the clinic side started it. A patient joining at their own
+    //     appointment time does not need to be told they have joined.
+    //   · only on the transition into "live". A doctor whose browser reloads,
+    //     or who presses start twice, must not send a second alert — and this
+    //     also goes out as a push, where a duplicate is a phone buzzing twice
+    //     for nothing.
+    const openedNow = isHost && appointment.sessionStatus !== "live";
+
+    if (openedNow) {
+      const scheduled = clinicInstant(appointment.date, appointment.time);
+      // A minute or two of slack: a doctor pressing start at 10:59 for an
+      // 11:00 appointment has not started early in any sense that matters to
+      // the person being told about it.
+      const early = scheduled ? scheduled.getTime() - Date.now() > 2 * 60_000 : false;
+      const at = formatClinicTime(appointment.time);
+      const doctor = (appointment.doctorName ?? "").replace(/^Dr\.?\s*/i, "");
+
+      await notify({
+        userId: appointment.patientId,
+        role: "patient",
+        type: "session-started",
+        title: early ? "Your doctor is ready early" : "Your session has started",
+        message: early
+          ? `${doctor ? `Dr. ${doctor}` : "Your doctor"} has opened your ${appointment.service} session ahead of the ${at} slot — you can join now.`
+          : `Your ${appointment.service} session is open. You can join now.`,
+        appointmentId: appointment.id,
+      });
+
+      // And by SMS, because a patient who has not opened the app today is
+      // exactly the person this is for. `sendSms` never throws — an SMS that
+      // does not go out must not take the session down with it.
+      await sendSms(
+        appointment.patientPhone,
+        smsBody(
+          early
+            ? `Your doctor is ready early — your ${appointment.service} session (booked for ${at}) is open now. Open the TLC Med Clinics app to join.`
+            : `Your ${appointment.service} session is open now. Open the TLC Med Clinics app to join.`
+        )
+      );
+    }
 
     let joinToken: string | undefined;
     const roomUrl = updates.roomUrl ?? appointment.roomUrl;

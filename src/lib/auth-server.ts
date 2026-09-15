@@ -21,7 +21,9 @@ export async function verifyRequest(
       return { error: "Forbidden", status: 403 as const };
     }
 
-    return { uid: decoded.uid, role };
+    // The email travels with the token, so routes that need it (coupon
+    // restrictions, receipts) do not have to fetch the user record again.
+    return { uid: decoded.uid, role, email: decoded.email as string | undefined };
   } catch {
     return { error: "Invalid or expired token", status: 401 as const };
   }

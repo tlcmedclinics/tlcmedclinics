@@ -10,6 +10,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth } from "@/lib/firebase/client";
+import { authedFetch } from "@/lib/authed-fetch";
 import { db } from "@/lib/firebase/db";
 import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
@@ -102,7 +103,7 @@ export default function LoginPage() {
       // create a patient profile for them (doctors always go through the
       // register page so they can be routed into the approval queue).
       if (!snap.exists()) {
-        const res = await fetch("/api/auth/register", {
+        const res = await authedFetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

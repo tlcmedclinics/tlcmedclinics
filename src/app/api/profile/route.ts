@@ -99,6 +99,23 @@ export async function PATCH(req: NextRequest) {
 
     const bio = clamp(body.bio, MAX_BIO);
     if (bio !== undefined) updates.bio = bio || null;
+
+    // The Urdu side of the same three fields, so a doctor can write their own
+    // rather than wait for an admin. Writing any of them clears the "machine"
+    // flag: a person has now looked, which is the only thing that flag ever
+    // meant.
+    const nameUr = clamp(body.nameUr, MAX_NAME);
+    if (nameUr !== undefined) updates.nameUr = nameUr || null;
+
+    const specializationUr = clamp(body.specializationUr, MAX_SPECIALIZATION);
+    if (specializationUr !== undefined) updates.specializationUr = specializationUr || null;
+
+    const bioUr = clamp(body.bioUr, MAX_BIO);
+    if (bioUr !== undefined) updates.bioUr = bioUr || null;
+
+    if (nameUr !== undefined || specializationUr !== undefined || bioUr !== undefined) {
+      updates.urSource = "human";
+    }
   }
 
   if (Object.keys(updates).length === 0) {

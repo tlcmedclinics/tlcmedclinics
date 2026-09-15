@@ -41,13 +41,21 @@ export async function POST(req: NextRequest) {
 
     try {
       if (pendingBookingId) {
-        await finalizePendingBooking(pendingBookingId, { provider: "card", reference });
+        await finalizePendingBooking(pendingBookingId, {
+          provider: "card",
+          gateway: "stripe",
+          reference,
+        });
       } else if (appointmentId) {
         // A follow-up the patient just paid for. This path matters more than
         // the booking one: the patient is sent back to their dashboard rather
         // than a success page that calls /verify, so for these payments the
         // webhook is often the only thing that confirms the appointment.
-        await confirmAppointmentPayment(appointmentId, { provider: "card", reference });
+        await confirmAppointmentPayment(appointmentId, {
+          provider: "card",
+          gateway: "stripe",
+          reference,
+        });
       }
     } catch {
       // Already handled by the success-page /verify call, or the pending doc is

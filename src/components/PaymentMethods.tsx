@@ -33,37 +33,92 @@ type Method = {
 /**
  * How each method looks.
  *
- * The badge is initials rather than a logo: JazzCash and EasyPaisa wordmarks
- * are their trademarks and this project has no licence to redistribute them.
- * Each keeps its own colour, though — JazzCash red, EasyPaisa green — because
- * that is how a patient recognises the one they use, at a glance, without
- * reading. Cards get the clinic's own colour, since no single card brand owns
- * that row.
+ * ── Why icons and not logos ──
+ *
+ * JazzCash and EasyPaisa wordmarks are their trademarks and this project has
+ * no licence to redistribute them. The first version of this used two-letter
+ * initials instead — "JC", "EP", "SP" — which is safe and also looks like a
+ * placeholder somebody forgot to finish. A patient about to type a card number
+ * reads that as an unfinished site, and an unfinished site is not one you hand
+ * your card to.
+ *
+ * So: a drawn icon of the *kind* of payment, not the brand. A card looks like
+ * a card and a wallet looks like a wallet in any country, and neither belongs
+ * to anyone. Each method keeps its own colour, because that is how a patient
+ * picks out the one they use at a glance, without reading.
+ *
+ * The provider is still named — in words, under the label, where the server
+ * put it ("secured by Safepay"). Naming a company is not the same as
+ * reproducing its mark.
  */
-const STYLE: Record<string, { badge: string; tint: string; ring: string }> = {
+type Glyph = "card" | "wallet" | "bank";
+
+const STYLE: Record<string, { glyph: Glyph; tint: string; ring: string }> = {
   jazzcash: {
-    badge: "JC",
-    tint: "bg-crimson/10 text-crimson-deep",
-    ring: "hover:border-crimson/60 hover:bg-crimson/[0.04]",
+    glyph: "wallet",
+    tint: "bg-crimson/[0.08] text-crimson-deep",
+    ring: "hover:border-crimson/50 hover:bg-crimson/[0.03]",
   },
   easypaisa: {
-    badge: "EP",
-    tint: "bg-indigo/10 text-indigo-deep",
-    ring: "hover:border-indigo/60 hover:bg-indigo/[0.04]",
+    glyph: "wallet",
+    tint: "bg-indigo/[0.08] text-indigo-deep",
+    ring: "hover:border-indigo/50 hover:bg-indigo/[0.03]",
   },
   safepay: {
-    badge: "SP",
-    tint: "bg-indigo/10 text-indigo-deep",
-    ring: "hover:border-indigo/60 hover:bg-indigo/[0.04]",
+    glyph: "card",
+    tint: "bg-indigo/[0.08] text-indigo-deep",
+    ring: "hover:border-indigo/50 hover:bg-indigo/[0.03]",
   },
   stripe: {
-    badge: "CARD",
+    glyph: "card",
     tint: "bg-ink/[0.06] text-ink",
     ring: "hover:border-ink/40 hover:bg-ink/[0.03]",
   },
 };
 
-const FALLBACK = { badge: "PAY", tint: "bg-indigo/10 text-indigo-deep", ring: "hover:border-indigo/60" };
+function MethodGlyph({ glyph }: { glyph: Glyph }) {
+  const common = {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.6,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true,
+    className: "h-[1.15rem] w-[1.15rem]",
+  };
+  if (glyph === "wallet") {
+    return (
+      <svg {...common}>
+        <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H17a1 1 0 0 1 1 1v1.5" />
+        <rect x="3" y="7.5" width="18" height="11.5" rx="2.5" />
+        <path d="M21 11.5h-4a2.25 2.25 0 0 0 0 4.5h4" />
+      </svg>
+    );
+  }
+  if (glyph === "bank") {
+    return (
+      <svg {...common}>
+        <path d="M3 9.5 12 4l9 5.5" />
+        <path d="M5 10v8M10 10v8M14 10v8M19 10v8" />
+        <path d="M3 20.5h18" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <rect x="2.5" y="5.5" width="19" height="13" rx="2.5" />
+      <path d="M2.5 10h19" />
+      <path d="M6 14.5h3.5" />
+    </svg>
+  );
+}
+
+const FALLBACK: { glyph: Glyph; tint: string; ring: string } = {
+  glyph: "bank",
+  tint: "bg-indigo/[0.08] text-indigo-deep",
+  ring: "hover:border-indigo/50",
+};
 
 /** A small padlock, so "secure" is shown rather than only claimed. */
 function LockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -211,14 +266,14 @@ export default function PaymentMethods({
                 disabled={busy}
                 onClick={() => pay(m)}
                 className={`group flex w-full items-center gap-3.5 rounded-2xl border border-line bg-paper px-4 py-3.5 text-left transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-55 ${
-                  busy ? "" : `${style.ring} hover:-translate-y-px hover:shadow-[0_10px_24px_-18px_rgba(21,86,59,0.6)]`
+                  busy ? "" : `${style.ring} hover:shadow-[0_6px_18px_-14px_rgba(21,86,59,0.55)]`
                 }`}
               >
                 <span
                   aria-hidden
-                  className={`numeric grid h-11 w-11 shrink-0 place-items-center rounded-xl text-[0.65rem] font-bold tracking-tight ${style.tint}`}
+                  className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${style.tint}`}
                 >
-                  {style.badge}
+                  <MethodGlyph glyph={style.glyph} />
                 </span>
 
                 <span className="min-w-0 flex-1">
@@ -226,10 +281,19 @@ export default function PaymentMethods({
                   <span className="mt-0.5 block text-xs leading-snug text-ink-soft">{m.blurb}</span>
                 </span>
 
-                <span className="flex shrink-0 items-center gap-2.5">
+                <span className="flex shrink-0 items-center gap-3">
                   {amount > 0 && (
-                    <span className="numeric text-sm font-semibold text-ink">
-                      PKR {amount.toLocaleString()}
+                    <span className="text-right leading-tight">
+                      {/* Labelled, because an unexplained figure beside a
+                          chevron is the one number a patient will squint at.
+                          This is the advance, not the whole price, and the
+                          difference is worth one small word. */}
+                      <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-ink-soft/70">
+                        Due now
+                      </span>
+                      <span className="numeric block text-sm font-semibold text-ink">
+                        PKR {amount.toLocaleString()}
+                      </span>
                     </span>
                   )}
                   {/* The chevron only moves on hover, so the row reads as
@@ -257,11 +321,15 @@ export default function PaymentMethods({
         })}
       </ul>
 
-      <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-ink-soft">
-        <LockIcon />
-        You finish paying on the provider&apos;s own page. TLC never sees your
-        card number or wallet PIN.
-      </p>
+      <div className="mt-4 flex items-start justify-center gap-2 rounded-xl bg-paper-dim/60 px-4 py-3">
+        <span className="mt-px text-ink-soft/70">
+          <LockIcon />
+        </span>
+        <p className="text-center text-xs leading-relaxed text-ink-soft">
+          Payment is completed on the provider&apos;s own secure page. TLC Med
+          Clinics never sees or stores your card number or wallet PIN.
+        </p>
+      </div>
     </div>
   );
 }

@@ -5,16 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithPopup,
   GoogleAuthProvider,
   updateProfile,
 } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
+import { authedFetch } from "@/lib/authed-fetch";
 import PhoneAuthForm from "@/components/PhoneAuthForm";
 import VitalsLine from "@/components/VitalsLine";
 import { useToast } from "@/contexts/ToastContext";
 import { useT } from "@/contexts/LanguageContext";
 import { safeNext, useNextQuery } from "@/lib/next-path";
+import { verificationSettings } from "@/lib/auth-actions";
 
 type Role = "patient" | "doctor";
 
@@ -80,7 +83,7 @@ export default function RegisterPage() {
         String(data.password)
       );
 
-      const res = await fetch("/api/auth/register", {
+      const res = await authedFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,6 +101,16 @@ export default function RegisterPage() {
 
       // Force a token refresh so the custom role claim is available.
       await cred.user.getIdToken(true);
+
+      // The verification email goes out here, at the one moment we know the
+      // address was just typed and the person is still at the keyboard.
+      //
+      // Its failure is not the account's failure: the account exists, and the
+      // screen they land on has a "send it again" button, so a dropped
+      // connection at this exact second costs one click, not a sign-up.
+      await sendEmailVerification(cred.user, verificationSettings()).catch((err) => {
+        console.error("[register] verification email", err);
+      });
 
       if (role === "doctor" || result.approvalStatus === "pending") {
         toast.success("Account created — your doctor request is pending admin approval.");
@@ -123,7 +136,7 @@ export default function RegisterPage() {
         await updateProfile(cred.user, { displayName: cred.user.displayName }).catch(() => {});
       }
 
-      const res = await fetch("/api/auth/register", {
+      const res = await authedFetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -133,3 +133,11 @@ export const SERVICE_TRANSLATABLE = ["name", "short", "intro", "points", "treatm
 
 /** The fields of a blog post that are worth translating. */
 export const BLOG_TRANSLATABLE = ["title", "excerpt", "content"];
+
+/**
+ * A doctor's translatable fields.
+ *
+ * `name` is not in this list on purpose. It has an Urdu box on the form and it
+ * is never sent to a translation API — see the note on `nameUr` in the type.
+ */
+export const DOCTOR_TRANSLATABLE = ["specialization", "bio"];

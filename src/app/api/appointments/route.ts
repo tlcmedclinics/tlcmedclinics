@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
+import { quoteBooking } from "@/lib/pricing";
 import { verifyRequest } from "@/lib/auth-server";
 import { isMissingIndexError, missingIndexMessage } from "@/lib/firestore-errors";
 import type { Appointment } from "@/types";
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
     mode,
     slotId,
     notes,
-    amount,
+    // `amount` is deliberately no longer read from the body — see quoteBooking below.
     couponCode,
     bookingType,
     paymentProvider,
@@ -52,6 +53,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // What this booking costs, decided here rather than accepted from the
+  // browser. An unpaid booking's amount is what the clinic collects at the
+  // desk, so a figure a patient could edit is the same problem as one they
+  // could pay — it just arrives later, in cash.
+  let quotedAmount = 0;
+  let quotedCoupon: string | undefined = couponCode || undefined;
+  try {
+    const quote = await quoteBooking({ service, couponCode, patientEmail: auth.email });
+    quotedAmount = quote.amount;
+    quotedCoupon = quote.couponCode;
+  } catch {
+    // A service with no online price — one the clinic prices per patient.
+    // Zero is honest: it is settled at the desk, which is what an unpaid
+    // booking means anyway.
+    quotedAmount = 0;
+  }
+
   const appointmentRef = adminDb.collection("appointments").doc();
 
   let appointment: Appointment;
@@ -69,8 +87,8 @@ export async function POST(req: NextRequest) {
       date: "",
       time: "",
       status: "pending",
-      amount: Number(amount) || 0,
-      couponCode: couponCode || undefined,
+      amount: quotedAmount,
+      couponCode: quotedCoupon,
       patientType: patientType === "follow-up" ? "follow-up" : "new",
       sessionType: sessionType || undefined,
       bookingType: "doctor-request",
@@ -147,8 +165,8 @@ export async function POST(req: NextRequest) {
         date: slot.date,
         time: slot.time,
         status: isPaid ? "confirmed" : "pending",
-        amount: Number(amount) || 0,
-        couponCode: couponCode || undefined,
+        amount: quotedAmount,
+        couponCode: quotedCoupon,
         patientType: patientType === "follow-up" ? "follow-up" : "new",
         sessionType: sessionType || undefined,
         consultMode: slot.mode === "in-clinic" ? "in-clinic" : "online",

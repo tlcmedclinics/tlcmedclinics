@@ -12,7 +12,15 @@ dist
 dist-ssr
 *.local
 .next/
-.env
+
+# Every env file, not just `.env`.
+#
+# A backup called `.env.backup` or `.env.old` is the same secrets under a name
+# the old single line did not match — which is how a merchant secret ends up in
+# a public repository. The example file is the one exception: it holds names,
+# never values.
+.env*
+!.env.example
 key-base64.txt
 # Editor directories and files
 .vscode/*

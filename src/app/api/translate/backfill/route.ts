@@ -32,6 +32,15 @@ type Job = {
   /** The fields worth translating, in the order they'll be sent. */
   fields: string[];
   label: string;
+  /**
+   * Narrows the collection when it holds more than this job's subject.
+   *
+   * Only the doctors job needs it: doctors are rows in `users`, next to every
+   * patient and admin. Without this the job would walk thousands of patient
+   * records looking for a `specialization` none of them has — and, worse,
+   * would be one typo away from writing Urdu fields onto them.
+   */
+  where?: { field: string; value: string };
 };
 
 const JOBS: Record<string, Job> = {
@@ -45,7 +54,23 @@ const JOBS: Record<string, Job> = {
     fields: ["title", "excerpt", "content"],
     label: "Blog posts",
   },
+  doctors: {
+    where: { field: "role", value: "doctor" },
+    // Doctors live in `users`, alongside patients and admins, so this job is
+    // the only one that has to filter the collection it walks — see the
+    // `where` below. `name` is excluded: a machine translation of a person's
+    // name is not a translation, it is a guess with a confident face.
+    collection: "users",
+    fields: ["specialization", "bio"],
+    label: "Doctors",
+  },
 };
+
+/** The rows this job is about — the whole collection unless it says otherwise. */
+function jobQuery(job: Job): FirebaseFirestore.Query {
+  const base: FirebaseFirestore.Query = adminDb.collection(job.collection);
+  return job.where ? base.where(job.where.field, "==", job.where.value) : base;
+}
 
 const ENDPOINT = "https://translation.googleapis.com/language/translate/v2";
 
@@ -57,7 +82,7 @@ type Pending = { docId: string; field: string; isList: boolean; texts: string[] 
 
 /** Everything that has English but no Urdu yet. */
 async function findPending(job: Job): Promise<Pending[]> {
-  const snap = await adminDb.collection(job.collection).get();
+  const snap = await jobQuery(job).get();
   const out: Pending[] = [];
 
   for (const doc of snap.docs) {
@@ -123,7 +148,7 @@ export async function GET(req: NextRequest) {
   for (const [key, job] of Object.entries(JOBS)) {
     try {
       const pending = await findPending(job);
-      const snap = await adminDb.collection(job.collection).get();
+      const snap = await jobQuery(job).get();
 
       let done = 0;
       let total = 0;

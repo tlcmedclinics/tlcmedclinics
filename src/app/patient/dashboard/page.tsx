@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import VideoCallModal from "@/components/VideoCallModal";
+import Overlay from "@/components/Overlay";
+import PaymentMethods from "@/components/PaymentMethods";
 import ChatPanel from "@/components/ChatPanel";
 import RatingStars, { RatingBreakdown, StarScore } from "@/components/RatingStars";
 import AppointmentHistory from "@/components/AppointmentHistory";
@@ -51,7 +53,10 @@ function PatientDashboardContent() {
   const now = useNow();
   const { startSession, pendingId } = useSessionAction();
 
-  const [payingId, setPayingId] = useState<string | null>(null);
+  /** The follow-up the patient is choosing a payment method for, if any. */
+  const [payFor, setPayFor] = useState<Appointment | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   const [activePanel, setActivePanel] = useState<
     | { kind: "video"; roomUrl: string; joinToken?: string; patientName: string; mode: "video" | "audio" }
@@ -69,30 +74,23 @@ function PatientDashboardContent() {
   }
 
   /**
-   * Sends the patient to Stripe to pay for a follow-up the doctor already
-   * booked. Nothing about the price is passed — the server reads it from the
+   * Opens the payment methods for a follow-up the doctor already booked.
+   *
+   * ── Why this is no longer a straight jump to Stripe ──
+   *
+   * It used to POST to /api/payments/stripe/checkout and send the patient to
+   * Stripe, which was wrong in two separate ways. Stripe does not pay out to a
+   * merchant registered in Pakistan, so that checkout could never take real
+   * money for this clinic; and it ignored `PAYMENTS_DISABLED`, so a gateway the
+   * clinic had deliberately switched off still appeared here. The booking page
+   * had long since moved to the server's own list of enabled gateways. This
+   * page had simply been left behind, which is why a patient paying for a
+   * follow-up saw a Stripe page while a patient booking a new appointment saw
+   * Safepay.
+   *
+   * Nothing about the price is passed — the server reads it off the
    * appointment — so this only has to say which one.
    */
-  async function handlePayForAppointment(a: Appointment) {
-    setPayingId(a.id);
-    try {
-      const res = await authedFetch("/api/payments/stripe/pay-appointment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointmentId: a.id }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Couldn't start checkout");
-      }
-      window.location.href = data.url;
-    } catch (err) {
-      // Left cleared so they can try again; on success the browser navigates
-      // away and this never runs.
-      setPayingId(null);
-      toast.error(err instanceof Error ? err.message : "Couldn't start checkout.");
-    }
-  }
 
   /** Turning down a held follow-up — frees the slot straight away. */
   async function handleDecline(a: Appointment) {
@@ -279,11 +277,14 @@ function PatientDashboardContent() {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
-                        onClick={() => handlePayForAppointment(a)}
-                        disabled={payingId === a.id || !holdRemaining(a.paymentDueAt)}
+                        onClick={() => {
+                          setPayError(null);
+                          setPayFor(a);
+                        }}
+                        disabled={!holdRemaining(a.paymentDueAt)}
                         className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo-deep disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        {payingId === a.id ? "Opening checkout…" : "Confirm and pay"}
+                        Confirm and pay
                       </button>
                       <button
                         onClick={() => handleDecline(a)}
@@ -422,6 +423,64 @@ function PatientDashboardContent() {
             load();
           }}
         />
+      )}
+
+      {/* The same payment methods the booking page offers, on the same server
+          list, for a follow-up the doctor already held a time for. One place
+          decides which gateways exist; this sheet just shows them. */}
+      {payFor && (
+        <Overlay
+          labelledBy="pay-followup-title"
+          className="items-end justify-center sm:items-center"
+          onClose={payBusy ? undefined : () => setPayFor(null)}
+        >
+          <button
+            type="button"
+            aria-label="Close"
+            // Behind the sheet, not over it. Disabled while a gateway is
+            // opening, because dismissing the sheet mid-handover leaves the
+            // patient watching a page they can no longer cancel from.
+            disabled={payBusy}
+            onClick={() => setPayFor(null)}
+            className="absolute inset-0 bg-ink/40 backdrop-blur-[2px] disabled:cursor-wait"
+          />
+
+          <div className="relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-2xl sm:max-w-md sm:rounded-3xl">
+            <h2 id="pay-followup-title" className="text-lg font-semibold text-ink">
+              Confirm your appointment
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              {payFor.service}
+              {payFor.date ? ` · ${payFor.date}` : ""}
+              {payFor.time ? ` at ${formatClinicTime(payFor.time)}` : ""}
+            </p>
+
+            {payError && (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl border border-crimson/25 bg-crimson/[0.06] px-4 py-3 text-sm text-crimson-deep"
+              >
+                {payError}
+              </p>
+            )}
+
+            <PaymentMethods
+              payload={{ appointmentId: payFor.id }}
+              amount={payFor.amount}
+              onBusyChange={setPayBusy}
+              onError={setPayError}
+            />
+
+            <button
+              type="button"
+              disabled={payBusy}
+              onClick={() => setPayFor(null)}
+              className="mt-4 w-full rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Not now
+            </button>
+          </div>
+        </Overlay>
       )}
     </div>
   );

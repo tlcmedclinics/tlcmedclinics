@@ -29,6 +29,9 @@ type Draft = {
   email: string;
   specialization: string;
   bio: string;
+  nameUr: string;
+  specializationUr: string;
+  bioUr: string;
   photoURL: string;
   presenceVisible: boolean;
   notificationSound: boolean;
@@ -41,6 +44,9 @@ const EMPTY: Draft = {
   email: "",
   specialization: "",
   bio: "",
+  nameUr: "",
+  specializationUr: "",
+  bioUr: "",
   photoURL: "",
   presenceVisible: true,
   notificationSound: true,
@@ -107,6 +113,9 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
       email: profile.email ?? "",
       specialization: d.specialization ?? "",
       bio: d.bio ?? "",
+      nameUr: d.nameUr ?? "",
+      specializationUr: d.specializationUr ?? "",
+      bioUr: d.bioUr ?? "",
       photoURL: profile.photoURL ?? "",
       presenceVisible: d.presenceVisible !== false,
       notificationSound: profile.notificationSound !== false,
@@ -175,6 +184,9 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
             ? {
                 specialization: next.specialization,
                 bio: next.bio,
+                nameUr: next.nameUr,
+                specializationUr: next.specializationUr,
+                bioUr: next.bioUr,
                 presenceVisible: next.presenceVisible,
               }
             : {}),
@@ -246,6 +258,33 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
                     maxLength={120}
                   />
                 </label>
+                {/* The Urdu beside the English, not on another screen. A
+                    doctor writing their own is looking at the English while
+                    they do it, and patients reading Urdu see this on the
+                    booking page where they choose who to see. */}
+                <label className="field">
+                  <span className="label">{t("settings.specializationUr")}</span>
+                  <input
+                    className="input"
+                    dir="rtl"
+                    lang="ur"
+                    value={draft.specializationUr}
+                    onChange={(e) => set("specializationUr", e.target.value)}
+                    maxLength={120}
+                  />
+                </label>
+                <label className="field">
+                  <span className="label">{t("settings.nameUr")}</span>
+                  <input
+                    className="input"
+                    dir="rtl"
+                    lang="ur"
+                    value={draft.nameUr}
+                    onChange={(e) => set("nameUr", e.target.value)}
+                    maxLength={80}
+                  />
+                  <span className="field-hint">{t("settings.nameUrHint")}</span>
+                </label>
                 <label className="field">
                   <span className="label">{t("settings.bio")}</span>
                   <textarea
@@ -256,6 +295,18 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
                     maxLength={600}
                   />
                   <span className="field-hint">{t("settings.bioHint")}</span>
+                </label>
+                <label className="field">
+                  <span className="label">{t("settings.bioUr")}</span>
+                  <textarea
+                    className="input resize-none"
+                    dir="rtl"
+                    lang="ur"
+                    rows={4}
+                    value={draft.bioUr}
+                    onChange={(e) => set("bioUr", e.target.value)}
+                    maxLength={600}
+                  />
                 </label>
               </>
             )}

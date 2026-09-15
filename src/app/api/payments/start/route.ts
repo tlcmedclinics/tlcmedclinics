@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase/admin";
 import { verifyRequest } from "@/lib/auth-server";
-import { createPendingBooking } from "@/lib/payments";
+import { createPendingBooking, releasePendingBooking } from "@/lib/payments";
+import { quoteBooking } from "@/lib/pricing";
 import { isConfigured, paymentReference } from "@/lib/gateways";
 import { isGatewayId, startPayment } from "@/lib/gateways/dispatch";
 import { publicOrigin } from "@/lib/public-url";
@@ -37,6 +38,8 @@ type PaymentAttempt = {
   amount: number;
   status: "started" | "completed" | "failed";
   createdAt: string;
+  /** The gateway's own token, when it gives one before the patient leaves. */
+  gatewayReference?: string;
 };
 
 export async function POST(req: NextRequest) {
@@ -97,7 +100,36 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing booking details." }, { status: 400 });
     }
 
-    amount = Number(body.amount) || 0;
+    // The price comes from the service document and the discount from the
+    // coupon document. `body.amount` is read only to notice when the browser
+    // disagrees with the server — see lib/pricing.ts for why that matters.
+    let quote;
+    try {
+      quote = await quoteBooking({
+        service,
+        couponCode,
+        patientEmail: auth.email,
+      });
+    } catch (err) {
+      return NextResponse.json(
+        { error: err instanceof Error ? err.message : "Could not price this booking." },
+        { status: 400 }
+      );
+    }
+    amount = quote.amount;
+
+    const claimed = Number(body.amount);
+    if (Number.isFinite(claimed) && Math.round(claimed) !== amount) {
+      // Not refused — the usual cause is an honest one: a price the admin
+      // changed while the patient had the page open, or a coupon that ran out
+      // of uses a minute ago. The server's figure wins and the difference is
+      // logged, so a pattern of it is visible if one ever appears.
+      console.warn(
+        `[payments/start] amount mismatch — browser said ${claimed}, server charged ${amount}`,
+        { service, couponCode, uid: auth.uid }
+      );
+    }
+
     if (amount <= 0) {
       return NextResponse.json({ error: "Nothing to pay for this booking." }, { status: 400 });
     }
@@ -159,10 +191,39 @@ export async function POST(req: NextRequest) {
       returnUrl: `${origin}/api/payments/callback/${gateway}`,
       customer: { phone, email, name: body.patientName },
     });
+
+    // Safepay mints its tracker before the patient goes anywhere. Writing it
+    // down here means the callback can ask Safepay what happened even if the
+    // redirect comes back missing the parameter — which is precisely the
+    // failure that cost a captured PKR 4,000 its appointment.
+    if (handover.gatewayReference) {
+      await adminDb
+        .collection("paymentAttempts")
+        .doc(reference)
+        .update({ gatewayReference: handover.gatewayReference })
+        .catch((err) => console.error("[payments/start] could not store tracker", err));
+    }
+
     return NextResponse.json(handover);
   } catch (err) {
     console.error(`[payments/start] ${gateway}`, err);
     await adminDb.collection("paymentAttempts").doc(reference).update({ status: "failed" });
+
+    // The slot was put on hold a few lines above, for a payment that never
+    // started. Letting go of it again is the whole point of this branch.
+    //
+    // Without it, a gateway that refuses the request — a wrong key, a payload
+    // it does not recognise, an outage — takes a time off the clinic's
+    // calendar permanently. Nobody paid, nobody has an appointment, and the
+    // 11:00 is simply gone, with a `pendingBookings` document nobody will ever
+    // look at as the only trace. That is exactly what happened here while
+    // Safepay was answering 417.
+    if (kind === "booking") {
+      await releasePendingBooking(targetId).catch((releaseErr) =>
+        console.error("[payments/start] release after failure", releaseErr)
+      );
+    }
+
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not start payment." },
       { status: 502 }
