@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { consumeOtpAllowance } from "@/lib/otp-throttle";
 import { sendVerificationCode, twilioConfig } from "@/lib/twilio-verify";
+import { devPhoneCode } from "@/lib/phone-dev-code";
 import { toE164 } from "@/lib/phone-format";
 
 /**
@@ -11,8 +12,12 @@ import { toE164 } from "@/lib/phone-format";
  * into a way to test which phone numbers are registered patients.
  */
 export async function POST(req: NextRequest) {
+  // Development only, and only when explicitly switched on — see
+  // lib/phone-dev-code.ts for the two guards that keep it out of production.
+  const dev = devPhoneCode();
+
   const config = twilioConfig();
-  if (!config) {
+  if (!config && !dev) {
     console.error("[phone/start] TWILIO_* env vars are not set");
     return NextResponse.json({ error: "auth.smsNotConfigured" }, { status: 503 });
   }
@@ -36,7 +41,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const result = await sendVerificationCode(config, e164);
+  if (dev) {
+    // Nothing is sent. The code is already known, and printing it here is the
+    // whole point — the terminal is the inbox.
+    console.log(`[phone-auth] dev code for ${e164} is ${dev} (no SMS sent)`);
+    return NextResponse.json({ ok: true, dev: true });
+  }
+
+  const result = await sendVerificationCode(config!, e164);
   if (!result.ok) {
     const error =
       result.reason === "invalid-phone"

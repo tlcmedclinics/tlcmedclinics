@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
 import { checkVerificationCode, twilioConfig } from "@/lib/twilio-verify";
+import { devPhoneCode } from "@/lib/phone-dev-code";
 import { toE164 } from "@/lib/phone-format";
 
 /**
@@ -14,8 +15,10 @@ import { toE164 } from "@/lib/phone-format";
  * claim a number it doesn't control.
  */
 export async function POST(req: NextRequest) {
+  const dev = devPhoneCode();
+
   const config = twilioConfig();
-  if (!config) {
+  if (!config && !dev) {
     return NextResponse.json({ error: "auth.smsNotConfigured" }, { status: 503 });
   }
 
@@ -28,7 +31,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "auth.invalidCode" }, { status: 400 });
   }
 
-  const check = await checkVerificationCode(config, e164, cleanCode);
+  // In development the code is compared here instead of at Twilio. Everything
+  // below this point — finding or creating the account, minting the custom
+  // token — is the real path, so what is being tested is the real flow with
+  // one step stubbed, not a different flow.
+  const check = dev
+    ? cleanCode === dev
+      ? ({ ok: true } as const)
+      : ({ ok: false, reason: "invalid-code" } as const)
+    : await checkVerificationCode(config!, e164, cleanCode);
+
   if (!check.ok) {
     const error =
       check.reason === "expired"
