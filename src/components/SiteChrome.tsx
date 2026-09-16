@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import GetTheApp from "@/components/GetTheApp";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 // The public site and the signed-in panels want different chrome: marketing
@@ -41,6 +42,11 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <div className="flex min-h-dvh flex-col">
       <Header />
       <main className="flex-1">{children}</main>
+      {/* Above the footer, below everything a page has to say. Inside the
+          public branch on purpose: a patient already signed in and looking at
+          their appointments does not need to be sold the app they may well be
+          reading this in. */}
+      <GetTheApp />
       <Footer />
       <WhatsAppButton />
     </div>

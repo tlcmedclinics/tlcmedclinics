@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { applyActionCode, checkActionCode } from "firebase/auth";
+import {
+  applyActionCode,
+  checkActionCode,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
+} from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { useT } from "@/contexts/LanguageContext";
 import VitalsLine from "@/components/VitalsLine";
@@ -32,10 +37,11 @@ import Loader from "@/components/Loader";
  *
  * ── On the modes it does not handle ──
  *
- * That console setting applies to *every* template — password resets too. So
- * this page has to recognise the modes it was not built for and hand them
- * back to Google's own handler rather than dead-ending somebody who is locked
- * out of their account. Silence would be the worst possible behaviour here.
+ * That console setting applies to *every* template, so this page receives
+ * password resets as well. It now handles those itself — see below — and hands
+ * anything it still does not recognise back to Google's own handler rather
+ * than dead-ending somebody who is locked out of their account. Silence would
+ * be the worst possible behaviour here.
  */
 function ActionHandler() {
   const params = useSearchParams();
@@ -46,8 +52,20 @@ function ActionHandler() {
   const code = params.get("oobCode");
   const continueUrl = params.get("continueUrl");
 
-  const [state, setState] = useState<"working" | "done" | "failed">("working");
+  const [state, setState] = useState<
+    "working" | "done" | "failed" | "reset" | "resetDone"
+  >("working");
   const [reason, setReason] = useState<string>("");
+
+  // Password reset only. The address is read back out of the code so the form
+  // can say whose password is being changed — a patient who has three email
+  // addresses should not have to guess which one this link belongs to.
+  const [resetEmail, setResetEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
   const ran = useRef(false);
 
   useEffect(() => {
@@ -64,9 +82,41 @@ function ActionHandler() {
       return;
     }
 
-    // Anything that isn't email verification belongs to Google's handler,
-    // which knows how to render a password-reset form. Sending them on is
-    // better than telling them their link is broken when it isn't.
+    // ── Password reset ──
+    //
+    // Handled here rather than bounced to Google, and the difference is not
+    // cosmetic: somebody resetting a password is, by definition, already
+    // unsure they are in the right place. Sending them to a grey page on
+    // `tlc-med-clinic.firebaseapp.com` at that exact moment is how a real
+    // email gets treated as a fake one.
+    //
+    // The code is verified before the form is shown, so an expired link says
+    // so immediately instead of after the patient has typed a new password
+    // twice.
+    if (mode === "resetPassword") {
+      (async () => {
+        try {
+          const address = await verifyPasswordResetCode(auth, code);
+          setResetEmail(address);
+          setState("reset");
+        } catch (err) {
+          const errorCode = (err as { code?: string })?.code ?? "";
+          setState("failed");
+          setReason(
+            errorCode === "auth/expired-action-code"
+              ? t("auth.actionExpired")
+              : errorCode === "auth/invalid-action-code"
+                ? t("auth.actionUsed")
+                : t("auth.actionFailed")
+          );
+        }
+      })();
+      return;
+    }
+
+    // Anything else this page was not built for belongs to Google's handler.
+    // Sending them on is better than telling them their link is broken when
+    // it isn't.
     if (mode && mode !== "verifyEmail") {
       const project = auth.app.options.authDomain;
       window.location.replace(
@@ -115,6 +165,98 @@ function ActionHandler() {
     })();
   }, [code, mode, params, continueUrl, router, t]);
 
+  async function submitNewPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!code) return;
+
+    // Checked here rather than left to Firebase, because Firebase only sees
+    // one of the two boxes and cannot know they disagree.
+    if (password.length < 6) {
+      setFormError(t("auth.needPassword"));
+      return;
+    }
+    if (password !== confirm) {
+      setFormError(t("auth.passwordsDiffer"));
+      return;
+    }
+
+    setBusy(true);
+    setFormError(null);
+    try {
+      await confirmPasswordReset(auth, code, password);
+      setState("resetDone");
+      // Deliberately not signed in automatically. Firebase invalidates the old
+      // sessions on a reset, and typing the new password once, now, is what
+      // makes it stick in someone's memory.
+      setTimeout(() => router.replace("/login"), 1800);
+    } catch (err) {
+      const errorCode = (err as { code?: string })?.code ?? "";
+      setFormError(
+        errorCode === "auth/weak-password"
+          ? t("auth.needPassword")
+          : errorCode === "auth/expired-action-code"
+            ? t("auth.actionExpired")
+            : errorCode === "auth/invalid-action-code"
+              ? t("auth.actionUsed")
+              : t("common.somethingWrong")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (state === "reset") {
+    return (
+      <div className="mx-auto max-w-md px-6 py-16">
+        <p className="eyebrow text-indigo">{t("auth.resetEyebrow")}</p>
+        <h1 className="mt-2.5 h2 text-ink">{t("auth.resetChooseTitle")}</h1>
+        <VitalsLine className="mt-5 h-3 w-32" />
+        <p className="mt-5 text-sm leading-relaxed text-ink-soft">
+          {t("auth.resetChooseFor", { email: resetEmail })}
+        </p>
+
+        <form onSubmit={submitNewPassword} className="mt-7 space-y-5">
+          <label className="field">
+            <span className="label">{t("auth.newPassword")}</span>
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              autoFocus
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <span className="field-hint">{t("auth.passwordHint")}</span>
+          </label>
+
+          <label className="field">
+            <span className="label">{t("auth.confirmPassword")}</span>
+            <input
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+          </label>
+
+          {formError && (
+            <p
+              role="alert"
+              className="rounded-xl border border-crimson/25 bg-crimson/[0.06] px-4 py-3 text-sm text-crimson-deep"
+            >
+              {formError}
+            </p>
+          )}
+
+          <button type="submit" disabled={busy} className="btn-primary w-full">
+            {busy ? t("auth.resetSaving") : t("auth.resetSave")}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-16 text-center">
       {state === "working" && (
@@ -133,6 +275,19 @@ function ActionHandler() {
           <h1 className="mt-6 h1">{t("auth.actionVerified")}</h1>
           <VitalsLine className="mx-auto mt-5 h-3 w-36" />
           <p className="mt-4 text-sm text-ink-soft">{t("auth.actionVerifiedSub")}</p>
+        </>
+      )}
+
+      {state === "resetDone" && (
+        <>
+          <div className="grid h-16 w-16 place-items-center rounded-full bg-indigo/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7 text-indigo">
+              <path d="m5 12.5 4.5 4.5L19 7.5" />
+            </svg>
+          </div>
+          <h1 className="mt-6 h1">{t("auth.resetDoneTitle")}</h1>
+          <VitalsLine className="mx-auto mt-5 h-3 w-36" />
+          <p className="mt-4 text-sm text-ink-soft">{t("auth.resetDoneSub")}</p>
         </>
       )}
 

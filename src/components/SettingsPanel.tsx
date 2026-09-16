@@ -10,6 +10,7 @@ import { useLanguage, useT } from "@/contexts/LanguageContext";
 import { playNotificationChime } from "@/lib/notification-sound";
 import { formatPhone } from "@/lib/phone-format";
 import { LOCALES, type Locale } from "@/i18n/dictionaries";
+import { auth } from "@/lib/firebase/client";
 import type { DoctorProfile, UserRole } from "@/types";
 
 /**
@@ -98,6 +99,12 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [section, setSection] = useState<SectionId | null>(null);
+
+  // Closing the account. `confirmText` is what the patient types; nothing
+  // happens until it matches, which is the point — this is the one control on
+  // the page that cannot be undone by pressing it again.
+  const [confirmText, setConfirmText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -203,6 +210,29 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
   }
 
   if (!profile) return <Loader label={t("common.loading")} />;
+
+  async function deleteAccount() {
+    setDeleting(true);
+    try {
+      const res = await authedFetch("/api/account/delete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "DELETE" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error ?? t("settings.deleteFailed"));
+
+      // Signed out here rather than left to the auth listener. The Firebase
+      // user has just been deleted on the server, so this browser is holding a
+      // token for an account that no longer exists — every request it makes
+      // from now on would fail in a way that looks like a bug.
+      await auth.signOut().catch(() => {});
+      window.location.href = "/";
+    } catch (err) {
+      setDeleting(false);
+      toast.error(err instanceof Error ? err.message : t("settings.deleteFailed"));
+    }
+  }
 
   /* ------------------------------ sections ------------------------------ */
 
@@ -347,6 +377,49 @@ export default function SettingsPanel({ role }: { role: UserRole }) {
             <p className="rounded-[var(--radius-sm)] bg-mist/60 px-3 py-2 text-xs leading-relaxed text-ink-soft">
               {t("settings.identityHint")}
             </p>
+
+            {/* Closing the account.
+                Patients only: a doctor's account is attached to appointments
+                other people depend on, and an admin could lock the clinic out
+                of its own site. The server refuses both as well — this is the
+                courtesy, not the control. */}
+            {role === "patient" && (
+              <div className="mt-8 rounded-[var(--radius-sm)] border border-crimson/25 bg-crimson/[0.04] p-4">
+                <p className="text-sm font-semibold text-crimson-deep">
+                  {t("settings.deleteTitle")}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                  {t("settings.deleteBody")}
+                </p>
+                {/* Said plainly and before the fact. A patient who expects
+                    every trace to vanish and later learns their consultation
+                    notes were kept has been misled, however legally required
+                    the keeping was. */}
+                <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+                  {t("settings.deleteRecordsNote")}
+                </p>
+
+                <label className="field mt-4">
+                  <span className="label">{t("settings.deleteConfirmLabel")}</span>
+                  <input
+                    className="input"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={deleteAccount}
+                  disabled={confirmText.trim().toUpperCase() !== "DELETE" || deleting}
+                  className="mt-3 w-full rounded-full bg-crimson-deep px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {deleting ? t("settings.deleting") : t("settings.deleteButton")}
+                </button>
+              </div>
+            )}
           </div>
         );
 

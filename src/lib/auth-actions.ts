@@ -21,7 +21,7 @@ import type { ActionCodeSettings } from "firebase/auth";
  * lands on `/auth/action`, which verifies and sends them straight in. Until it
  * is set, the flow still works — it just goes through Google's page first.
  */
-export function verificationSettings(): ActionCodeSettings {
+function actionSettings(): ActionCodeSettings {
   const origin =
     process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "") ||
     (typeof window !== "undefined" ? window.location.origin : "https://tlcmedclinics.com");
@@ -32,4 +32,22 @@ export function verificationSettings(): ActionCodeSettings {
     // apps that intercept the link themselves, and would strip the web flow.
     handleCodeInApp: false,
   };
+}
+
+/** Where the "verify your email" link comes back to. */
+export function verificationSettings(): ActionCodeSettings {
+  return actionSettings();
+}
+
+/**
+ * Where the "reset your password" link comes back to.
+ *
+ * The same destination, and deliberately its own function rather than a second
+ * caller of `verificationSettings()`. Firebase's console setting for the action
+ * URL is shared across every template, so these two will always agree — but the
+ * day one of them needs to differ, the call sites already say which is which
+ * and nobody has to work out whether a rename broke the other flow.
+ */
+export function passwordResetSettings(): ActionCodeSettings {
+  return actionSettings();
 }

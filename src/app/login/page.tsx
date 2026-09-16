@@ -185,6 +185,18 @@ function LoginPage() {
           </button>
         </div>
 
+        {/* Under the password box, where somebody who has just failed to
+            remember it is already looking — not at the bottom of the page
+            under the sign-up line. */}
+        <p className="text-end text-sm">
+          <Link
+            href="/forgot-password"
+            className="text-ink-soft underline-offset-4 hover:text-indigo hover:underline"
+          >
+            {t("auth.forgotPassword")}
+          </Link>
+        </p>
+
         <button
           type="submit"
           disabled={submitting || googleSubmitting}

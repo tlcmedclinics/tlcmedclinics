@@ -26,6 +26,22 @@ export const site = {
    */
   phoneE164: "+923100404444",
   email: "info@tlcmedclinics.com",
+  /**
+   * The mobile apps, once they are published.
+   *
+   * Empty means "not out yet", and the band above the footer reads that: each
+   * platform shows "coming soon" rather than a button, and when both are empty
+   * the whole band does not render. A store link that 404s is worse than no
+   * link — a patient taps it, sees a missing page, and decides the app is
+   * broken before ever opening it.
+   *
+   * Paste the Play Store / App Store URL here on the day each goes live;
+   * nothing else has to change.
+   */
+  apps: {
+    android: "",
+    ios: "",
+  },
   address: "221-G1 Johar Town, Near Doctors Hospital, Lahore, Pakistan",
   /**
    * The address split into fields, for schema.org PostalAddress. Google matches
