@@ -149,8 +149,10 @@ export default function GetTheApp() {
   const android = site.apps?.android?.trim() ?? "";
   const ios = site.apps?.ios?.trim() ?? "";
 
-  // Neither app is out yet and nothing is being announced — say nothing.
-  if (!android && !ios) return null;
+  // Nothing to link to and nothing to announce — say nothing at all. With
+  // `announce` on (the default), the band stays and each platform says
+  // "coming soon", which is honest: the apps are real and not out yet.
+  if (!android && !ios && !site.apps?.announce) return null;
 
   return (
     <section className="border-t border-line/70 bg-mist/40">

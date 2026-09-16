@@ -41,6 +41,17 @@ export const site = {
   apps: {
     android: "",
     ios: "",
+    /**
+     * Show the band before either app is published.
+     *
+     * With both links empty and this true, the section still appears and each
+     * platform reads "coming soon" — which is a real thing to tell people, and
+     * the reason app-store badges exist on sites weeks before the app does.
+     *
+     * Set it to false to take the whole section off the site until there is
+     * something to link to.
+     */
+    announce: true,
   },
   address: "221-G1 Johar Town, Near Doctors Hospital, Lahore, Pakistan",
   /**
