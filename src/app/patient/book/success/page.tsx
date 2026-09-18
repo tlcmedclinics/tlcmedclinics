@@ -3,12 +3,14 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
+import { useT } from "@/contexts/LanguageContext";
 
 type State = "verifying" | "done" | "error";
 
 function StripeReturnContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const t = useT();
   const [state, setState] = useState<State>("verifying");
   const [message, setMessage] = useState("");
 
@@ -16,7 +18,7 @@ function StripeReturnContent() {
     const sessionId = params.get("session_id");
     if (!sessionId) {
       setState("error");
-      setMessage("Missing payment session.");
+      setMessage(t("book.missingSession"));
       return;
     }
 
@@ -27,12 +29,12 @@ function StripeReturnContent() {
     })
       .then(async (res) => {
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Could not verify payment");
+        if (!res.ok) throw new Error(data.error ?? t("book.verifyFailed"));
         setState("done");
       })
       .catch((err) => {
         setState("error");
-        setMessage(err instanceof Error ? err.message : "Could not verify payment");
+        setMessage(err instanceof Error ? err.message : t("book.verifyFailed"));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -42,7 +44,7 @@ function StripeReturnContent() {
       {state === "verifying" && (
         <>
           <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-indigo/30 border-t-indigo" />
-          <p className="mt-6 lede">Confirming your payment…</p>
+          <p className="mt-6 lede">{t("book.verifyingPayment")}</p>
         </>
       )}
 
@@ -53,13 +55,13 @@ function StripeReturnContent() {
               <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="mt-6 h2 text-ink">Appointment booked!</p>
-          <p className="mt-2 lede">Your payment was received and your slot is confirmed.</p>
+          <p className="mt-6 h2 text-ink">{t("book.booked")}</p>
+          <p className="mt-2 lede">{t("book.paymentConfirmed")}</p>
           <button
             onClick={() => router.push("/patient/dashboard")}
             className="mt-6 rounded-full bg-indigo px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-indigo-deep"
           >
-            Back to dashboard
+            {t("book.backToDashboard")}
           </button>
         </>
       )}
@@ -71,13 +73,13 @@ function StripeReturnContent() {
               <path d="M12 8v5M12 16h.01M12 3 2 20h20L12 3Z" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <p className="mt-6 h2 text-ink">We couldn&apos;t confirm that payment</p>
+          <p className="mt-6 h2 text-ink">{t("book.paymentUnconfirmed")}</p>
           <p className="mt-2 lede">{message}</p>
           <button
             onClick={() => router.push("/patient/book")}
             className="mt-6 rounded-full border border-line px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-indigo hover:text-indigo"
           >
-            Back to booking
+            {t("book.backToBooking")}
           </button>
         </>
       )}

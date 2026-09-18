@@ -61,18 +61,21 @@ export default function DoctorDashboardPage() {
   );
 
   const cards = [
-    { label: "Today's sessions", value: todays.length },
-    { label: "Upcoming confirmed", value: counts.upcoming },
-    { label: "My patients", value: counts.uniquePatients },
-    { label: "Completed sessions", value: counts.completed },
+    { labelKey: "doctor.dashboard.todaysSessions", value: todays.length },
+    { labelKey: "doctor.dashboard.upcomingConfirmed", value: counts.upcoming },
+    { labelKey: "doctor.dashboard.myPatients", value: counts.uniquePatients },
+    { labelKey: "doctor.dashboard.completedSessions", value: counts.completed },
   ];
 
   return (
     <div className="animate-fade-up">
       <p className="eyebrow text-indigo">{t("nav.dashboard")}</p>
       <h1 className="mt-3 h1">
-        {t("doctor.dashboard.title")}
-        {profile?.name ? `, Dr. ${profile.name.replace(/^Dr\.?\s*/i, "")}` : ""}
+        {profile?.name
+          ? t("doctor.dashboard.welcomeNamed", {
+              name: profile.name.replace(/^Dr\.?\s*/i, ""),
+            })
+          : t("doctor.dashboard.title")}
       </h1>
       <p className="mt-2 text-sm text-ink-soft">{t("doctor.dashboard.subtitle")}</p>
 
@@ -90,20 +93,20 @@ export default function DoctorDashboardPage() {
 
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {cards.map((c) => (
-          <div key={c.label} className="rounded-2xl border border-line/70 bg-paper p-5">
+          <div key={c.labelKey} className="rounded-2xl border border-line/70 bg-paper p-5">
             <p className="stat-number text-indigo">{loading ? "—" : c.value}</p>
-            <p className="mt-1 text-xs text-ink-soft">{c.label}</p>
+            <p className="mt-1 text-xs text-ink-soft">{t(c.labelKey)}</p>
           </div>
         ))}
       </div>
 
       <div className="mt-10 flex items-center justify-between">
-        <h2 className="h3 text-ink">Today&apos;s schedule</h2>
+        <h2 className="h3 text-ink">{t("doctor.dashboard.todaysSchedule")}</h2>
         <Link
           href="/doctor/appointments"
           className="text-sm font-medium text-indigo hover:text-indigo-deep"
         >
-          View all appointments →
+          {t("doctor.dashboard.viewAll")} →
         </Link>
       </div>
 
@@ -111,7 +114,7 @@ export default function DoctorDashboardPage() {
         <SkeletonRows rows={3} className="mt-6" />
       ) : todays.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
-          <p className="text-sm text-ink-soft">Nothing on the schedule for today.</p>
+          <p className="text-sm text-ink-soft">{t("doctor.dashboard.nothingToday")}</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
@@ -123,11 +126,14 @@ export default function DoctorDashboardPage() {
               <div>
                 <p className="font-medium text-ink">{a.patientName}</p>
                 <p className="text-sm text-ink-soft">
-                  {a.service} · {formatClinicTime(a.time)} · {a.mode}
+                  {a.service} · {formatClinicTime(a.time)} ·{" "}
+                  {t(a.mode === "in-person" ? "mode.inPerson" : `mode.${a.mode}`)}
                 </p>
               </div>
               <span className="rounded-full bg-indigo/10 px-3 py-1 text-xs font-medium capitalize text-indigo">
-                {a.status}
+                {a.status === "awaiting-payment"
+                  ? t("status.awaitingPayment")
+                  : t(`status.${a.status}`)}
               </span>
             </div>
           ))}

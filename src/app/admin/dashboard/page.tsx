@@ -7,6 +7,7 @@ import Link from "next/link";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useLiveAppointments } from "@/lib/use-live-appointments";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 
 type Counts = {
   patients: number;
@@ -72,6 +73,7 @@ function barFill(average: number): CSSProperties {
 
 export default function AdminOverviewPage() {
   const toast = useToast();
+  const t = useT();
   const [counts, setCounts] = useState<Counts>(EMPTY_COUNTS);
   const [analytics, setAnalytics] = useState<Analytics>(EMPTY_ANALYTICS);
 
@@ -101,29 +103,31 @@ export default function AdminOverviewPage() {
         // failing the page; this says why, so it isn't mistaken for real data.
         if (data.indexHint) toast.error(data.indexHint);
       })
-      .catch(() => toast.error("Couldn't load the overview. Please refresh."));
+      .catch(() => toast.error(t("error.loadFailed")));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.version]);
 
   const cards = [
-    { label: "Patients", value: counts.patients, href: null },
-    { label: "Total appointments", value: counts.appointments, href: "/admin/appointments" },
+    { labelKey: "admin.overview.patients", value: counts.patients, href: null },
     {
-      label: "Awaiting your call-back",
+      labelKey: "admin.overview.totalAppointments",
+      value: counts.appointments,
+      href: "/admin/appointments",
+    },
+    {
+      labelKey: "admin.overview.awaitingCallBack",
       value: counts.callBacks,
       href: "/admin/appointments",
       highlight: counts.callBacks > 0,
     },
-    { label: "Services listed", value: counts.services, href: "/admin/services" },
-    { label: "Blog posts", value: counts.blogs, href: "/admin/blogs" },
+    { labelKey: "admin.overview.servicesListed", value: counts.services, href: "/admin/services" },
+    { labelKey: "admin.overview.blogPosts", value: counts.blogs, href: "/admin/blogs" },
   ];
 
   return (
     <div className="animate-fade-up">
-      <h1 className="h1">Overview</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        You're managing appointments, services, and content as the clinic&apos;s sole admin account.
-      </p>
+      <h1 className="h1">{t("admin.overview.title")}</h1>
+      <p className="mt-2 text-sm text-ink-soft">{t("admin.overview.subtitle")}</p>
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const cardClass = `card-hover rounded-2xl border p-6 ${
@@ -132,49 +136,51 @@ export default function AdminOverviewPage() {
           const inner = (
             <>
               <p className="h1">{c.value}</p>
-              <p className="mt-1 text-sm text-ink-soft">{c.label}</p>
+              <p className="mt-1 text-sm text-ink-soft">{t(c.labelKey)}</p>
             </>
           );
           return c.href ? (
-            <Link key={c.label} href={c.href} className={cardClass}>
+            <Link key={c.labelKey} href={c.href} className={cardClass}>
               {inner}
             </Link>
           ) : (
-            <div key={c.label} className={cardClass}>
+            <div key={c.labelKey} className={cardClass}>
               {inner}
             </div>
           );
         })}
       </div>
 
-      <h2 className="mt-10 h3 text-ink">Revenue &amp; outcomes</h2>
-      <p className="mt-1 text-xs text-ink-soft">Last 12 months.</p>
+      <h2 className="mt-10 h3 text-ink">{t("admin.overview.revenue")}</h2>
+      <p className="mt-1 text-xs text-ink-soft">{t("admin.overview.revenueWindow")}</p>
       <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-2xl border border-line/70 p-6">
-          <p className="h1">PKR {analytics.paidRevenue.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-ink-soft">Collected revenue</p>
+          <p className="h1">
+            {t("services.priceAmount", { price: analytics.paidRevenue.toLocaleString() })}
+          </p>
+          <p className="mt-1 text-sm text-ink-soft">{t("admin.overview.collected")}</p>
         </div>
         <div className="rounded-2xl border border-amber-600/20 bg-amber-50 p-6">
-          <p className="h1 text-amber-800">PKR {analytics.refunded.toLocaleString()}</p>
-          <p className="mt-1 text-sm text-amber-800/80">Refunded</p>
+          <p className="h1 text-amber-800">
+            {t("services.priceAmount", { price: analytics.refunded.toLocaleString() })}
+          </p>
+          <p className="mt-1 text-sm text-amber-800/80">{t("admin.overview.refunded")}</p>
         </div>
         <div className="rounded-2xl border border-line/70 p-6">
           <p className="h1">{analytics.completed}</p>
-          <p className="mt-1 text-sm text-ink-soft">Completed sessions</p>
+          <p className="mt-1 text-sm text-ink-soft">{t("doctor.dashboard.completedSessions")}</p>
         </div>
         <div className="rounded-2xl border border-line/70 p-6">
           <p className="h1">{analytics.avgRating ? analytics.avgRating.toFixed(1) : "—"}</p>
-          <p className="mt-1 text-sm text-ink-soft">Average patient rating</p>
+          <p className="mt-1 text-sm text-ink-soft">{t("admin.overview.avgRating")}</p>
         </div>
       </div>
 
-      <h2 className="mt-10 h3 text-ink">Patient satisfaction</h2>
+      <h2 className="mt-10 h3 text-ink">{t("admin.overview.satisfaction")}</h2>
       <p className="mt-1 text-xs text-ink-soft">
         {analytics.ratingCount === 0
-          ? "No visits rated yet."
-          : `Average of every answer given, across ${analytics.ratingCount} rated ${
-              analytics.ratingCount === 1 ? "visit" : "visits"
-            }. Each question is averaged over the answers it actually received.`}
+          ? t("admin.overview.noRatings")
+          : t("admin.overview.ratingSummary", { count: analytics.ratingCount })}
       </p>
       {analytics.ratingQuestions.some((q) => q.responses > 0) && (
         <div className="mt-4 rounded-2xl border border-line/70 p-6">
@@ -182,14 +188,14 @@ export default function AdminOverviewPage() {
             const question = RATING_QUESTIONS.find((r) => r.key === q.key);
             return (
               <div key={q.key} className={i === 0 ? "" : "mt-4"}>
-                <p className="text-sm text-ink">{question ? question.en : q.key}</p>
+                <p className="text-sm text-ink">{question ? t(`rating.q.${q.key}`) : q.key}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-3">
                   <span className="text-sm font-medium text-ink">
                     {q.average === null ? "—" : q.average.toFixed(1)}
                   </span>
                   {q.average !== null && <StarScore value={q.average} />}
                   <span className="text-xs text-ink-soft">
-                    {q.responses} {q.responses === 1 ? "answer" : "answers"}
+                    {t("admin.overview.answers", { count: q.responses })}
                   </span>
                 </div>
                 {q.average !== null && (
@@ -203,9 +209,9 @@ export default function AdminOverviewPage() {
         </div>
       )}
 
-      <h2 className="mt-10 h3 text-ink">Doctor performance</h2>
+      <h2 className="mt-10 h3 text-ink">{t("admin.overview.doctorPerformance")}</h2>
       {analytics.doctorRows.length === 0 ? (
-        <p className="mt-4 text-sm text-ink-soft">No completed sessions with an assigned doctor yet.</p>
+        <p className="mt-4 text-sm text-ink-soft">{t("admin.overview.noCompleted")}</p>
       ) : (
         <div className="mt-4 overflow-x-auto rounded-2xl border border-line/70">
           {/* Scrolls sideways rather than squashing.
@@ -216,9 +222,9 @@ export default function AdminOverviewPage() {
           <table className="w-full min-w-[34rem] text-sm">
             <thead className="bg-mist/50 text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>
-                <th className="px-5 py-3">Doctor</th>
-                <th className="px-5 py-3">Completed sessions</th>
-                <th className="px-5 py-3">Average rating</th>
+                <th className="px-5 py-3">{t("role.doctor")}</th>
+                <th className="px-5 py-3">{t("doctor.dashboard.completedSessions")}</th>
+                <th className="px-5 py-3">{t("admin.overview.avgRating")}</th>
               </tr>
             </thead>
             <tbody>

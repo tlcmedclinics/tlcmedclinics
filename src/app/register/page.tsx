@@ -72,7 +72,7 @@ function RegisterPage() {
     const data = Object.fromEntries(new FormData(e.currentTarget).entries());
 
     if (String(data.password) !== String(data.confirmPassword)) {
-      setError("Passwords don't match.");
+      setError(t("auth.passwordsDiffer"));
       return;
     }
 
@@ -97,7 +97,7 @@ function RegisterPage() {
         }),
       });
 
-      if (!res.ok) throw new Error("Profile setup failed");
+      if (!res.ok) throw new Error(t("auth.profileSetupFailed"));
       const result = await res.json();
 
       // Force a token refresh so the custom role claim is available.
@@ -114,14 +114,14 @@ function RegisterPage() {
       });
 
       if (role === "doctor" || result.approvalStatus === "pending") {
-        toast.success("Account created — your doctor request is pending admin approval.");
+        toast.success(t("auth.doctorPending"));
         router.push("/doctor/dashboard");
       } else {
         router.push(safeNext() ?? "/patient/dashboard");
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        err instanceof Error ? err.message : t("common.somethingWrong");
       setError(message.replace("Firebase: ", ""));
     } finally {
       setSubmitting(false);
@@ -148,20 +148,20 @@ function RegisterPage() {
           role,
         }),
       });
-      if (!res.ok) throw new Error("Profile setup failed");
+      if (!res.ok) throw new Error(t("auth.profileSetupFailed"));
       const result = await res.json();
 
       await cred.user.getIdToken(true);
 
       if (role === "doctor" || result.approvalStatus === "pending") {
-        toast.success("Account created — your doctor request is pending admin approval.");
+        toast.success(t("auth.doctorPending"));
         router.push("/doctor/dashboard");
       } else {
         router.push(safeNext() ?? "/patient/dashboard");
       }
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Couldn't sign up with Google. Please try again.";
+        err instanceof Error ? err.message : t("auth.googleSignupFailed");
       setError(message.replace("Firebase: ", ""));
     } finally {
       setGoogleSubmitting(false);
@@ -230,7 +230,7 @@ function RegisterPage() {
         {role === "doctor" && (
           <input
             name="specialization"
-            placeholder="Specialization (e.g. Psychiatry)"
+            placeholder={t("auth.specializationPlaceholder")}
             className="input"
           />
         )}
@@ -241,13 +241,13 @@ function RegisterPage() {
             type={showPassword ? "text" : "password"}
             required
             minLength={6}
-            placeholder="Password (min. 6 characters)"
+            placeholder={t("auth.passwordMinPlaceholder")}
             className="input pr-11"
           />
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            aria-label={showPassword ? "Hide password" : "Show password"}
+            aria-label={t(showPassword ? "auth.hidePassword" : "auth.showPassword")}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-indigo"
           >
             <EyeIcon open={showPassword} />
@@ -260,13 +260,13 @@ function RegisterPage() {
             type={showConfirm ? "text" : "password"}
             required
             minLength={6}
-            placeholder="Confirm password"
+            placeholder={t("auth.confirmPassword")}
             className="input pr-11"
           />
           <button
             type="button"
             onClick={() => setShowConfirm((v) => !v)}
-            aria-label={showConfirm ? "Hide password" : "Show password"}
+            aria-label={t(showConfirm ? "auth.hidePassword" : "auth.showPassword")}
             className="absolute right-3.5 top-1/2 -translate-y-1/2 text-ink-soft hover:text-indigo"
           >
             <EyeIcon open={showConfirm} />
@@ -280,13 +280,13 @@ function RegisterPage() {
           disabled={submitting || googleSubmitting}
           className="w-full rounded-full bg-indigo px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
         >
-          {submitting ? "Creating account…" : "Create Account"}
+          {submitting ? t("auth.creatingAccount") : t("auth.createAccount")}
         </button>
       </form>
 
       <div className="mt-5 flex items-center gap-3">
         <div className="h-px flex-1 bg-line/70" />
-        <span className="text-xs text-ink-soft">or</span>
+        <span className="text-xs text-ink-soft">{t("book.or")}</span>
         <div className="h-px flex-1 bg-line/70" />
       </div>
 

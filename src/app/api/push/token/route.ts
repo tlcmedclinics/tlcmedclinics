@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyRequest } from "@/lib/auth-server";
-import { deleteToken, saveToken } from "@/lib/push";
+import { deleteToken, saveToken, type PushLocale } from "@/lib/push";
 
 /**
  * Where the app registers the phone it wants notifications on.
  *
- * POST   { token, platform }  — after signing in, and again whenever Firebase
+ * POST   { token, platform, locale }
+ *                             — after signing in, and again whenever Firebase
  *                               rotates the token (which it does on its own
- *                               schedule, without asking).
+ *                               schedule, without asking). `locale` is the
+ *                               language the app is set to; it is stored on
+ *                               the token so a push can be written in the
+ *                               language this phone actually reads. Optional,
+ *                               and anything that isn't "ur" is taken as "en"
+ *                               — an app build that predates this keeps
+ *                               getting English rather than nothing.
  * DELETE { token }            — on sign out. A phone that has been handed back
  *                               or sold must stop receiving a stranger's
  *                               appointment reminders, and that is not
@@ -28,13 +35,20 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const token = typeof body.token === "string" ? body.token.trim() : "";
   const platform = typeof body.platform === "string" ? body.platform.trim() : undefined;
+  // Deliberately not rejecting an unknown locale. A push in the wrong language
+  // is a worse outcome than a 400, but a phone that registers nothing at all
+  // because it sent "ur-PK" gets no notifications, which is worse than both.
+  const locale: PushLocale =
+    typeof body.locale === "string" && body.locale.trim().toLowerCase().startsWith("ur")
+      ? "ur"
+      : "en";
 
   if (!token) {
     return NextResponse.json({ error: "Missing token." }, { status: 400 });
   }
 
   try {
-    await saveToken(auth.uid, token, platform);
+    await saveToken(auth.uid, token, platform, locale);
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("[POST /api/push/token]", err);

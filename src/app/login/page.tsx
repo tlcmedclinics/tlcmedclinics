@@ -86,7 +86,7 @@ function LoginPage() {
       router.push(safeNext() ?? dashboardPath[profile?.role ?? "patient"] ?? "/patient/dashboard");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        err instanceof Error ? err.message : t("common.somethingWrong");
       toast.error(message.replace("Firebase: ", ""));
     } finally {
       setSubmitting(false);
@@ -114,7 +114,7 @@ function LoginPage() {
             role: "patient",
           }),
         });
-        if (!res.ok) throw new Error("Couldn't finish setting up your account");
+        if (!res.ok) throw new Error(t("auth.setupFailed"));
         await cred.user.getIdToken(true);
         toast.success(t("auth.accountCreated"));
         router.push(safeNext() ?? "/patient/dashboard");
@@ -126,7 +126,7 @@ function LoginPage() {
       router.push(safeNext() ?? dashboardPath[profile.role] ?? "/patient/dashboard");
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Couldn't sign in with Google. Please try again.";
+        err instanceof Error ? err.message : t("auth.googleFailed");
       toast.error(message.replace("Firebase: ", ""));
     } finally {
       setGoogleSubmitting(false);

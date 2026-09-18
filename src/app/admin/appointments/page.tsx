@@ -13,7 +13,7 @@ import { useSessionAction } from "@/lib/use-session-action";
 import { useNow } from "@/lib/use-now";
 import { canJoinSession, sessionStatusLabel } from "@/lib/session-window";
 import {
-  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_LABEL_KEYS as statusLabelKey,
   APPOINTMENT_STATUS_STYLES as statusStyles,
 } from "@/lib/appointment-status";
 import VideoCallModal from "@/components/VideoCallModal";
@@ -139,20 +139,23 @@ export default function AdminAppointmentsPage() {
         body: JSON.stringify({ id, doctorId: doctorId || null, doctorName: doctor?.name ?? null }),
       });
       if (!res.ok) throw new Error("Assign failed");
-      toast.success(doctor ? `Assigned to ${doctor.name}.` : "Unassigned.");
+      toast.success(
+        doctor
+          ? t("admin.appointments.assigned", { name: doctor.name })
+          : t("admin.appointments.unassigned")
+      );
       load();
     } catch {
-      toast.error("Couldn't assign a doctor. Please try again.");
+      toast.error(t("admin.appointments.assignFailed"));
     }
   }
 
   async function issueRefund(id: string) {
     if (
       !(await confirm({
-        title: "Issue a refund?",
-        message:
-          "Stripe and PayPal payments are refunded straight away. A Safepay, JazzCash or EasyPaisa payment has to be refunded in that provider's own dashboard — you'll be told exactly where, and can record it here afterwards.",
-        confirmLabel: "Refund",
+        title: t("admin.appointments.refundTitle"),
+        message: t("admin.appointments.refundBody"),
+        confirmLabel: t("admin.appointments.refundConfirm"),
         destructive: true,
       }))
     )
@@ -176,28 +179,31 @@ export default function AdminAppointmentsPage() {
       // where, with the reference and the amount, and can then confirm that
       // they have done it so the record here matches the money.
       if (res.status === 409 && data?.needsManualRefund) {
-        toast.error(data.error ?? "This payment must be refunded in the provider's dashboard.");
+        toast.error(data.error ?? t("admin.appointments.manualRefundNeeded"));
         const recorded = await confirm({
-          title: "Already refunded it there?",
-          message:
-            "Only confirm once the refund is actually showing in the provider's dashboard. This marks the booking as refunded here; it does not move any money.",
-          confirmLabel: "Yes, mark as refunded",
-          cancelLabel: "Not yet",
+          title: t("admin.appointments.recordRefundTitle"),
+          message: t("admin.appointments.recordRefundBody"),
+          confirmLabel: t("admin.appointments.recordRefundConfirm"),
+          cancelLabel: t("admin.appointments.notYet"),
         });
         if (!recorded) return;
 
         const second = await send(true);
-        if (!second.res.ok) throw new Error(second.data?.error ?? "Couldn't record the refund");
-        toast.success("Recorded as refunded.");
+        if (!second.res.ok) throw new Error(second.data?.error ?? t("admin.appointments.recordRefundFailed"));
+        toast.success(t("admin.appointments.refundRecorded"));
         load();
         return;
       }
 
-      if (!res.ok) throw new Error(data.error ?? "Refund failed");
-      toast.success(data?.alreadyRefunded ? "Already refunded." : "Refund issued.");
+      if (!res.ok) throw new Error(data.error ?? t("admin.appointments.refundFailed"));
+      toast.success(
+        data?.alreadyRefunded
+          ? t("admin.appointments.alreadyRefunded")
+          : t("admin.appointments.refundIssued")
+      );
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't issue the refund.");
+      toast.error(err instanceof Error ? err.message : t("admin.appointments.refundError"));
     }
   }
 
@@ -209,10 +215,16 @@ export default function AdminAppointmentsPage() {
         body: JSON.stringify({ id, status }),
       });
       if (!res.ok) throw new Error("Update failed");
-      toast.success(`Marked as "${statusLabel[status]}".`);
+      toast.success(
+        t("admin.appointments.statusUpdated", {
+          status: t(
+            status === "awaiting-payment" ? "status.awaitingPayment" : `status.${status}`
+          ),
+        })
+      );
       load();
     } catch {
-      toast.error("Couldn't update the status. Please try again.");
+      toast.error(t("admin.appointments.statusFailed"));
     }
   }
 
@@ -222,7 +234,7 @@ export default function AdminAppointmentsPage() {
     setReschedulingId(a.id);
     setRescheduleSlots([]);
     if (!a.doctorId) {
-      toast.error("Assign a doctor before rescheduling.");
+      toast.error(t("admin.appointments.assignFirst"));
       setReschedulingId(null);
       return;
     }
@@ -234,7 +246,7 @@ export default function AdminAppointmentsPage() {
       const data: Slot[] = res.ok ? await res.json() : [];
       setRescheduleSlots(data);
     } catch {
-      toast.error("Couldn't load that doctor's open slots.");
+      toast.error(t("admin.appointments.slotsFailed"));
     } finally {
       setLoadingRescheduleSlots(false);
     }
@@ -249,12 +261,12 @@ export default function AdminAppointmentsPage() {
         body: JSON.stringify({ id: appointmentId, newSlotId }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Couldn't reschedule");
-      toast.success("Appointment rescheduled — patient and doctor notified.");
+      if (!res.ok) throw new Error(data.error ?? t("admin.appointments.rescheduleFailed"));
+      toast.success(t("admin.appointments.rescheduled"));
       setReschedulingId(null);
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't reschedule this appointment.");
+      toast.error(err instanceof Error ? err.message : t("admin.appointments.rescheduleFailed"));
     } finally {
       setSavingReschedule(false);
     }
@@ -265,7 +277,11 @@ export default function AdminAppointmentsPage() {
     if (!result) return;
     const updated = result.appointment;
     setAppointments((prev) => prev.map((x) => (x.id === a.id ? updated : x)));
-    toast.success(a.sessionStatus === "live" ? "Session ready." : "Session started.");
+    toast.success(
+      a.sessionStatus === "live"
+        ? t("admin.appointments.sessionReady")
+        : t("admin.appointments.sessionStarted")
+    );
   }
 
   async function handleJoinAsHost(a: Appointment) {
@@ -332,12 +348,9 @@ export default function AdminAppointmentsPage() {
 
   return (
     <div className="animate-fade-up">
-      <h1 className="h1">Appointments</h1>
+      <h1 className="h1">{t("admin.appointments.title")}</h1>
       <p className="mt-2 text-sm text-ink-soft">
-        Every booking on the site lands here — paid bookings are already confirmed;
-        call-back requests need you to phone the patient and confirm. Video/chat
-        sessions go live at the scheduled time on their own, or you can start one
-        early or late from here.
+        {t("admin.appointments.subtitle")} {t("admin.appointments.subtitle2")}
       </p>
 
       <div className="mt-6 max-w-sm">
@@ -359,7 +372,7 @@ export default function AdminAppointmentsPage() {
                 : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
             }`}
           >
-            {f === "pending" ? "Call-back needed" : f}
+            {f === "pending" ? t("status.callBackNeeded") : t(`status.${f}`)}
           </button>
         ))}
       </div>
@@ -375,7 +388,7 @@ export default function AdminAppointmentsPage() {
       {loading ? (
         <SkeletonRows rows={4} className="mt-8" />
       ) : visible.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
+        <p className="mt-8 text-sm text-ink-soft">{t("admin.appointments.none")}</p>
       ) : (
         <div className="mt-6 space-y-3">
           {visible.map((a) => {
@@ -401,7 +414,7 @@ export default function AdminAppointmentsPage() {
                         </>
                       ) : null}
                       {" · "}
-                      {a.mode}
+                      {t(a.mode === "in-person" ? "mode.inPerson" : `mode.${a.mode}`)}
                     </p>
                     {a.needsDoctor && (
                       <p className="mt-1.5 flex flex-wrap items-center gap-2">
@@ -416,31 +429,42 @@ export default function AdminAppointmentsPage() {
                     <p className="mt-1 text-xs text-ink-soft/80">
                       {a.patientPhone && <span>{a.patientPhone} · </span>}
                       {a.bookingType === "online-payment"
-                        ? `Paid online${a.amount ? ` · PKR ${a.amount.toLocaleString()}` : ""}`
-                        : "Requested a call-back"}
+                        ? `${t("admin.appointments.paidOnline")}${
+                            a.amount
+                              ? ` · ${t("services.priceAmount", {
+                                  price: a.amount.toLocaleString(),
+                                })}`
+                              : ""
+                          }`
+                        : t("admin.appointments.requestedCallBack")}
                     </p>
                     {a.notes && <p className="mt-1 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}
                     {a.consultMode && (
                       <p className="mt-1 text-[0.65rem] uppercase tracking-wide text-ink-soft/70">
-                        {a.consultMode === "in-clinic" ? "In clinic" : "Online"}
-                        {a.patientType ? ` · ${a.patientType === "new" ? "New patient" : "Follow-up"}` : ""}
+                        {t(a.consultMode === "in-clinic" ? "mode.inClinic" : "mode.online")}
+                        {a.patientType
+                          ? ` · ${t(a.patientType === "new" ? "book.newPatient" : "book.followUp")}`
+                          : ""}
                       </p>
                     )}
                     {a.rescheduledFrom && (
                       <p className="mt-1 text-[0.65rem] text-ink-soft/70">
-                        Rescheduled from {a.rescheduledFrom.date} {formatClinicTime(a.rescheduledFrom.time)}
+                        {t("admin.appointments.rescheduledFrom", {
+                          date: a.rescheduledFrom.date,
+                          time: formatClinicTime(a.rescheduledFrom.time),
+                        })}
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <label className="text-[0.65rem] uppercase tracking-wide text-ink-soft/70">
-                        Doctor
+                        {t("admin.appointments.assignDoctor")}
                       </label>
                       <select
                         className="input w-auto py-1 text-xs"
                         value={a.doctorId ?? ""}
                         onChange={(e) => assignDoctor(a.id, e.target.value)}
                       >
-                        <option value="">Unassigned</option>
+                        <option value="">{t("admin.appointments.unassigned")}</option>
                         {doctors.map((d) => (
                           <option key={d.uid} value={d.uid}>
                             {d.name}
@@ -453,7 +477,7 @@ export default function AdminAppointmentsPage() {
                           onClick={() => openReschedule(a)}
                           className="rounded-full border border-line px-3 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
                         >
-                          Reschedule
+                          {t("admin.appointments.reschedule")}
                         </button>
                       )}
                     </div>
@@ -461,11 +485,10 @@ export default function AdminAppointmentsPage() {
                     {reschedulingId === a.id && (
                       <div className="mt-3 rounded-xl border border-indigo/20 bg-indigo/5 p-3">
                         {loadingRescheduleSlots ? (
-                          <p className="text-xs text-ink-soft">Loading open slots…</p>
+                          <p className="text-xs text-ink-soft">{t("admin.appointments.loadingSlots")}</p>
                         ) : rescheduleSlots.length === 0 ? (
                           <p className="text-xs text-ink-soft">
-                            No other open slots for this doctor right now — add one from the Slots
-                            page first.
+                            {t("admin.appointments.noOtherSlots")}
                           </p>
                         ) : (
                           <div className="flex flex-wrap gap-2">
@@ -477,7 +500,12 @@ export default function AdminAppointmentsPage() {
                                 onClick={() => confirmReschedule(a.id, s.id)}
                                 className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
                               >
-                                {s.date} · {formatClinicTime(s.time)} · {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
+                                {s.date} · {formatClinicTime(s.time)} ·{" "}
+                                {t(
+                                  (s.mode ?? "online") === "in-clinic"
+                                    ? "mode.inClinic"
+                                    : "mode.online"
+                                )}
                               </button>
                             ))}
                           </div>
@@ -487,7 +515,7 @@ export default function AdminAppointmentsPage() {
                           onClick={() => setReschedulingId(null)}
                           className="mt-2 text-xs text-ink-soft hover:text-crimson-deep"
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </button>
                       </div>
                     )}
@@ -496,22 +524,22 @@ export default function AdminAppointmentsPage() {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}
                     >
-                      {statusLabel[a.status]}
+                      {t(statusLabelKey[a.status])}
                     </span>
                     <select
                       className="input w-auto"
                       value={a.status}
                       onChange={(e) => updateStatus(a.id, e.target.value as AppointmentStatus)}
                     >
-                      <option value="pending">Call-back needed</option>
+                      <option value="pending">{t("status.callBackNeeded")}</option>
                       {/* Listed so an unpaid follow-up shows its own state
                           rather than an empty select. Admin can still confirm
                           it by hand — a patient who paid at the desk shouldn't
                           be stuck behind an online checkout. */}
-                      <option value="awaiting-payment">Awaiting patient payment</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
+                      <option value="awaiting-payment">{t("status.awaitingPayment")}</option>
+                      <option value="confirmed">{t("status.confirmed")}</option>
+                      <option value="completed">{t("status.completed")}</option>
+                      <option value="cancelled">{t("status.cancelled")}</option>
                     </select>
                   </div>
                 </div>
@@ -520,7 +548,10 @@ export default function AdminAppointmentsPage() {
 
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">
-                    Cancelled by {a.cancelledBy}: {a.cancelReason}
+                    {t("admin.appointments.cancelledBy", {
+                      by: a.cancelledBy ?? "",
+                      reason: a.cancelReason,
+                    })}
                   </p>
                 )}
 
@@ -528,18 +559,21 @@ export default function AdminAppointmentsPage() {
                   <div className="mt-3 flex items-center justify-between rounded-xl border border-amber-600/20 bg-amber-50 px-4 py-3">
                     {a.refundProcessedAt ? (
                       <span className="text-xs font-medium text-amber-800">
-                        Refunded on {a.refundProcessedAt.slice(0, 10)}
+                        {t("admin.appointments.refundedOn", {
+                          date: a.refundProcessedAt.slice(0, 10),
+                        })}
                       </span>
                     ) : (
                       <>
                         <span className="text-xs font-medium text-amber-800">
-                          Awaiting refund — PKR {a.amount.toLocaleString()}
+                          {t("admin.appointments.awaitingRefund")} —{" "}
+                          {t("services.priceAmount", { price: a.amount.toLocaleString() })}
                         </span>
                         <button
                           onClick={() => issueRefund(a.id)}
                           className="rounded-full bg-amber-700 px-4 py-1.5 text-xs font-medium text-white transition-colors hover:bg-amber-800"
                         >
-                          Issue refund
+                          {t("admin.appointments.issueRefund")}
                         </button>
                       </>
                     )}
@@ -550,7 +584,7 @@ export default function AdminAppointmentsPage() {
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-indigo-deep/15 bg-indigo-deep/5 px-4 py-3">
                     <div className="flex items-center gap-2">
                       <span className="rounded-full bg-indigo-deep/10 px-2.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-indigo-deep">
-                        Host controls
+                        {t("video.hostControls")}
                       </span>
                       <span className="text-xs font-medium text-ink-soft">
                         {sessionStatusLabel(a, now)}
@@ -563,7 +597,7 @@ export default function AdminAppointmentsPage() {
                           disabled={pendingId === a.id}
                           className="rounded-full border border-indigo px-4 py-2 text-xs font-medium text-indigo transition-colors hover:bg-indigo hover:text-white disabled:opacity-50"
                         >
-                          {pendingId === a.id ? "Starting…" : "Start session now"}
+                          {pendingId === a.id ? t("video.starting") : t("video.startNow")}
                         </button>
                       )}
                       <button
@@ -572,12 +606,12 @@ export default function AdminAppointmentsPage() {
                         className="rounded-full bg-indigo-deep px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {pendingId === a.id
-                          ? "Connecting…"
+                          ? t("video.connecting")
                           : a.mode === "video"
-                          ? "Join as host"
+                          ? t("video.joinAsHost")
                           : a.mode === "audio"
-                          ? "Join audio call"
-                          : "Open chat"}
+                          ? t("video.joinAudio")
+                          : t("video.openChat")}
                       </button>
                       {a.sessionStatus === "live" && (
                         <button
@@ -585,7 +619,7 @@ export default function AdminAppointmentsPage() {
                           disabled={pendingId === a.id}
                           className="rounded-full border border-crimson px-4 py-2 text-xs font-medium text-crimson-deep transition-colors hover:bg-crimson hover:text-white disabled:opacity-50"
                         >
-                          End session
+                          {t("chat.endSession")}
                         </button>
                       )}
                     </div>
@@ -605,7 +639,7 @@ export default function AdminAppointmentsPage() {
             disabled={loadingMore}
             className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
           >
-            {loadingMore ? <InlineSpinner /> : "Load older appointments"}
+            {loadingMore ? <InlineSpinner /> : t("admin.appointments.loadOlder")}
           </button>
         </div>
       )}

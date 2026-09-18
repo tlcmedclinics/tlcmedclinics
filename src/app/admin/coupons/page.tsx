@@ -55,7 +55,11 @@ export default function AdminCouponsPage() {
       setCoupons((prev) =>
         prev.map((x) => (x.code === c.code ? { ...x, active: !c.active } : x))
       );
-      toast.success(c.active ? `${c.code} deactivated.` : `${c.code} is live again.`);
+      toast.success(
+        c.active
+          ? t("admin.coupons.deactivated", { code: c.code })
+          : t("admin.coupons.reactivated", { code: c.code })
+      );
     } catch {
       toast.error(t("error.saveFailed"));
     } finally {
@@ -74,9 +78,9 @@ export default function AdminCouponsPage() {
   async function remove(c: Coupon, force = false) {
     if (!force) {
       const ok = await confirm({
-        title: `Delete ${c.code}?`,
-        message: "Patients will no longer be able to use this code.",
-        confirmLabel: "Delete",
+        title: t("admin.coupons.deleteTitle", { code: c.code }),
+        message: t("admin.coupons.deleteBody"),
+        confirmLabel: t("common.delete"),
         destructive: true,
       });
       if (!ok) return;
@@ -93,10 +97,10 @@ export default function AdminCouponsPage() {
       if (res.status === 409 && data.needsForce) {
         setBusyCode(null);
         const anyway = await confirm({
-          title: `${c.code} has already been used`,
-          message: `${data.usedCount} booking(s) used this code. Deleting it leaves those bookings pointing at a discount with no record. Deactivating keeps the history and still stops new use.`,
-          confirmLabel: "Delete anyway",
-          cancelLabel: "Keep it",
+          title: t("admin.coupons.usedTitle", { code: c.code }),
+          message: t("admin.coupons.usedBody", { count: data.usedCount }),
+          confirmLabel: t("admin.coupons.deleteAnyway"),
+          cancelLabel: t("patient.dashboard.keepIt"),
           destructive: true,
         });
         if (anyway) await remove(c, true);
@@ -105,7 +109,7 @@ export default function AdminCouponsPage() {
 
       if (!res.ok) throw new Error(data.error);
       setCoupons((prev) => prev.filter((x) => x.code !== c.code));
-      toast.success(`${c.code} deleted.`);
+      toast.success(t("admin.coupons.deleted", { code: c.code }));
     } catch (err) {
       toast.error(err instanceof Error && err.message ? err.message : t("error.saveFailed"));
     } finally {
@@ -175,7 +179,7 @@ export default function AdminCouponsPage() {
           </label>
           <label className="field sm:col-span-2">
             <span className="label">{t("admin.coupons.restrict")}</span>
-            <input name="restrictedEmails" className="input" placeholder="a@b.com, c@d.com" />
+            <input name="restrictedEmails" className="input" placeholder={t("admin.coupons.emailsPlaceholder")} />
             <span className="field-hint">{t("admin.coupons.restrictHint")}</span>
           </label>
           <label className="field">
@@ -240,10 +244,8 @@ export default function AdminCouponsPage() {
                   >
                     {busyCode === c.code ? (
                       <InlineSpinner />
-                    ) : c.active ? (
-                      "Deactivate"
                     ) : (
-                      "Activate"
+                      t(c.active ? "admin.coupons.deactivate" : "admin.coupons.activate")
                     )}
                   </button>
 
@@ -252,7 +254,7 @@ export default function AdminCouponsPage() {
                     disabled={busyCode === c.code}
                     className="rounded-full border border-crimson/40 px-3 py-1.5 text-xs font-medium text-crimson-deep transition-colors hover:bg-crimson hover:text-white disabled:opacity-50"
                   >
-                    Delete
+                    {t("common.delete")}
                   </button>
                 </div>
               </div>

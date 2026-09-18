@@ -71,6 +71,30 @@ export function weekdayOf(date: string): string | null {
 }
 
 /**
+ * The same weekday, as a dictionary key.
+ *
+ * `weekdayOf` above must keep returning the English name: it is compared
+ * against `site.openingHours`, which spells its days the way schema.org
+ * requires, and translating it would quietly close the clinic every day of the
+ * week. This is the version for showing a person.
+ */
+const DAY_KEYS = [
+  "weekday.sunday",
+  "weekday.monday",
+  "weekday.tuesday",
+  "weekday.wednesday",
+  "weekday.thursday",
+  "weekday.friday",
+  "weekday.saturday",
+];
+
+export function weekdayKeyOf(date: string): string | null {
+  const [y, m, d] = date.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return DAY_KEYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+/**
  * The clinic's opening windows on a given date.
  *
  * Empty on a Sunday, which is correct and worth surfacing rather than

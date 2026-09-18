@@ -35,15 +35,32 @@ const COLLECTION = "pushTokens";
 
 export type PushTarget = {
   title: string;
+  /** The same title in Urdu. */
+  titleUr: string;
   body: string;
+  /** The same body in Urdu. */
+  bodyUr: string;
   /** Everything here must be a string — FCM refuses anything else. */
   data?: Record<string, string>;
 };
+
+/**
+ * Which language this install wants its notifications in.
+ *
+ * On the token document rather than the user document on purpose: a push is
+ * drawn by the phone's OS from whatever text the server sent, so the language
+ * has to be chosen per *device*, at send time. One person can be reading the
+ * website in English on a laptop and the app in Urdu on their phone, and the
+ * phone is the thing the lock screen belongs to.
+ */
+export type PushLocale = "en" | "ur";
 
 type TokenDoc = {
   token: string;
   userId: string;
   platform?: string;
+  /** Absent on tokens registered before this field existed — read as "en". */
+  locale?: PushLocale;
   updatedAt: string;
 };
 
@@ -58,7 +75,8 @@ const DEAD_TOKEN_CODES = new Set([
 export async function saveToken(
   userId: string,
   token: string,
-  platform?: string
+  platform?: string,
+  locale: PushLocale = "en"
 ): Promise<void> {
   // The token is the document id, not a field. Two people signing into the
   // same phone must not leave two rows both claiming that token — the second
@@ -72,6 +90,7 @@ export async function saveToken(
         token,
         userId,
         platform: platform ?? "unknown",
+        locale,
         updatedAt: new Date().toISOString(),
       } satisfies TokenDoc,
       { merge: false }
@@ -83,9 +102,16 @@ export async function deleteToken(token: string): Promise<void> {
   await adminDb.collection(COLLECTION).doc(token).delete();
 }
 
-async function tokensFor(userId: string): Promise<string[]> {
+type Registration = { token: string; locale: PushLocale };
+
+async function tokensFor(userId: string): Promise<Registration[]> {
   const snap = await adminDb.collection(COLLECTION).where("userId", "==", userId).get();
-  return snap.docs.map((d) => (d.data() as TokenDoc).token).filter(Boolean);
+  return snap.docs
+    .map((d) => {
+      const doc = d.data() as TokenDoc;
+      return { token: doc.token, locale: doc.locale === "ur" ? "ur" : "en" } as Registration;
+    })
+    .filter((r) => Boolean(r.token));
 }
 
 /**
@@ -98,30 +124,54 @@ async function tokensFor(userId: string): Promise<string[]> {
  */
 export async function sendPush(userId: string, message: PushTarget): Promise<void> {
   try {
-    const tokens = await tokensFor(userId);
-    if (tokens.length === 0) return;
+    const registrations = await tokensFor(userId);
+    if (registrations.length === 0) return;
+    const tokens = registrations.map((r) => r.token);
 
-    const response = await getMessaging(adminApp).sendEachForMulticast({
-      tokens,
-      // `notification` rather than data-only: this is what makes Android and
-      // iOS draw the notification themselves when the app is not in the
-      // foreground. A data-only message needs the app to be running to show
-      // anything, which is precisely the case this is meant to cover.
-      notification: { title: message.title, body: message.body },
-      data: message.data,
-      android: {
-        priority: "high",
-        notification: {
-          // Appointments are time-bound. A session starting now is not worth
-          // batching until the phone next wakes up.
-          channelId: "tlc_appointments",
-          sound: "default",
+    // Both languages ride along in `data` as well as the one the OS will draw.
+    //
+    // The `notification` block is what the phone renders on a lock screen, and
+    // it can only hold one language — so the server has to choose, using the
+    // locale the app registered with this token. But that locale can be stale:
+    // someone switches the app to Urdu and the token is not re-registered
+    // until Firebase next rotates it. When the app *is* in the foreground it
+    // draws its own in-app banner, and at that moment it knows the truth about
+    // its own language. Sending both pairs costs a few dozen bytes and lets it
+    // render the right one regardless of what the token says.
+    const bilingualData: Record<string, string> = {
+      ...message.data,
+      title: message.title,
+      titleUr: message.titleUr,
+      body: message.body,
+      bodyUr: message.bodyUr,
+    };
+
+    const response = await getMessaging(adminApp).sendEach(
+      registrations.map(({ token, locale }) => ({
+        token,
+        // `notification` rather than data-only: this is what makes Android and
+        // iOS draw the notification themselves when the app is not in the
+        // foreground. A data-only message needs the app to be running to show
+        // anything, which is precisely the case this is meant to cover.
+        notification:
+          locale === "ur"
+            ? { title: message.titleUr, body: message.bodyUr }
+            : { title: message.title, body: message.body },
+        data: bilingualData,
+        android: {
+          priority: "high" as const,
+          notification: {
+            // Appointments are time-bound. A session starting now is not worth
+            // batching until the phone next wakes up.
+            channelId: "tlc_appointments",
+            sound: "default",
+          },
         },
-      },
-      apns: {
-        payload: { aps: { sound: "default" } },
-      },
-    });
+        apns: {
+          payload: { aps: { sound: "default" } },
+        },
+      }))
+    );
 
     // Clean up the dead ones. Without this the list grows forever and every
     // future send wastes a slot on a phone that no longer exists.

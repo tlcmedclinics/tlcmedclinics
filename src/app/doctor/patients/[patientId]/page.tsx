@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 import {
-  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_LABEL_KEYS as statusLabelKey,
   APPOINTMENT_STATUS_STYLES as statusStyles,
 } from "@/lib/appointment-status";
 import type { Appointment } from "@/types";
@@ -17,6 +18,7 @@ import { SkeletonRows } from "@/components/Loader";
 export default function DoctorPatientDetailPage() {
   const { patientId } = useParams<{ patientId: string }>();
   const toast = useToast();
+  const t = useT();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,7 +30,7 @@ export default function DoctorPatientDetailPage() {
     authedFetch(`/api/appointments?patientId=${encodeURIComponent(patientId)}&limit=200`)
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then(setAppointments)
-      .catch(() => toast.error("Couldn't load this patient. Please refresh."))
+      .catch(() => toast.error(t("doctor.patients.loadFailed")))
       .finally(() => setLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patientId]);
@@ -51,11 +53,9 @@ export default function DoctorPatientDetailPage() {
     return (
       <div className="animate-fade-up">
         <Link href="/doctor/patients" className="text-xs font-medium text-indigo hover:text-indigo-deep">
-          ← Back to patients
+          ← {t("doctor.patients.back")}
         </Link>
-        <p className="mt-6 text-sm text-ink-soft">
-          No record found — this patient may not be assigned to you (any more).
-        </p>
+        <p className="mt-6 text-sm text-ink-soft">{t("doctor.patients.noRecord")}</p>
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function DoctorPatientDetailPage() {
   return (
     <div className="animate-fade-up">
       <Link href="/doctor/patients" className="text-xs font-medium text-indigo hover:text-indigo-deep">
-        ← Back to patients
+        ← {t("doctor.patients.back")}
       </Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
@@ -73,9 +73,10 @@ export default function DoctorPatientDetailPage() {
         </div>
         {upcoming && (
           <div className="rounded-2xl border border-indigo/20 bg-indigo/5 px-4 py-3 text-xs text-ink-soft">
-            <p className="font-medium text-indigo">Next session</p>
+            <p className="font-medium text-indigo">{t("doctor.patients.nextSession")}</p>
             <p className="mt-0.5">
-              {upcoming.service} · {upcoming.date} at {formatClinicTime(upcoming.time)} · {upcoming.mode}
+              {upcoming.service} · {upcoming.date} · {formatClinicTime(upcoming.time)} ·{" "}
+              {t(upcoming.mode === "in-person" ? "mode.inPerson" : `mode.${upcoming.mode}`)}
             </p>
           </div>
         )}
@@ -84,19 +85,19 @@ export default function DoctorPatientDetailPage() {
       <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-line/70 p-5">
           <p className="stat-number text-indigo">{history.length}</p>
-          <p className="mt-1 text-xs text-ink-soft">Total sessions with you</p>
+          <p className="mt-1 text-xs text-ink-soft">{t("doctor.patients.totalSessions")}</p>
         </div>
         <div className="rounded-2xl border border-line/70 p-5">
           <p className="stat-number text-indigo">{completedCount}</p>
-          <p className="mt-1 text-xs text-ink-soft">Completed</p>
+          <p className="mt-1 text-xs text-ink-soft">{t("status.completed")}</p>
         </div>
         <div className="col-span-2 rounded-2xl border border-line/70 p-5 sm:col-span-1">
           <p className="stat-number text-indigo">{history[0]?.date ?? "—"}</p>
-          <p className="mt-1 text-xs text-ink-soft">Most recent booking</p>
+          <p className="mt-1 text-xs text-ink-soft">{t("doctor.patients.mostRecent")}</p>
         </div>
       </div>
 
-      <h2 className="mt-8 h3 text-ink">Appointment history</h2>
+      <h2 className="mt-8 h3 text-ink">{t("doctor.patients.history")}</h2>
       <div className="mt-4 space-y-3">
         {history.map((a) => (
           <div key={a.id} className="rounded-2xl border border-line/70 p-5">
@@ -104,11 +105,12 @@ export default function DoctorPatientDetailPage() {
               <div>
                 <p className="font-medium text-ink">{a.service}</p>
                 <p className="text-sm text-ink-soft">
-                  {a.date} · {formatClinicTime(a.time)} · {a.mode}
+                  {a.date} · {formatClinicTime(a.time)} ·{" "}
+                  {t(a.mode === "in-person" ? "mode.inPerson" : `mode.${a.mode}`)}
                 </p>
               </div>
               <span className={`rounded-full px-3 py-1 text-xs font-medium ${statusStyles[a.status]}`}>
-                {statusLabel[a.status]}
+                {t(statusLabelKey[a.status])}
               </span>
             </div>
             {a.notes && <p className="mt-2 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}
@@ -117,11 +119,11 @@ export default function DoctorPatientDetailPage() {
       </div>
 
       <p className="mt-8 text-xs text-ink-soft">
-        Want to join a call or open chat for a confirmed session? Head to{" "}
+        {t("doctor.patients.joinNoteA")}{" "}
         <Link href="/doctor/appointments" className="font-medium text-indigo hover:text-indigo-deep">
-          Appointments
+          {t("nav.appointments")}
         </Link>{" "}
-        — sessions open from there.
+        {t("doctor.patients.joinNoteB")}
       </p>
     </div>
   );

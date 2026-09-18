@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import type { Service } from "@/types";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 
 type Status = "idle" | "submitting" | "success";
 
 export default function AppointmentForm() {
   const toast = useToast();
+  const t = useT();
   const [status, setStatus] = useState<Status>("idle");
   const [services, setServices] = useState<Service[]>([]);
 
@@ -35,26 +37,26 @@ export default function AppointmentForm() {
       if (!res.ok) throw new Error("Request failed");
 
       setStatus("success");
-      toast.success("Request received — our team will call you shortly.");
+      toast.success(t("form.requestReceivedToast"));
       form.reset();
     } catch {
       setStatus("idle");
-      toast.error("Something went wrong. Please call the clinic directly or try again.");
+      toast.error(t("form.requestFailed"));
     }
   }
 
   if (status === "success") {
     return (
       <div className="rounded-2xl border border-indigo/20 bg-mist/60 p-8 text-center">
-        <p className="h3 text-indigo-deep">Request received</p>
+        <p className="h3 text-indigo-deep">{t("form.requestReceived")}</p>
         <p className="mt-2 text-sm text-ink-soft">
-          Our team will call you shortly to confirm your appointment.
+          {t("book.callBackRequestedHint")}
         </p>
         <button
           onClick={() => setStatus("idle")}
           className="mt-5 text-sm font-medium text-indigo hover:text-indigo-deep"
         >
-          Book another appointment
+          {t("form.bookAnother")}
         </button>
       </div>
     );
@@ -63,54 +65,54 @@ export default function AppointmentForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Full name">
-          <input name="name" type="text" required className="input" placeholder="Your name" />
+        <Field label={t("settings.name")}>
+          <input name="name" type="text" required className="input" placeholder={t("form.namePlaceholder")} />
         </Field>
-        <Field label="Phone number">
+        <Field label={t("settings.phone")}>
           <input name="phone" type="tel" required className="input" placeholder="03XX-XXXXXXX" />
         </Field>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Email (optional)">
-          <input name="email" type="email" className="input" placeholder="you@example.com" />
+        <Field label={t("form.emailOptional")}>
+          <input name="email" type="email" className="input" placeholder={t("settings.emailPlaceholder")} />
         </Field>
-        <Field label="Service">
+        <Field label={t("book.step.service")}>
           <select name="service" required defaultValue="" className="input">
             <option value="" disabled>
-              Select a service
+              {t("book.selectService")}
             </option>
             {services.map((s) => (
               <option key={s.id} value={s.name}>
                 {s.name}
               </option>
             ))}
-            <option value="Not sure yet">Not sure yet — help me choose</option>
+            <option value="Not sure yet">{t("form.notSureYet")}</option>
           </select>
         </Field>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label="Preferred date">
+        <Field label={t("form.preferredDate")}>
           <input name="preferredDate" type="date" className="input" />
         </Field>
-        <Field label="Preferred time">
+        <Field label={t("form.preferredTime")}>
           <select name="preferredTime" defaultValue="" className="input">
             <option value="" disabled>
-              Select a slot
+              {t("form.selectSlot")}
             </option>
-            <option value="Morning (11:00 AM – 2:00 PM)">Morning (11:00 AM – 2:00 PM)</option>
-            <option value="Evening (4:00 PM – 8:00 PM)">Evening (4:00 PM – 8:00 PM)</option>
+            <option value="Morning (11:00 AM – 2:00 PM)">{t("form.morningWindow")}</option>
+            <option value="Evening (4:00 PM – 8:00 PM)">{t("form.eveningWindow")}</option>
           </select>
         </Field>
       </div>
 
-      <Field label="Message (optional)">
+      <Field label={t("form.messageOptional")}>
         <textarea
           name="message"
           rows={4}
           className="input resize-none"
-          placeholder="Anything the clinic should know before your visit"
+          placeholder={t("form.messagePlaceholder")}
         />
       </Field>
 
@@ -119,7 +121,7 @@ export default function AppointmentForm() {
         disabled={status === "submitting"}
         className="w-full rounded-full bg-indigo px-7 py-3.5 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep disabled:opacity-60 sm:w-auto"
       >
-        {status === "submitting" ? "Sending…" : "Request a Call-back"}
+        {status === "submitting" ? t("book.sending") : t("book.requestCallBack")}
       </button>
     </form>
   );

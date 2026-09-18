@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { T } from "@/components/T";
 import { site } from "@/data/site";
 
 /**
@@ -20,26 +21,26 @@ export default async function PaymentResultPage({
 }) {
   const { status = "failed", message } = await searchParams;
 
+  // Keys rather than sentences: the page is server-rendered, so the strings
+  // themselves are picked in the browser by <T>.
   const view = {
     ok: {
       tone: "indigo" as const,
-      title: "Appointment confirmed",
-      body: message || "Your payment was received and your slot is booked.",
-      cta: { href: "/patient/dashboard", label: "Go to my appointments" },
+      titleKey: "book.result.okTitle",
+      bodyKey: "book.result.okBody",
+      cta: { href: "/patient/dashboard", labelKey: "book.result.goToAppointments" },
     },
     attention: {
       tone: "crimson" as const,
-      title: "Please call the clinic",
-      body:
-        message ||
-        "Your payment went through but we could not confirm the appointment. Please do not pay again.",
-      cta: { href: `tel:${site.phoneE164}`, label: `Call ${site.phone}` },
+      titleKey: "book.result.attentionTitle",
+      bodyKey: "book.result.attentionBody",
+      cta: { href: `tel:${site.phoneE164}`, labelKey: "book.result.callPhone" },
     },
     failed: {
       tone: "crimson" as const,
-      title: "Payment not completed",
-      body: message || "Nothing has been charged. You can pick your time again.",
-      cta: { href: "/patient/book", label: "Try again" },
+      titleKey: "book.result.failedTitle",
+      bodyKey: "book.result.failedBody",
+      cta: { href: "/patient/book", labelKey: "common.retry" },
     },
   }[status === "ok" ? "ok" : status === "attention" ? "attention" : "failed"];
 
@@ -63,20 +64,23 @@ export default async function PaymentResultPage({
         </svg>
       </div>
 
-      <h1 className="mt-6 h2 text-ink">{view.title}</h1>
-      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">{view.body}</p>
+      <h1 className="mt-6 h2 text-ink">
+        <T k={view.titleKey} />
+      </h1>
+      <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-soft">
+        {message || <T k={view.bodyKey} />}
+      </p>
 
       <Link href={view.cta.href} className="btn-indigo mt-7 inline-block">
-        {view.cta.label}
+        <T k={view.cta.labelKey} vars={{ phone: site.phone }} />
       </Link>
 
       {status !== "ok" && (
         <p className="mt-6 text-xs text-ink-soft">
-          Any questions about a payment — call{" "}
+          <T k="book.result.paymentQuestions" />{" "}
           <a href={`tel:${site.phoneE164}`} className="numeric font-medium text-indigo">
             {site.phone}
           </a>
-          .
         </p>
       )}
     </div>

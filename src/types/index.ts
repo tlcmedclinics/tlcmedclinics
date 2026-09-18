@@ -292,8 +292,15 @@ export interface AppNotification {
   userId: string; // recipient — patientId, doctorId, or an admin's uid
   role: UserRole; // recipient's role, so the bell can be shown per-panel
   type: NotificationType;
+  // Both languages, side by side — the same `x`/`xUr` convention as the rest
+  // of the content (see lib/bilingual.ts). Required, not optional: the text is
+  // written on the server, so it cannot go through the browser's dictionary,
+  // and every writer of a notification is in lib/notifications.ts's call
+  // graph. An optional field here is how the Urdu half quietly stops shipping.
   title: string;
+  titleUr: string;
   message: string;
+  messageUr: string;
   appointmentId?: string;
   read: boolean;
   createdAt: string;

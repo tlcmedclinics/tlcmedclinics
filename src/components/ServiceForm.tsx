@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { authedFetch } from "@/lib/authed-fetch";
 import BilingualField, { type BilingualValue } from "@/components/BilingualField";
+import { useT } from "@/contexts/LanguageContext";
 import type { Service } from "@/types";
 
 /** English and Urdu together, so one piece of state holds one field. */
@@ -19,6 +20,7 @@ const lines = (value: string) =>
 
 export default function ServiceForm({ service }: { service?: Service }) {
   const router = useRouter();
+  const t = useT();
   const [image, setImage] = useState(service?.image ?? "");
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,7 +93,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
       router.push("/admin/services");
       router.refresh();
     } catch {
-      setError("Something went wrong saving the service.");
+      setError(t("serviceForm.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -100,21 +102,21 @@ export default function ServiceForm({ service }: { service?: Service }) {
   return (
     <form onSubmit={handleSubmit} className="mt-8 max-w-2xl space-y-5">
       <BilingualField
-        label="Service name"
+        label={t("serviceForm.name")}
         required
         value={name}
         onChange={setName}
-        placeholder="e.g. Ketamine Therapy"
+        placeholder={t("serviceForm.namePlaceholder")}
       />
 
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Category</span>
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">{t("serviceForm.category")}</span>
           <input
             name="category"
             required
             defaultValue={service?.category}
-            placeholder="e.g. Health Care"
+            placeholder={t("serviceForm.categoryPlaceholder")}
             className="input"
             list="category-suggestions"
           />
@@ -130,7 +132,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
       </div>
 
       <BilingualField
-        label="Short description (shown on cards)"
+        label={t("serviceForm.short")}
         multiline
         rows={2}
         value={short}
@@ -138,7 +140,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
       />
 
       <BilingualField
-        label="Full introduction"
+        label={t("serviceForm.intro")}
         multiline
         rows={4}
         value={intro}
@@ -146,27 +148,27 @@ export default function ServiceForm({ service }: { service?: Service }) {
       />
 
       <BilingualField
-        label="Good-to-know points (one per line)"
+        label={t("serviceForm.points")}
         multiline
         rows={4}
         value={points}
         onChange={setPoints}
-        placeholder={"Common signs...\nDiagnosis method...\nWhat to expect..."}
-        hint="One point per line. Keep the same number of lines in both columns — they are shown as one list, not paired up."
+        placeholder={t("serviceForm.pointsPlaceholder")}
+        hint={t("serviceForm.pointsHint")}
       />
 
       <BilingualField
-        label="Treatments offered (one per line)"
+        label={t("serviceForm.treatments")}
         multiline
         rows={4}
         value={treatments}
         onChange={setTreatments}
-        placeholder={"Treatment A\nTreatment B"}
+        placeholder={t("serviceForm.treatmentsPlaceholder")}
       />
 
       <div className="grid gap-5 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Full price (PKR)</span>
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">{t("serviceForm.price")}</span>
           <input
             name="price"
             type="number"
@@ -182,7 +184,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
             and the API only stores it when a number is actually entered. */}
         <label className="block">
           <span className="mb-1.5 block text-xs font-medium text-ink-soft">
-            Advance to book (PKR)
+            {t("serviceForm.advance")}
           </span>
           <input
             name="advancePayment"
@@ -193,12 +195,12 @@ export default function ServiceForm({ service }: { service?: Service }) {
             className="input"
           />
           <span className="mt-1 block text-[0.7rem] leading-snug text-ink-soft/80">
-            Leave blank to charge the full price online.
+            {t("serviceForm.advanceHint")}
           </span>
         </label>
 
         <label className="block">
-          <span className="mb-1.5 block text-xs font-medium text-ink-soft">Duration (minutes)</span>
+          <span className="mb-1.5 block text-xs font-medium text-ink-soft">{t("serviceForm.duration")}</span>
           <input
             name="durationMinutes"
             type="number"
@@ -211,14 +213,14 @@ export default function ServiceForm({ service }: { service?: Service }) {
       </div>
 
       <div>
-        <span className="mb-1.5 block text-xs font-medium text-ink-soft">Image (optional)</span>
+        <span className="mb-1.5 block text-xs font-medium text-ink-soft">{t("serviceForm.image")}</span>
         {image && (
           <div className="relative mb-3 h-40 w-full overflow-hidden rounded-xl bg-mist">
             <Image src={image} alt="Service" fill className="object-cover" />
           </div>
         )}
         <input type="file" accept="image/*" onChange={handleImageUpload} className="input" />
-        {uploading && <p className="mt-1 text-xs text-ink-soft">Uploading…</p>}
+        {uploading && <p className="mt-1 text-xs text-ink-soft">{t("settings.uploading")}</p>}
       </div>
 
       {error && <p className="text-sm text-crimson-deep">{error}</p>}
@@ -228,7 +230,7 @@ export default function ServiceForm({ service }: { service?: Service }) {
         disabled={saving || uploading}
         className="rounded-full bg-indigo px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-indigo-deep disabled:opacity-60"
       >
-        {saving ? "Saving…" : service ? "Update Service" : "Create Service"}
+        {saving ? t("common.saving") : t(service ? "serviceForm.update" : "serviceForm.create")}
       </button>
     </form>
   );

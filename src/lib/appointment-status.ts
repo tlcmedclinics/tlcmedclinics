@@ -25,13 +25,19 @@ export const APPOINTMENT_STATUS_STYLES: Record<AppointmentStatus, string> = {
 /**
  * Clinic-facing wording — what admin and doctors see.
  *
+ * Dictionary keys rather than sentences, because the clinic's own staff read
+ * these screens in Urdu too. The map still has to be a
+ * `Record<AppointmentStatus, string>`: that is what makes adding a status a
+ * compile error in all four screens at once rather than a badge with no label
+ * on the one screen nobody opened this week.
+ *
  * Both waiting states say who is being waited on, because that is the only
  * thing anyone reads a status list to find out.
  */
-export const APPOINTMENT_STATUS_LABELS: Record<AppointmentStatus, string> = {
-  pending: "Call-back needed",
-  "awaiting-payment": "Awaiting patient payment",
-  confirmed: "Confirmed",
-  completed: "Completed",
-  cancelled: "Cancelled",
+export const APPOINTMENT_STATUS_LABEL_KEYS: Record<AppointmentStatus, string> = {
+  pending: "status.callBackNeeded",
+  "awaiting-payment": "status.awaitingPayment",
+  confirmed: "status.confirmed",
+  completed: "status.completed",
+  cancelled: "status.cancelled",
 };

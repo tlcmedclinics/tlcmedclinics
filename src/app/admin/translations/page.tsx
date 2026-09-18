@@ -7,6 +7,7 @@ import { readApiError } from "@/lib/api-error";
 import { useToast } from "@/contexts/ToastContext";
 import { useConfirm } from "@/contexts/ConfirmContext";
 import { InlineSpinner, SkeletonRows } from "@/components/Loader";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * Urdu coverage across the catalogue, and a button to fill the gaps.
@@ -44,16 +45,17 @@ const COLLECTIONS = [
 export default function TranslationsPage() {
   const toast = useToast();
   const confirm = useConfirm();
+  const t = useT();
   const [report, setReport] = useState<Report | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
       const res = await authedFetch("/api/translate/backfill");
-      if (!res.ok) throw new Error(await readApiError(res, "Could not read the report."));
+      if (!res.ok) throw new Error(await readApiError(res, t("admin.translations.reportFailed")));
       setReport(await res.json());
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not read the report.");
+      toast.error(err instanceof Error ? err.message : t("admin.translations.reportFailed"));
       setReport({ configured: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,14 +67,11 @@ export default function TranslationsPage() {
 
   async function run(key: string, row: Row) {
     const ok = await confirm({
-      title: `Translate ${row.fieldsPending} field(s)?`,
-      message:
-        `About ${row.charactersPending.toLocaleString()} characters will be sent to Google ` +
-        `Translate and written into the Urdu columns.\n\n` +
-        `Nothing already translated is touched. Everything written this way is marked ` +
-        `"needs a read" until someone opens it and saves — machine translation of clinical ` +
-        `terms is fluent and is not always right.`,
-      confirmLabel: "Translate them",
+      title: t("admin.translations.confirmTitle", { count: row.fieldsPending }),
+      message: t("admin.translations.confirmBody", {
+        chars: row.charactersPending.toLocaleString(),
+      }),
+      confirmLabel: t("admin.translations.confirmCta"),
     });
     if (!ok) return;
 
@@ -83,14 +82,14 @@ export default function TranslationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ collection: key }),
       });
-      if (!res.ok) throw new Error(await readApiError(res, "Translation failed."));
+      if (!res.ok) throw new Error(await readApiError(res, t("admin.translations.failed")));
       const data = await res.json();
       toast.success(
-        `${data.translated} field(s) across ${data.documents} item(s) drafted in Urdu. Please read them.`
+        t("admin.translations.done", { fields: data.translated, items: data.documents })
       );
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Translation failed.");
+      toast.error(err instanceof Error ? err.message : t("admin.translations.failed"));
     } finally {
       setBusy(null);
     }
@@ -98,19 +97,16 @@ export default function TranslationsPage() {
 
   return (
     <div className="animate-fade-up">
-      <h1 className="h1">Urdu translation</h1>
-      <p className="lede mt-1">
-        What the site can already say in Urdu, and what it can&apos;t yet.
-      </p>
+      <h1 className="h1">{t("admin.translations.title")}</h1>
+      <p className="lede mt-1">{t("admin.translations.lede")}</p>
 
       {report && !report.configured && (
         <div className="card card-pad mt-6 border-l-4 border-crimson">
-          <p className="text-sm font-semibold text-ink">Machine translation isn&apos;t switched on</p>
+          <p className="text-sm font-semibold text-ink">{t("admin.translations.notConfigured")}</p>
           <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-            Set <span className="numeric font-medium text-ink">TRANSLATE_API_KEY</span> on the
-            server to draft translations from here. Without it the Urdu boxes in each
-            form still work — typing them by hand is more accurate for clinical terms
-            anyway.
+            {t("admin.translations.notConfiguredA")}{" "}
+            <span className="numeric font-medium text-ink">TRANSLATE_API_KEY</span>{" "}
+            {t("admin.translations.notConfiguredB")}
           </p>
         </div>
       )}
@@ -143,9 +139,11 @@ export default function TranslationsPage() {
                   <div className="min-w-0">
                     <p className="text-base font-semibold text-ink">{row.label}</p>
                     <p className="mt-1 text-sm text-ink-soft">
-                      <span className="numeric">{row.documents}</span> item(s) ·{" "}
-                      <span className="numeric">{row.fieldsTranslated}</span> of{" "}
-                      <span className="numeric">{row.fieldsTotal}</span> fields have Urdu
+                      {t("admin.translations.coverage", {
+                        documents: row.documents,
+                        translated: row.fieldsTranslated,
+                        total: row.fieldsTotal,
+                      })}
                     </p>
                   </div>
                   <span className="numeric shrink-0 text-2xl font-bold text-indigo">{pct}%</span>
@@ -171,24 +169,20 @@ export default function TranslationsPage() {
                       {busy === key ? (
                         <InlineSpinner />
                       ) : (
-                        <>
-                          Draft {row.fieldsPending} missing field
-                          {row.fieldsPending === 1 ? "" : "s"}
-                        </>
+                        t("admin.translations.draftMissing", { count: row.fieldsPending })
                       )}
                     </button>
                   ) : (
-                    <span className="pill pill-indigo">Nothing missing</span>
+                    <span className="pill pill-indigo">{t("admin.translations.nothingMissing")}</span>
                   )}
 
                   <Link href={href} className="btn-outline btn-sm">
-                    Open {row.label.toLowerCase()}
+                    {t("admin.translations.openCollection", { name: row.label.toLowerCase() })}
                   </Link>
 
                   {row.needsReview > 0 && (
                     <span className="text-sm text-crimson-deep">
-                      <span className="numeric font-semibold">{row.needsReview}</span> item(s)
-                      still need a read
+                      {t("admin.translations.needsRead", { count: row.needsReview })}
                     </span>
                   )}
                 </div>
@@ -199,29 +193,19 @@ export default function TranslationsPage() {
       )}
 
       <div className="card card-pad mt-8">
-        <p className="text-sm font-semibold text-ink">Before you trust a drafted translation</p>
+        <p className="text-sm font-semibold text-ink">{t("admin.translations.trustTitle")}</p>
         <ul className="mt-3 space-y-2.5 text-sm leading-relaxed text-ink-soft">
           <li className="flex gap-3">
             <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-crimson" />
-            <span>
-              Treatment and condition names are where machines go wrong. They come back
-              fluent, and a patient has no way to tell a good translation from a
-              confident one.
-            </span>
+            <span>{t("admin.translations.trust1")}</span>
           </li>
           <li className="flex gap-3">
             <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-            <span>
-              Open each item marked &ldquo;needs a read&rdquo;, check the Urdu column,
-              fix what is wrong and save. Saving clears the flag.
-            </span>
+            <span>{t("admin.translations.trust2")}</span>
           </li>
           <li className="flex gap-3">
             <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-            <span>
-              Running this again never overwrites Urdu that is already there — corrections
-              are safe.
-            </span>
+            <span>{t("admin.translations.trust3")}</span>
           </li>
         </ul>
       </div>

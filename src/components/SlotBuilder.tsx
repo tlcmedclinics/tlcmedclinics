@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { InlineSpinner } from "@/components/Loader";
+import { useT } from "@/contexts/LanguageContext";
 import { formatClinicTime } from "@/lib/clinic-time";
 import {
   SESSION_LENGTHS,
@@ -12,6 +13,7 @@ import {
   toMinutes,
   toHHmm,
   weekdayOf,
+  weekdayKeyOf,
   type SessionLength,
 } from "@/lib/slot-grid";
 import type { Service } from "@/types";
@@ -63,6 +65,7 @@ export default function SlotBuilder({
   /** Rendered above the grid — the admin page puts its doctor picker here. */
   header?: ReactNode;
 }) {
+  const t = useT();
   const [date, setDate] = useState("");
   const [duration, setDuration] = useState<SessionLength>(30);
   const [mode, setMode] = useState<"in-clinic" | "online">("in-clinic");
@@ -123,7 +126,11 @@ export default function SlotBuilder({
     if (ok) setSelected([]);
   }
 
+  // The English name is still what decides whether the clinic is open (see
+  // weekdayOf in lib/slot-grid.ts); this is only what the sentence shows.
   const weekday = date ? weekdayOf(date) : null;
+  const weekdayKey = date ? weekdayKeyOf(date) : null;
+  const weekdayLabel = weekdayKey ? t(weekdayKey) : "";
   const closedToday = mode === "in-clinic" && Boolean(date) && windows.length === 0;
 
   return (
@@ -132,7 +139,7 @@ export default function SlotBuilder({
 
       {/* ---- 1. How long is a session ---- */}
       <div className="field">
-        <span className="label">How long is each session?</span>
+        <span className="label">{t("slotBuilder.length")}</span>
         <div className="flex flex-wrap gap-2">
           {SESSION_LENGTHS.map((n) => (
             <button
@@ -146,20 +153,17 @@ export default function SlotBuilder({
                   : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
               }`}
             >
-              {n} min
+              {t("slot.minutes", { count: n })}
             </button>
           ))}
         </div>
-        <span className="field-hint">
-          Times below are built from this — every {duration} minutes, and a
-          session never runs past the end of its window.
-        </span>
+        <span className="field-hint">{t("slotBuilder.lengthHint", { duration })}</span>
       </div>
 
       {/* ---- 2. Day and place ---- */}
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <label className="field">
-          <span className="label">Date</span>
+          <span className="label">{t("slotBuilder.date")}</span>
           <input
             type="date"
             required
@@ -168,18 +172,18 @@ export default function SlotBuilder({
             onChange={(e) => setDate(e.target.value)}
             className="input numeric"
           />
-          {weekday && <span className="field-hint">{weekday}</span>}
+          {weekdayLabel && <span className="field-hint">{weekdayLabel}</span>}
         </label>
 
         <div className="field">
-          <span className="label">In clinic or online</span>
+          <span className="label">{t("slotBuilder.where")}</span>
           <div className="flex gap-2">
             {(
               [
-                ["in-clinic", "In clinic"],
-                ["online", "Online"],
+                ["in-clinic", "mode.inClinic"],
+                ["online", "mode.online"],
               ] as const
-            ).map(([value, label]) => (
+            ).map(([value, labelKey]) => (
               <button
                 key={value}
                 type="button"
@@ -191,7 +195,7 @@ export default function SlotBuilder({
                     : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
                 }`}
               >
-                {label}
+                {t(labelKey)}
               </button>
             ))}
           </div>
@@ -202,7 +206,7 @@ export default function SlotBuilder({
       {mode === "online" ? (
         <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="field">
-            <span className="label">Online from</span>
+            <span className="label">{t("slotBuilder.onlineFrom")}</span>
             <input
               type="time"
               value={from}
@@ -211,7 +215,7 @@ export default function SlotBuilder({
             />
           </label>
           <label className="field">
-            <span className="label">Until</span>
+            <span className="label">{t("slotBuilder.until")}</span>
             <input
               type="time"
               value={to}
@@ -220,21 +224,18 @@ export default function SlotBuilder({
             />
             {!rangeValid && (
               <span className="field-hint text-crimson-deep">
-                The end time has to be after the start.
+                {t("slotBuilder.endAfterStart")}
               </span>
             )}
           </label>
-          <p className="text-xs text-ink-soft sm:col-span-2">
-            Online hours are yours to set — they don&apos;t have to sit inside
-            the clinic&apos;s opening times.
-          </p>
+          <p className="text-xs text-ink-soft sm:col-span-2">{t("slotBuilder.onlineNote")}</p>
         </div>
       ) : (
         <p className="mt-5 rounded-xl border border-line/70 bg-paper-dim/40 px-4 py-3 text-xs text-ink-soft">
           {date ? (
             windows.length > 0 ? (
               <>
-                Clinic hours on {weekday}:{" "}
+                {t("slotBuilder.clinicHours", { weekday: weekdayLabel ?? "" })}{" "}
                 <span className="numeric font-medium text-ink">
                   {windows
                     .map((w) => `${formatClinicTime(w.opens)} – ${formatClinicTime(w.closes)}`)
@@ -242,10 +243,10 @@ export default function SlotBuilder({
                 </span>
               </>
             ) : (
-              <>The clinic is closed on {weekday}. Pick another day, or open online times instead.</>
+              <>{t("slotBuilder.closedOn", { weekday: weekdayLabel ?? "" })}</>
             )
           ) : (
-            <>Pick a date to see the clinic&apos;s hours for that day.</>
+            <>{t("slotBuilder.pickDateForHours")}</>
           )}
         </p>
       )}
@@ -254,10 +255,10 @@ export default function SlotBuilder({
       <div className="mt-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="label !mb-0">
-            Tap the times you&apos;re available
+            {t("slotBuilder.tapTimes")}
             {selected.length > 0 && (
-              <span className="numeric ml-2 font-normal text-indigo">
-                {selected.length} selected
+              <span className="ml-2 font-normal text-indigo">
+                {t("slotBuilder.selectedCount", { count: selected.length })}
               </span>
             )}
           </span>
@@ -268,30 +269,25 @@ export default function SlotBuilder({
                 onClick={() => setSelected(openable)}
                 className="text-indigo hover:text-indigo-deep"
               >
-                Select all
+                {t("slotBuilder.selectAll")}
               </button>
               <button
                 type="button"
                 onClick={() => setSelected([])}
                 className="text-ink-soft hover:text-ink"
               >
-                Clear
+                {t("common.clear")}
               </button>
             </div>
           )}
         </div>
 
         {!date ? (
-          <p className="mt-3 text-sm text-ink-soft">Pick a date first.</p>
+          <p className="mt-3 text-sm text-ink-soft">{t("slotBuilder.pickDateFirst")}</p>
         ) : closedToday ? (
-          <p className="mt-3 text-sm text-ink-soft">
-            Nothing to show — the clinic is closed that day.
-          </p>
+          <p className="mt-3 text-sm text-ink-soft">{t("slotBuilder.closedThatDay")}</p>
         ) : grid.length === 0 ? (
-          <p className="mt-3 text-sm text-ink-soft">
-            A {duration}-minute session doesn&apos;t fit in that range. Widen it,
-            or choose a shorter session.
-          </p>
+          <p className="mt-3 text-sm text-ink-soft">{t("slotBuilder.noFit", { duration })}</p>
         ) : (
           <>
             <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
@@ -308,7 +304,7 @@ export default function SlotBuilder({
                     aria-pressed={on}
                     title={
                       taken
-                        ? "Already on your calendar"
+                        ? t("slotBuilder.alreadyOnCalendar")
                         : `${formatClinicTime(time)} – ${formatClinicTime(end)}`
                     }
                     className={`numeric rounded-xl border px-2 py-2.5 text-xs font-medium transition-colors ${
@@ -325,9 +321,7 @@ export default function SlotBuilder({
               })}
             </div>
             {clashes.size > 0 && (
-              <p className="mt-2 text-xs text-ink-soft">
-                Crossed-out times are already on your calendar for that day.
-              </p>
+              <p className="mt-2 text-xs text-ink-soft">{t("slotBuilder.crossedOut")}</p>
             )}
           </>
         )}
@@ -337,13 +331,13 @@ export default function SlotBuilder({
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {services.length > 0 && (
           <label className="field">
-            <span className="label">For one service only (optional)</span>
+            <span className="label">{t("slotBuilder.forOneService")}</span>
             <select
               value={service}
               onChange={(e) => setService(e.target.value)}
               className="input"
             >
-              <option value="">Any service</option>
+              <option value="">{t("slot.anyService")}</option>
               {services.map((s) => (
                 <option key={s.id ?? s.slug} value={s.name}>
                   {s.name}
@@ -362,9 +356,9 @@ export default function SlotBuilder({
             {busy ? (
               <InlineSpinner />
             ) : selected.length === 0 ? (
-              "Pick some times"
+              t("slotBuilder.pickSomeTimes")
             ) : (
-              `Open ${selected.length} × ${duration} min`
+              t("slotBuilder.openN", { count: selected.length, duration })
             )}
           </button>
         </div>

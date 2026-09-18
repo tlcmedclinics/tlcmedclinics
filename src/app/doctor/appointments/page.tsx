@@ -19,7 +19,7 @@ import PrescriptionEditor from "@/components/PrescriptionEditor";
 import FollowUpScheduler from "@/components/FollowUpScheduler";
 import AppointmentHistory from "@/components/AppointmentHistory";
 import {
-  APPOINTMENT_STATUS_LABELS as statusLabel,
+  APPOINTMENT_STATUS_LABEL_KEYS as statusLabelKey,
   APPOINTMENT_STATUS_STYLES as statusStyles,
 } from "@/lib/appointment-status";
 import type { Appointment, AppointmentStatus } from "@/types";
@@ -127,10 +127,10 @@ export default function DoctorAppointmentsPage() {
         body: JSON.stringify({ id, status }),
       });
       if (!res.ok) throw new Error();
-      toast.success("Updated.");
+      toast.success(t("common.updated"));
       load();
     } catch {
-      toast.error("Couldn't update. Please try again.");
+      toast.error(t("admin.appointments.statusFailed"));
     }
   }
 
@@ -216,7 +216,7 @@ export default function DoctorAppointmentsPage() {
                 : "border-line text-ink-soft hover:border-indigo hover:text-indigo"
             }`}
           >
-            {f}
+            {t(`status.${f}`)}
           </button>
         ))}
       </div>
@@ -232,7 +232,7 @@ export default function DoctorAppointmentsPage() {
       {loading ? (
         <SkeletonRows rows={4} className="mt-8" />
       ) : visible.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-soft">No appointments here.</p>
+        <p className="mt-8 text-sm text-ink-soft">{t("admin.appointments.none")}</p>
       ) : (
         <div className="mt-6 space-y-3">
           {visible.map((a) => {
@@ -251,7 +251,8 @@ export default function DoctorAppointmentsPage() {
                   <div>
                     <p className="font-medium text-ink">{a.patientName}</p>
                     <p className="text-sm text-ink-soft">
-                      {a.service} · {a.date} {formatClinicTime(a.time)} · {a.mode}
+                      {a.service} · {a.date} {formatClinicTime(a.time)} ·{" "}
+                      {t(a.mode === "in-person" ? "mode.inPerson" : `mode.${a.mode}`)}
                     </p>
                     {a.notes && <p className="mt-1 text-sm text-ink-soft/80">&ldquo;{a.notes}&rdquo;</p>}
                   </div>
@@ -259,7 +260,7 @@ export default function DoctorAppointmentsPage() {
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}
                     >
-                      {statusLabel[a.status]}
+                      {t(statusLabelKey[a.status])}
                     </span>
                     {/* No status dropdown while the patient still has to pay:
                         its options are confirmed/completed/cancelled, so an
@@ -272,9 +273,9 @@ export default function DoctorAppointmentsPage() {
                         value={a.status}
                         onChange={(e) => updateStatus(a.id, e.target.value as AppointmentStatus)}
                       >
-                        <option value="confirmed">Confirmed</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
+                        <option value="confirmed">{t("status.confirmed")}</option>
+                        <option value="completed">{t("status.completed")}</option>
+                        <option value="cancelled">{t("status.cancelled")}</option>
                       </select>
                     )}
                   </div>
@@ -292,7 +293,7 @@ export default function DoctorAppointmentsPage() {
                           disabled={pendingId === a.id}
                           className="rounded-full border border-indigo-deep px-4 py-2 text-xs font-medium text-indigo-deep transition-colors hover:bg-indigo-deep hover:text-white disabled:opacity-50"
                         >
-                          Start early
+                          {t("doctor.appointments.startEarly")}
                         </button>
                       )}
                       <button
@@ -301,12 +302,12 @@ export default function DoctorAppointmentsPage() {
                         className="rounded-full bg-indigo-deep px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {pendingId === a.id
-                          ? "Connecting…"
+                          ? t("video.connecting")
                           : a.mode === "video"
-                          ? "Join as host"
+                          ? t("video.joinAsHost")
                           : a.mode === "audio"
-                          ? "Join audio call"
-                          : "Open secure chat"}
+                          ? t("video.joinAudio")
+                          : t("video.openChat")}
                       </button>
                       {a.sessionStatus === "live" && (
                         <button
@@ -314,7 +315,7 @@ export default function DoctorAppointmentsPage() {
                           disabled={pendingId === a.id}
                           className="rounded-full border border-crimson px-4 py-2 text-xs font-medium text-crimson-deep transition-colors hover:bg-crimson hover:text-white disabled:opacity-50"
                         >
-                          End session
+                          {t("chat.endSession")}
                         </button>
                       )}
                     </div>
@@ -325,7 +326,10 @@ export default function DoctorAppointmentsPage() {
 
                 {a.status === "cancelled" && a.cancelReason && (
                   <p className="mt-2 text-xs text-ink-soft">
-                    Cancelled by {a.cancelledBy}: {a.cancelReason}
+                    {t("admin.appointments.cancelledBy", {
+                      by: a.cancelledBy ?? "",
+                      reason: a.cancelReason,
+                    })}
                   </p>
                 )}
 
@@ -381,7 +385,7 @@ export default function DoctorAppointmentsPage() {
             disabled={loadingMore}
             className="rounded-full border border-line px-5 py-2.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo disabled:opacity-60"
           >
-            {loadingMore ? <InlineSpinner /> : "Load older appointments"}
+            {loadingMore ? <InlineSpinner /> : t("admin.appointments.loadOlder")}
           </button>
         </div>
       )}

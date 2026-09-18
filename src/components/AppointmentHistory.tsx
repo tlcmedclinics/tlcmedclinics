@@ -2,6 +2,7 @@
 
 import type { Appointment } from "@/types";
 import { formatClinicTime } from "@/lib/clinic-time";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * Everything that has happened to one appointment, oldest first.
@@ -113,13 +114,14 @@ export default function AppointmentHistory({
   appointment: Appointment;
   showInternal?: boolean;
 }) {
+  const t = useT();
   const events = buildAppointmentHistory(appointment, showInternal);
 
   // A hold that hasn't been paid or expired yet is a state, not a past event —
   // it belongs at the end of the list, where "what happens next" is.
   const pendingHold =
     appointment.status === "awaiting-payment" && appointment.paymentDueAt
-      ? `Held until ${formatWhen(appointment.paymentDueAt)} — waiting for the patient to confirm`
+      ? t("history.heldUntil", { when: formatWhen(appointment.paymentDueAt) })
       : null;
 
   return (
@@ -128,13 +130,13 @@ export default function AppointmentHistory({
     // matters on lists that update live.
     <details className="mt-3 group">
       <summary className="cursor-pointer list-none text-xs font-medium text-ink-soft hover:text-ink">
-        History<span className="ml-1 text-ink-soft/60">({events.length})</span>
+        {t("history.title")}<span className="ml-1 text-ink-soft/60">({events.length})</span>
         <span className="ml-1 inline-block transition-transform group-open:rotate-90">›</span>
       </summary>
 
       <ol className="mt-3 space-y-2 border-l border-line/70 pl-4">
         {events.length === 0 ? (
-          <li className="text-xs text-ink-soft">Nothing recorded yet.</li>
+          <li className="text-xs text-ink-soft">{t("history.none")}</li>
         ) : (
           events.map((e, i) => (
             <li key={`${e.at}-${i}`} className="relative text-xs">

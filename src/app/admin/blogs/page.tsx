@@ -50,7 +50,7 @@ export default function AdminBlogsPage() {
     if (
       !(await confirm({
         title: t("admin.blogs.deleteConfirm"),
-        confirmLabel: "Delete",
+        confirmLabel: t("common.delete"),
         destructive: true,
       }))
     )

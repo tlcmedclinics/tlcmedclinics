@@ -35,7 +35,7 @@ export default function AdminDoctorsPage() {
       if (!res.ok) throw new Error();
       setDoctors(await res.json());
     } catch {
-      toast.error("Couldn't load doctors. Please refresh.");
+      toast.error(t("error.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -55,8 +55,8 @@ export default function AdminDoctorsPage() {
         body: JSON.stringify(form),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Couldn't create doctor");
-      toast.success(`${form.name}'s account is ready. Share the password with them securely.`);
+      if (!res.ok) throw new Error(data.error ?? t("admin.doctors.createFailed"));
+      toast.success(t("admin.doctors.created", { name: form.name }));
       setForm({
         name: "",
         nameUr: "",
@@ -70,7 +70,7 @@ export default function AdminDoctorsPage() {
       setShowForm(false);
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't create doctor");
+      toast.error(err instanceof Error ? err.message : t("admin.doctors.createFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -84,10 +84,10 @@ export default function AdminDoctorsPage() {
         body: JSON.stringify({ uid: doctor.uid, active: !doctor.active }),
       });
       if (!res.ok) throw new Error();
-      toast.success(doctor.active ? "Doctor suspended." : "Doctor reactivated.");
+      toast.success(t(doctor.active ? "admin.doctors.suspended" : "admin.doctors.reactivated"));
       load();
     } catch {
-      toast.error("Couldn't update this doctor. Please try again.");
+      toast.error(t("admin.doctors.updateFailed"));
     }
   }
 
@@ -100,11 +100,13 @@ export default function AdminDoctorsPage() {
       });
       if (!res.ok) throw new Error();
       toast.success(
-        approvalStatus === "approved" ? `${doctor.name} approved.` : `${doctor.name}'s request declined.`
+        approvalStatus === "approved"
+          ? t("admin.doctors.approved", { name: doctor.name })
+          : t("admin.doctors.declined", { name: doctor.name })
       );
       load();
     } catch {
-      toast.error("Couldn't update this request. Please try again.");
+      toast.error(t("admin.doctors.decisionFailed"));
     }
   }
 
@@ -123,17 +125,14 @@ export default function AdminDoctorsPage() {
     <div className="animate-fade-up">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="h1">Doctors</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            Create doctor accounts here, or approve doctors who registered themselves — each
-            doctor only ever sees the patients you assign to them from the Appointments page.
-          </p>
+          <h1 className="h1">{t("nav.doctors")}</h1>
+          <p className="mt-2 text-sm text-ink-soft">{t("admin.doctors.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowForm((v) => !v)}
           className="shrink-0 rounded-full bg-indigo px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-deep"
         >
-          {showForm ? "Cancel" : "+ Add doctor"}
+          {showForm ? t("common.cancel") : `+ ${t("admin.doctors.add")}`}
         </button>
       </div>
 
@@ -149,21 +148,21 @@ export default function AdminDoctorsPage() {
               to trust with their care. */}
           <div className="sm:col-span-2">
             <BilingualField
-              label="Full name"
+              label={t("settings.name")}
               required
               /* Never machine-translated. "Dr Ayesha Khan" put through a
                  translation API comes back confident and wrong; the Urdu box
                  is for the spelling the doctor uses themselves. */
               translatable={false}
-              hint="Type the Urdu spelling the doctor uses. Leave it blank and the English name is shown in both languages."
+              hint={t("admin.doctors.nameUrHint")}
               value={{ en: form.name, ur: form.nameUr }}
               onChange={(next) => setForm({ ...form, name: next.en, nameUr: next.ur })}
             />
           </div>
           <div className="sm:col-span-2">
             <BilingualField
-              label="Specialization"
-              placeholder="e.g. Psychiatry"
+              label={t("settings.specialization")}
+              placeholder={t("admin.doctors.specializationPlaceholder")}
               value={{ en: form.specialization, ur: form.specializationUr }}
               onChange={(next) =>
                 setForm({ ...form, specialization: next.en, specializationUr: next.ur })
@@ -172,16 +171,16 @@ export default function AdminDoctorsPage() {
           </div>
           <div className="sm:col-span-2">
             <BilingualField
-              label="Short bio"
+              label={t("admin.doctors.bio")}
               multiline
               rows={3}
-              hint="Shown on the doctor's card. Two or three sentences is plenty."
+              hint={t("admin.doctors.bioHint")}
               value={{ en: form.bio, ur: form.bioUr }}
               onChange={(next) => setForm({ ...form, bio: next.en, bioUr: next.ur })}
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-soft">Email</label>
+            <label className="text-xs font-medium text-ink-soft">{t("settings.email")}</label>
             <input
               required
               type="email"
@@ -191,7 +190,7 @@ export default function AdminDoctorsPage() {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-ink-soft">Temporary password</label>
+            <label className="text-xs font-medium text-ink-soft">{t("admin.doctors.tempPassword")}</label>
             <input
               required
               minLength={8}
@@ -207,7 +206,7 @@ export default function AdminDoctorsPage() {
               disabled={submitting}
               className="rounded-full bg-crimson px-5 py-2.5 text-sm font-medium text-white hover:bg-crimson-deep disabled:opacity-60"
             >
-              {submitting ? "Creating…" : "Create account"}
+              {submitting ? t("admin.doctors.creating") : t("auth.createAccount")}
             </button>
           </div>
         </form>
@@ -220,7 +219,8 @@ export default function AdminDoctorsPage() {
           {pending.length > 0 && (
             <div className="mt-8">
               <h2 className="text-sm font-semibold text-ink">
-                Pending requests <span className="text-ink-soft">({pending.length})</span>
+                {t("admin.doctors.pendingRequests")}{" "}
+                <span className="text-ink-soft">({pending.length})</span>
               </h2>
               <div className="mt-3 space-y-3">
                 {pending.map((d) => (
@@ -239,13 +239,13 @@ export default function AdminDoctorsPage() {
                         onClick={() => decide(d, "approved")}
                         className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white hover:bg-indigo-deep"
                       >
-                        Approve
+                        {t("admin.doctors.approve")}
                       </button>
                       <button
                         onClick={() => decide(d, "rejected")}
                         className="rounded-full border border-crimson px-4 py-2 text-xs font-medium text-crimson-deep hover:bg-crimson hover:text-white"
                       >
-                        Decline
+                        {t("admin.doctors.decline")}
                       </button>
                     </div>
                   </div>
@@ -255,7 +255,7 @@ export default function AdminDoctorsPage() {
           )}
 
           <div className="mt-8">
-            {pending.length > 0 && <h2 className="text-sm font-semibold text-ink">All doctors</h2>}
+            {pending.length > 0 && <h2 className="text-sm font-semibold text-ink">{t("admin.slots.allDoctors")}</h2>}
             <div className="mt-3 max-w-sm">
               <SearchInput
                 value={list.query}
@@ -283,7 +283,7 @@ export default function AdminDoctorsPage() {
                     <div className="flex items-center gap-3">
                       {d.approvalStatus === "rejected" ? (
                         <span className="rounded-full bg-crimson/10 px-3 py-1 text-xs font-medium text-crimson-deep">
-                          Declined
+                          {t("admin.doctors.declinedBadge")}
                         </span>
                       ) : (
                         <>
@@ -292,13 +292,13 @@ export default function AdminDoctorsPage() {
                               d.active ? "bg-green-100 text-green-700" : "bg-crimson/10 text-crimson-deep"
                             }`}
                           >
-                            {d.active ? "Active" : "Suspended"}
+                            {t(d.active ? "admin.coupons.active" : "admin.doctors.suspendedBadge")}
                           </span>
                           <button
                             onClick={() => toggleActive(d)}
                             className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
                           >
-                            {d.active ? "Suspend" : "Reactivate"}
+                            {t(d.active ? "admin.doctors.suspend" : "admin.doctors.reactivate")}
                           </button>
                         </>
                       )}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
 import { readApiError } from "@/lib/api-error";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * One field, twice: English on the left, Urdu on the right.
@@ -46,6 +47,7 @@ export default function BilingualField({
   required?: boolean;
   translatable?: boolean;
 }) {
+  const t = useT();
   const [canTranslate, setCanTranslate] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -72,16 +74,16 @@ export default function BilingualField({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ texts: [value.en] }),
       });
-      if (!res.ok) throw new Error(await readApiError(res, "Could not translate that."));
+      if (!res.ok) throw new Error(await readApiError(res, t("bilingual.translateFailed")));
       const data = await res.json();
       const first = data.translations?.[0];
       if (typeof first === "string" && first.trim()) {
         onChange({ ...value, ur: first });
       } else {
-        setError("Nothing came back — please type the Urdu by hand.");
+        setError(t("bilingual.nothingBack"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not translate that.");
+      setError(err instanceof Error ? err.message : t("bilingual.translateFailed"));
     } finally {
       setBusy(false);
     }
@@ -104,7 +106,7 @@ export default function BilingualField({
             disabled={busy || !value.en.trim()}
             className="text-xs font-medium text-indigo transition-colors hover:text-indigo-deep disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {busy ? "Translating…" : "Draft the Urdu →"}
+            {t(busy ? "bilingual.translating" : "bilingual.draft")}
           </button>
         )}
       </div>
@@ -112,7 +114,7 @@ export default function BilingualField({
       <div className="mt-2 grid gap-3 sm:grid-cols-2">
         <div>
           <span className="mb-1 block text-[0.65rem] font-medium uppercase tracking-wide text-ink-soft/70">
-            English
+            {t("bilingual.english")}
           </span>
           {multiline ? (
             <textarea
@@ -136,7 +138,10 @@ export default function BilingualField({
 
         <div>
           <span className="mb-1 block text-[0.65rem] font-medium uppercase tracking-wide text-ink-soft/70">
-            اردو <span className="normal-case tracking-normal text-ink-soft/50">(optional)</span>
+            اردو{" "}
+            <span className="normal-case tracking-normal text-ink-soft/50">
+              ({t("common.optional")})
+            </span>
           </span>
           {multiline ? (
             <textarea
@@ -162,10 +167,7 @@ export default function BilingualField({
       {error && <span className="field-hint text-crimson-deep">{error}</span>}
       {hint && !error && <span className="field-hint">{hint}</span>}
       {canTranslate && !hint && !error && (
-        <span className="field-hint">
-          A drafted translation is a starting point — read it before saving.
-          Clinical terms are where machines get it wrong.
-        </span>
+        <span className="field-hint">{t("bilingual.draftHint")}</span>
       )}
     </div>
   );

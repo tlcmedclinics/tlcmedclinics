@@ -283,6 +283,13 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "notifications.viewAppointment": "View appointment",
 
     "time.justNow": "just now",
+    "weekday.sunday": "Sunday",
+    "weekday.monday": "Monday",
+    "weekday.tuesday": "Tuesday",
+    "weekday.wednesday": "Wednesday",
+    "weekday.thursday": "Thursday",
+    "weekday.friday": "Friday",
+    "weekday.saturday": "Saturday",
     "time.minutesAgo": "{{n}} min ago",
     "time.hoursAgo": "{{n}} h ago",
     "time.daysAgo": "{{n}} d ago",
@@ -332,6 +339,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     /* ---------- roles ---------- */
     "role.admin": "Admin",
     "role.doctor": "Doctor",
+    "role.drPrefix": "Dr.",
     "role.patient": "Patient",
 
     /* ---------- appointment status ---------- */
@@ -842,6 +850,361 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "legal.refundNoteB": ", not a separate agreement. It is repeated here on its own page so you can find it without reading the whole document.",
     "legal.privacyNoteA": "These practices are part of our",
     "legal.privacyNoteB": ", not a separate agreement. The sections below are the ones that govern your personal and health information; the full document contains them along with everything else you agree to.",
+
+    /* ---------- patient dashboard — holds, releases and cancellations ---------- */
+    "patient.dashboard.releaseTitle": "Release this time?",
+    "patient.dashboard.releaseBody":
+      "The slot goes back to other patients. You can always book again later.",
+    "patient.dashboard.releaseConfirm": "Release it",
+    "patient.dashboard.released": "Time released. You can book whenever suits you.",
+    "patient.dashboard.releaseFailed": "Couldn’t release that time.",
+    "patient.dashboard.cancelTitle": "Cancel this appointment?",
+    "patient.dashboard.cancelBody":
+      "If you have already paid, the clinic will process your refund.",
+    "patient.dashboard.keepIt": "Keep it",
+    "patient.dashboard.cancelFailed": "Couldn’t cancel. Please try again.",
+    "patient.dashboard.rateFailed": "Couldn’t submit your rating. Please try again.",
+    "patient.dashboard.confirmToBook": "Confirm to book",
+    "patient.dashboard.holdNotice": "Dr. {{doctor}} has held this time for you — PKR {{amount}}",
+    "patient.dashboard.holdCountdown":
+      "Confirm within {{time}} or the time is released to other patients.",
+    "patient.dashboard.holdExpired": "This hold has expired. Please book a new time.",
+    "patient.dashboard.confirmAndPay": "Confirm and pay",
+    "patient.dashboard.notThisTime": "Not this time",
+    "patient.dashboard.bookAgain": "Book this again",
+    "patient.dashboard.bookAgainWith": "Book this again with Dr. {{doctor}}",
+    "patient.dashboard.reason": "Reason: {{reason}}",
+    "patient.dashboard.payTitle": "Confirm your appointment",
+    "patient.dashboard.notNow": "Not now",
+
+    /* ---------- durations in words ---------- */
+    "time.hour": "1 hour",
+    "time.hours": "{{n}} hours",
+    "time.minute": "1 minute",
+    "time.minutes": "{{n}} minutes",
+
+    /* ---------- payment return screens ---------- */
+    "book.verifyingPayment": "Confirming your payment…",
+    "book.paymentConfirmed": "Your payment was received and your slot is confirmed.",
+    "book.paymentUnconfirmed": "We couldn’t confirm that payment",
+    "book.verifyFailed": "Could not verify payment",
+    "book.missingSession": "Missing payment session.",
+    "book.backToBooking": "Back to booking",
+    "book.result.okTitle": "Appointment confirmed",
+    "book.result.okBody": "Your payment was received and your slot is booked.",
+    "book.result.goToAppointments": "Go to my appointments",
+    "book.result.attentionTitle": "Please call the clinic",
+    "book.result.attentionBody":
+      "Your payment went through but we could not confirm the appointment. Please do not pay again.",
+    "book.result.failedTitle": "Payment not completed",
+    "book.result.failedBody": "Nothing has been charged. You can pick your time again.",
+    "book.result.callPhone": "Call {{phone}}",
+    "book.result.paymentQuestions": "Any questions about a payment — call",
+
+    /* ---------- call-back request form ---------- */
+    "form.requestReceived": "Request received",
+    "form.requestReceivedToast": "Request received — our team will call you shortly.",
+    "form.requestFailed": "Something went wrong. Please call the clinic directly or try again.",
+    "form.bookAnother": "Book another appointment",
+    "form.namePlaceholder": "Your name",
+    "form.emailOptional": "Email (optional)",
+    "form.notSureYet": "Not sure yet — help me choose",
+    "form.preferredDate": "Preferred date",
+    "form.preferredTime": "Preferred time",
+    "form.selectSlot": "Select a slot",
+    "form.morningWindow": "Morning (11:00 AM – 2:00 PM)",
+    "form.eveningWindow": "Evening (4:00 PM – 8:00 PM)",
+    "form.messageOptional": "Message (optional)",
+    "form.messagePlaceholder": "Anything the clinic should know before your visit",
+
+    /* ---------- payment methods ---------- */
+    "pay.startFailed": "Could not start the payment.",
+    "pay.methodFailed": "That payment method could not be opened.",
+    "pay.notOpenTitle": "Online payment isn’t open yet",
+    "pay.notOpenBodyA": "Your slot can still be held. Use",
+    "pay.notOpenBodyB":
+      "below and the clinic will confirm it with you by phone — nothing to pay now.",
+    "pay.dueNow": "Due now",
+    "pay.secureNote":
+      "Payment is completed on the provider’s own secure page. TLC Med Clinics never sees or stores your card number or wallet PIN.",
+
+    /* ---------- appointment history strip ---------- */
+    "history.title": "History",
+    "history.none": "Nothing recorded yet.",
+    "history.heldUntil": "Held until {{when}} — waiting for the patient to confirm",
+
+    /* ---------- sign-in, sign-up and signing out ---------- */
+    "auth.logoutConfirm": "You’ll need to sign in again to get back to your dashboard.",
+    "auth.staySignedIn": "Stay signed in",
+    "auth.googleFailed": "Couldn’t sign in with Google. Please try again.",
+    "auth.googleSignupFailed": "Couldn’t sign up with Google. Please try again.",
+    "auth.setupFailed": "Couldn’t finish setting up your account",
+    "auth.profileSetupFailed": "Profile setup failed",
+    "auth.doctorPending": "Account created — your doctor request is pending admin approval.",
+    "auth.specializationPlaceholder": "Specialization (e.g. Psychiatry)",
+    "auth.passwordMinPlaceholder": "Password (min. 6 characters)",
+    "auth.creatingAccount": "Creating account…",
+
+    /* ---------- admin — overview ---------- */
+    "admin.overview.satisfaction": "Patient satisfaction",
+    "admin.overview.noRatings": "No visits rated yet.",
+    "admin.overview.ratingSummary":
+      "Average of every answer given, across {{count}} rated visit(s). Each question is averaged over the answers it actually received.",
+    "admin.overview.answers": "{{count}} answer(s)",
+
+    /* ---------- admin — appointments ---------- */
+    "admin.appointments.subtitle2":
+      "Video and chat sessions go live at the scheduled time on their own, or you can start one early or late from here.",
+    "admin.appointments.assigned": "Assigned to {{name}}.",
+    "admin.appointments.assignFailed": "Couldn’t assign a doctor. Please try again.",
+    "admin.appointments.refundTitle": "Issue a refund?",
+    "admin.appointments.refundBody":
+      "Stripe and PayPal payments are refunded straight away. A Safepay, JazzCash or EasyPaisa payment has to be refunded in that provider’s own dashboard — you’ll be told exactly where, and can record it here afterwards.",
+    "admin.appointments.refundConfirm": "Refund",
+    "admin.appointments.manualRefundNeeded":
+      "This payment must be refunded in the provider’s dashboard.",
+    "admin.appointments.recordRefundTitle": "Already refunded it there?",
+    "admin.appointments.recordRefundBody":
+      "Only confirm once the refund is actually showing in the provider’s dashboard. This marks the booking as refunded here; it does not move any money.",
+    "admin.appointments.recordRefundConfirm": "Yes, mark as refunded",
+    "admin.appointments.notYet": "Not yet",
+    "admin.appointments.recordRefundFailed": "Couldn’t record the refund",
+    "admin.appointments.refundRecorded": "Recorded as refunded.",
+    "admin.appointments.refundFailed": "Refund failed",
+    "admin.appointments.alreadyRefunded": "Already refunded.",
+    "admin.appointments.refundIssued": "Refund issued.",
+    "admin.appointments.refundError": "Couldn’t issue the refund.",
+    "admin.appointments.statusUpdated": "Marked as “{{status}}”.",
+    "admin.appointments.statusFailed": "Couldn’t update the status. Please try again.",
+    "admin.appointments.assignFirst": "Assign a doctor before rescheduling.",
+    "admin.appointments.slotsFailed": "Couldn’t load that doctor’s open slots.",
+    "admin.appointments.rescheduleFailed": "Couldn’t reschedule this appointment.",
+    "admin.appointments.loadingSlots": "Loading open slots…",
+    "admin.appointments.noOtherSlots":
+      "No other open slots for this doctor right now — add one from the Slots page first.",
+    "admin.appointments.paidOnline": "Paid online",
+    "admin.appointments.requestedCallBack": "Requested a call-back",
+    "admin.appointments.rescheduledFrom": "Rescheduled from {{date}} {{time}}",
+    "admin.appointments.cancelledBy": "Cancelled by {{by}}: {{reason}}",
+    "admin.appointments.refundedOn": "Refunded on {{date}}",
+    "admin.appointments.sessionReady": "Session ready.",
+    "admin.appointments.sessionStarted": "Session started.",
+    "status.awaitingPayment": "Awaiting patient payment",
+
+    /* ---------- admin — doctors ---------- */
+    "admin.doctors.subtitle":
+      "Create doctor accounts here, or approve doctors who registered themselves — each doctor only ever sees the patients you assign to them from the Appointments page.",
+    "admin.doctors.add": "Add doctor",
+    "admin.doctors.createFailed": "Couldn’t create doctor",
+    "admin.doctors.created": "{{name}}’s account is ready. Share the password with them securely.",
+    "admin.doctors.suspended": "Doctor suspended.",
+    "admin.doctors.reactivated": "Doctor reactivated.",
+    "admin.doctors.updateFailed": "Couldn’t update this doctor. Please try again.",
+    "admin.doctors.approved": "{{name}} approved.",
+    "admin.doctors.declined": "{{name}}’s request declined.",
+    "admin.doctors.decisionFailed": "Couldn’t update this request. Please try again.",
+    "admin.doctors.nameUrHint":
+      "Type the Urdu spelling the doctor uses. Leave it blank and the English name is shown in both languages.",
+    "admin.doctors.specializationPlaceholder": "e.g. Psychiatry",
+    "admin.doctors.bio": "Short bio",
+    "admin.doctors.bioHint": "Shown on the doctor’s card. Two or three sentences is plenty.",
+    "admin.doctors.tempPassword": "Temporary password",
+    "admin.doctors.creating": "Creating…",
+    "admin.doctors.pendingRequests": "Pending requests",
+    "admin.doctors.approve": "Approve",
+    "admin.doctors.decline": "Decline",
+    "admin.doctors.declinedBadge": "Declined",
+    "admin.doctors.suspendedBadge": "Suspended",
+    "admin.doctors.suspend": "Suspend",
+    "admin.doctors.reactivate": "Reactivate",
+
+    /* ---------- admin — Urdu translation coverage ---------- */
+    "admin.translations.title": "Urdu translation",
+    "admin.translations.lede": "What the site can already say in Urdu, and what it can’t yet.",
+    "admin.translations.reportFailed": "Could not read the report.",
+    "admin.translations.confirmTitle": "Translate {{count}} field(s)?",
+    "admin.translations.confirmBody":
+      "About {{chars}} characters will be sent to Google Translate and written into the Urdu columns.\n\nNothing already translated is touched. Everything written this way is marked “needs a read” until someone opens it and saves — machine translation of clinical terms is fluent and is not always right.",
+    "admin.translations.confirmCta": "Translate them",
+    "admin.translations.failed": "Translation failed.",
+    "admin.translations.done":
+      "{{fields}} field(s) across {{items}} item(s) drafted in Urdu. Please read them.",
+    "admin.translations.notConfigured": "Machine translation isn’t switched on",
+    "admin.translations.notConfiguredA": "Set",
+    "admin.translations.notConfiguredB":
+      "on the server to draft translations from here. Without it the Urdu boxes in each form still work — typing them by hand is more accurate for clinical terms anyway.",
+    "admin.translations.coverage":
+      "{{documents}} item(s) · {{translated}} of {{total}} fields have Urdu",
+    "admin.translations.draftMissing": "Draft {{count}} missing field(s)",
+    "admin.translations.nothingMissing": "Nothing missing",
+    "admin.translations.openCollection": "Open {{name}}",
+    "admin.translations.needsRead": "{{count}} item(s) still need a read",
+    "admin.translations.trustTitle": "Before you trust a drafted translation",
+    "admin.translations.trust1":
+      "Treatment and condition names are where machines go wrong. They come back fluent, and a patient has no way to tell a good translation from a confident one.",
+    "admin.translations.trust2":
+      "Open each item marked “needs a read”, check the Urdu column, fix what is wrong and save. Saving clears the flag.",
+    "admin.translations.trust3":
+      "Running this again never overwrites Urdu that is already there — corrections are safe.",
+
+    /* ---------- admin — slots ---------- */
+    "admin.slots.subtitle":
+      "Patients can only book the slots you add here — they no longer pick a date and time themselves. A slot disappears from booking the moment it’s taken.",
+    "admin.slots.pickDoctorFirst": "Pick a doctor first.",
+    "admin.slots.createFailed": "Couldn’t create slot(s)",
+    "admin.slots.created": "{{count}} slot(s) added for {{doctor}}.",
+    "admin.slots.deleteTitle": "Delete this slot?",
+    "admin.slots.deleteBody":
+      "{{date}} at {{time}} with {{doctor}}. Patients will no longer see it.",
+    "admin.slots.deleteCta": "Delete slot",
+    "admin.slots.deleteFailed": "Couldn’t delete this slot",
+    "admin.slots.deleted": "Slot deleted.",
+    "admin.slots.freeTitle": "Mark this slot available again?",
+    "admin.slots.freeBody":
+      "{{date}} at {{time}} with {{doctor}}. Only do this if the appointment on it was already cancelled outside the system — otherwise the time can be double-booked.",
+    "admin.slots.freeCta": "Free it up",
+    "admin.slots.freed": "Slot freed up.",
+    "admin.slots.freeFailed": "Couldn’t update this slot.",
+    "admin.slots.selectDoctor": "Select doctor",
+    "admin.slots.doctorHint": "Times below are checked against this doctor’s calendar only.",
+
+    /* ---------- slots — shared labels ---------- */
+    "slot.anyService": "Any service",
+    "slot.minutes": "{{count}} min",
+    "slot.available": "Available",
+    "slot.booked": "Booked",
+    "slot.freeUp": "Free up",
+    "common.deleting": "Deleting…",
+    "common.remove": "Remove",
+    "common.updated": "Updated.",
+    "common.from": "From",
+    "common.to": "To",
+
+    /* ---------- admin — services and coupons ---------- */
+    "admin.services.categoryEmpty": "Nothing in {{category}} yet",
+    "admin.services.categoryEmptyHint": "Add a service to this category, or choose another above.",
+    "admin.services.noPrice": "No price set — cannot be booked",
+    "admin.services.advanceToBook": "PKR {{amount}} advance to book",
+    "admin.coupons.emailsPlaceholder": "a@b.com, c@d.com",
+    "admin.coupons.deleteTitle": "Delete {{code}}?",
+    "admin.coupons.deleteBody": "Patients will no longer be able to use this code.",
+    "admin.coupons.deactivated": "{{code}} deactivated.",
+    "admin.coupons.reactivated": "{{code}} is live again.",
+    "admin.coupons.usedTitle": "{{code}} has already been used",
+    "admin.coupons.usedBody":
+      "{{count}} booking(s) used this code. Deleting it leaves those bookings pointing at a discount with no record. Deactivating keeps the history and still stops new use.",
+    "admin.coupons.deleteAnyway": "Delete anyway",
+    "admin.coupons.deleted": "{{code}} deleted.",
+    "admin.coupons.deactivate": "Deactivate",
+    "admin.coupons.activate": "Activate",
+
+    /* ---------- doctor — dashboard, appointments and patients ---------- */
+    "doctor.dashboard.welcomeNamed": "Welcome back, Dr. {{name}}",
+    "doctor.appointments.startEarly": "Start early",
+    "doctor.patients.loadFailed": "Couldn’t load this patient. Please refresh.",
+    "doctor.patients.back": "Back to patients",
+    "doctor.patients.noRecord":
+      "No record found — this patient may not be assigned to you (any more).",
+    "doctor.patients.nextSession": "Next session",
+    "doctor.patients.totalSessions": "Total sessions with you",
+    "doctor.patients.mostRecent": "Most recent booking",
+    "doctor.patients.history": "Appointment history",
+    "doctor.patients.joinNoteA":
+      "Want to join a call or open chat for a confirmed session? Head to",
+    "doctor.patients.joinNoteB": "— sessions open from there.",
+
+    /* ---------- doctor — availability ---------- */
+    "doctor.slots.title": "My availability",
+    "doctor.slots.lede": "Open the times you can see patients, and mark the days you’re away.",
+    "doctor.slots.opened": "{{count}} time(s) opened.",
+    "doctor.slots.removeTitle": "Remove this time?",
+    "doctor.slots.removeBody": "{{date}} at {{time}}. Patients will no longer see it.",
+    "doctor.slots.pickFirstDay": "Pick the first day you’re away.",
+    "doctor.slots.leaveBooked":
+      "Leave saved, but {{count}} appointment(s) in those days are already booked. The clinic needs to reschedule them.",
+    "doctor.slots.leaveSavedRemoved": "Leave saved — {{count}} open time(s) removed.",
+    "doctor.slots.leaveSaved": "Leave saved.",
+    "doctor.slots.removeLeaveTitle": "Remove this leave?",
+    "doctor.slots.removeLeaveBody":
+      "Those days become open again. The times that were cleared aren’t restored — you’ll need to add them back.",
+    "doctor.slots.removeLeaveCta": "Remove leave",
+    "doctor.slots.daysAway": "Days away",
+    "doctor.slots.daysAwayHint":
+      "Marking leave removes your open times in those days and stops new ones being added.",
+    "doctor.slots.reason": "Reason (optional)",
+    "doctor.slots.reasonPlaceholder": "Conference",
+    "doctor.slots.markAway": "Mark away",
+    "doctor.slots.noLeave": "No leave booked.",
+    "doctor.slots.myTimes": "My times",
+    "doctor.slots.noTimes": "No open times yet. Add some above so patients can book.",
+
+    /* ---------- service and blog forms ---------- */
+    "serviceForm.name": "Service name",
+    "serviceForm.namePlaceholder": "e.g. Ketamine Therapy",
+    "serviceForm.category": "Category",
+    "serviceForm.categoryPlaceholder": "e.g. Health Care",
+    "serviceForm.short": "Short description (shown on cards)",
+    "serviceForm.intro": "Full introduction",
+    "serviceForm.points": "Good-to-know points (one per line)",
+    "serviceForm.pointsPlaceholder": "Common signs...\nDiagnosis method...\nWhat to expect...",
+    "serviceForm.pointsHint":
+      "One point per line. Keep the same number of lines in both columns — they are shown as one list, not paired up.",
+    "serviceForm.treatments": "Treatments offered (one per line)",
+    "serviceForm.treatmentsPlaceholder": "Treatment A\nTreatment B",
+    "serviceForm.price": "Full price (PKR)",
+    "serviceForm.advance": "Advance to book (PKR)",
+    "serviceForm.advanceHint": "Leave blank to charge the full price online.",
+    "serviceForm.duration": "Duration (minutes)",
+    "serviceForm.image": "Image (optional)",
+    "serviceForm.saveFailed": "Something went wrong saving the service.",
+    "serviceForm.update": "Update service",
+    "serviceForm.create": "Create service",
+    "blogForm.cover": "Cover image",
+    "blogForm.titlePlaceholder": "Title",
+    "blogForm.authorPlaceholder": "Author",
+    "blogForm.excerptPlaceholder": "Short excerpt (shown on cards)",
+    "blogForm.contentPlaceholder": "Full post content",
+    "blogForm.publishNow": "Publish immediately",
+    "blogForm.saveFailed": "Something went wrong saving the post.",
+    "blogForm.update": "Update post",
+    "blogForm.publish": "Publish post",
+
+    /* ---------- the bilingual field ---------- */
+    "bilingual.translateFailed": "Could not translate that.",
+    "bilingual.nothingBack": "Nothing came back — please type the Urdu by hand.",
+    "bilingual.translating": "Translating…",
+    "bilingual.draft": "Draft the Urdu →",
+    "bilingual.english": "English",
+    "bilingual.draftHint":
+      "A drafted translation is a starting point — read it before saving. Clinical terms are where machines get it wrong.",
+
+    /* ---------- the slot builder ---------- */
+    "slotBuilder.length": "How long is each session?",
+    "slotBuilder.lengthHint":
+      "Times below are built from this — every {{duration}} minutes, and a session never runs past the end of its window.",
+    "slotBuilder.date": "Date",
+    "slotBuilder.where": "In clinic or online",
+    "slotBuilder.onlineFrom": "Online from",
+    "slotBuilder.until": "Until",
+    "slotBuilder.endAfterStart": "The end time has to be after the start.",
+    "slotBuilder.onlineNote":
+      "Online hours are yours to set — they don’t have to sit inside the clinic’s opening times.",
+    "slotBuilder.clinicHours": "Clinic hours on {{weekday}}:",
+    "slotBuilder.closedOn":
+      "The clinic is closed on {{weekday}}. Pick another day, or open online times instead.",
+    "slotBuilder.pickDateForHours": "Pick a date to see the clinic’s hours for that day.",
+    "slotBuilder.tapTimes": "Tap the times you’re available",
+    "slotBuilder.selectedCount": "{{count}} selected",
+    "slotBuilder.selectAll": "Select all",
+    "slotBuilder.pickDateFirst": "Pick a date first.",
+    "slotBuilder.closedThatDay": "Nothing to show — the clinic is closed that day.",
+    "slotBuilder.noFit":
+      "A {{duration}}-minute session doesn’t fit in that range. Widen it, or choose a shorter session.",
+    "slotBuilder.alreadyOnCalendar": "Already on your calendar",
+    "slotBuilder.crossedOut": "Crossed-out times are already on your calendar for that day.",
+    "slotBuilder.forOneService": "For one service only (optional)",
+    "slotBuilder.pickSomeTimes": "Pick some times",
+    "slotBuilder.openN": "Open {{count}} × {{duration}} min",
   },
 
   ur: {
@@ -1109,6 +1472,13 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "notifications.viewAppointment": "ملاقات دیکھیں",
 
     "time.justNow": "ابھی ابھی",
+    "weekday.sunday": "اتوار",
+    "weekday.monday": "پیر",
+    "weekday.tuesday": "منگل",
+    "weekday.wednesday": "بدھ",
+    "weekday.thursday": "جمعرات",
+    "weekday.friday": "جمعہ",
+    "weekday.saturday": "ہفتہ",
     "time.minutesAgo": "{{n}} منٹ پہلے",
     "time.hoursAgo": "{{n}} گھنٹے پہلے",
     "time.daysAgo": "{{n}} دن پہلے",
@@ -1158,6 +1528,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     /* ---------- roles ---------- */
     "role.admin": "منتظم",
     "role.doctor": "ڈاکٹر",
+    "role.drPrefix": "ڈاکٹر",
     "role.patient": "مریض",
 
     /* ---------- appointment status ---------- */
@@ -1267,7 +1638,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
 
     // ---- مریض کی رائے کا سروے ----
     "rating.title": "آپ کا وزٹ کیسا رہا؟",
-    "rating.scaleHint": "۱ = {{low}} · ۵ = {{high}}",
+    "rating.scaleHint": "1 = {{low}} · 5 = {{high}}",
     "rating.scale.1": "بہت خراب",
     "rating.scale.2": "خراب",
     "rating.scale.3": "درمیانہ",
@@ -1283,8 +1654,8 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "rating.submitting": "بھیجی جا رہی ہے…",
     "rating.thanks": "آپ کی رائے کا شکریہ!",
     "rating.incomplete": "{{total}} میں سے {{answered}} سوالوں کے جواب دیے ہیں — براہِ کرم سب کے جواب دیجیے۔",
-    "rating.average": "اوسط {{value}} / ۵",
-    "rating.youRated": "آپ نے اس وزٹ کو {{value}} / ۵ دیا",
+    "rating.average": "اوسط {{value}} / 5",
+    "rating.youRated": "آپ نے اس وزٹ کو {{value}} / 5 دیا",
     "patient.dashboard.loadError": "آپ کی اپائنٹمنٹس لوڈ نہیں ہو سکیں۔ دوبارہ کوشش کریں۔",
 
     /* ---------- booking ---------- */
@@ -1299,7 +1670,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
       "پہلی ملاقات — خدمت منتخب کریں، کوپن ہو تو لگائیں، پھر ڈاکٹر چنیں۔",
     "book.followUp": "دوبارہ ملاقات",
     "book.followUpHint":
-      "آپ پہلے سے ہمارے مریض ہیں — معمول کی دوبارہ ملاقات (۱۵ منٹ) یا طویل نشست (۳۰/۶۰ منٹ) طے کریں۔",
+      "آپ پہلے سے ہمارے مریض ہیں — معمول کی دوبارہ ملاقات (15 منٹ) یا طویل نشست (30/60 منٹ) طے کریں۔",
     "book.changeVisitType": "ملاقات کی قسم بدلیں",
     "book.selectService": "خدمت منتخب کریں",
     "book.selectFollowUp": "دوبارہ ملاقات کی قسم منتخب کریں",
@@ -1397,7 +1768,7 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "admin.overview.servicesListed": "درج خدمات",
     "admin.overview.blogPosts": "مضامین",
     "admin.overview.revenue": "آمدنی اور نتائج",
-    "admin.overview.revenueWindow": "گزشتہ ۱۲ ماہ۔",
+    "admin.overview.revenueWindow": "گزشتہ 12 ماہ۔",
     "admin.overview.collected": "وصول شدہ آمدنی",
     "admin.overview.refunded": "واپس کی گئی رقم",
     "admin.overview.avgRating": "اوسط مریض ریٹنگ",
@@ -1663,5 +2034,364 @@ export const dictionaries: Record<Locale, Record<string, string>> = {
     "legal.refundNoteB": " کا حصہ ہے، کوئی الگ معاہدہ نہیں۔ اسے یہاں الگ صفحے پر اس لیے دہرایا گیا ہے کہ آپ پوری دستاویز پڑھے بغیر اسے ڈھونڈ سکیں۔",
     "legal.privacyNoteA": "یہ طریقے ہماری",
     "legal.privacyNoteB": " کا حصہ ہیں، کوئی الگ معاہدہ نہیں۔ نیچے دیے گئے حصے وہی ہیں جو آپ کی ذاتی اور طبی معلومات سے متعلق ہیں؛ مکمل دستاویز میں یہ سب کچھ اُن تمام باتوں کے ساتھ موجود ہے جن سے آپ اتفاق کرتے ہیں۔",
+
+    /* ---------- patient dashboard — holds, releases and cancellations ---------- */
+    "patient.dashboard.releaseTitle": "یہ وقت چھوڑ دیں؟",
+    "patient.dashboard.releaseBody":
+      "یہ وقت دوبارہ دوسرے مریضوں کے لیے کھل جائے گا۔ آپ بعد میں جب چاہیں دوبارہ بکنگ کر سکتے ہیں۔",
+    "patient.dashboard.releaseConfirm": "چھوڑ دیں",
+    "patient.dashboard.released": "وقت چھوڑ دیا گیا۔ جب آپ کے لیے مناسب ہو، دوبارہ بکنگ کر لیجیے۔",
+    "patient.dashboard.releaseFailed": "یہ وقت چھوڑا نہیں جا سکا۔",
+    "patient.dashboard.cancelTitle": "یہ ملاقات منسوخ کر دیں؟",
+    "patient.dashboard.cancelBody": "اگر آپ ادائیگی کر چکے ہیں تو کلینک آپ کی رقم واپس کر دے گا۔",
+    "patient.dashboard.keepIt": "رہنے دیں",
+    "patient.dashboard.cancelFailed": "ملاقات منسوخ نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "patient.dashboard.rateFailed": "آپ کی رائے جمع نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "patient.dashboard.confirmToBook": "بکنگ پکی کریں",
+    "patient.dashboard.holdNotice":
+      "ڈاکٹر {{doctor}} نے یہ وقت آپ کے لیے روک رکھا ہے — {{amount}} روپے",
+    "patient.dashboard.holdCountdown":
+      "{{time}} کے اندر تصدیق کر دیں، ورنہ یہ وقت دوسرے مریضوں کے لیے کھول دیا جائے گا۔",
+    "patient.dashboard.holdExpired": "یہ مہلت ختم ہو چکی ہے۔ براہِ کرم نیا وقت بک کر لیجیے۔",
+    "patient.dashboard.confirmAndPay": "تصدیق کریں اور ادائیگی کریں",
+    "patient.dashboard.notThisTime": "اس بار نہیں",
+    "patient.dashboard.bookAgain": "یہی دوبارہ بک کریں",
+    "patient.dashboard.bookAgainWith": "یہی دوبارہ ڈاکٹر {{doctor}} کے ساتھ بک کریں",
+    "patient.dashboard.reason": "وجہ: {{reason}}",
+    "patient.dashboard.payTitle": "اپنی ملاقات کی تصدیق کریں",
+    "patient.dashboard.notNow": "ابھی نہیں",
+
+    /* ---------- durations in words ---------- */
+    "time.hour": "1 گھنٹہ",
+    "time.hours": "{{n}} گھنٹے",
+    "time.minute": "1 منٹ",
+    "time.minutes": "{{n}} منٹ",
+
+    /* ---------- payment return screens ---------- */
+    "book.verifyingPayment": "آپ کی ادائیگی کی تصدیق ہو رہی ہے…",
+    "book.paymentConfirmed": "آپ کی ادائیگی موصول ہو گئی اور آپ کا وقت پکا ہو گیا ہے۔",
+    "book.paymentUnconfirmed": "ہم اس ادائیگی کی تصدیق نہیں کر سکے",
+    "book.verifyFailed": "ادائیگی کی تصدیق نہیں ہو سکی",
+    "book.missingSession": "ادائیگی کی معلومات موجود نہیں۔",
+    "book.backToBooking": "بکنگ پر واپس جائیں",
+    "book.result.okTitle": "ملاقات پکی ہو گئی",
+    "book.result.okBody": "آپ کی ادائیگی موصول ہو گئی اور آپ کا وقت بک ہو چکا ہے۔",
+    "book.result.goToAppointments": "میری ملاقاتیں دیکھیں",
+    "book.result.attentionTitle": "براہِ کرم کلینک کو فون کریں",
+    "book.result.attentionBody":
+      "آپ کی ادائیگی ہو گئی ہے، لیکن ہم ملاقات کی تصدیق نہیں کر سکے۔ براہِ کرم دوبارہ ادائیگی نہ کریں۔",
+    "book.result.failedTitle": "ادائیگی مکمل نہیں ہوئی",
+    "book.result.failedBody": "کوئی رقم نہیں کاٹی گئی۔ آپ دوبارہ اپنا وقت منتخب کر سکتے ہیں۔",
+    "book.result.callPhone": "{{phone}} پر فون کریں",
+    "book.result.paymentQuestions": "ادائیگی کے بارے میں کوئی سوال ہو تو فون کریں",
+
+    /* ---------- call-back request form ---------- */
+    "form.requestReceived": "درخواست موصول ہو گئی",
+    "form.requestReceivedToast": "درخواست موصول ہو گئی — ہماری ٹیم جلد آپ کو فون کرے گی۔",
+    "form.requestFailed":
+      "کچھ گڑبڑ ہو گئی۔ براہِ کرم کلینک کو براہِ راست فون کریں یا دوبارہ کوشش کریں۔",
+    "form.bookAnother": "ایک اور ملاقات بک کریں",
+    "form.namePlaceholder": "آپ کا نام",
+    "form.emailOptional": "ای میل (اختیاری)",
+    "form.notSureYet": "ابھی فیصلہ نہیں کیا — مجھے منتخب کرنے میں مدد دیں",
+    "form.preferredDate": "پسندیدہ تاریخ",
+    "form.preferredTime": "پسندیدہ وقت",
+    "form.selectSlot": "وقت منتخب کریں",
+    "form.morningWindow": "صبح 11:00 سے دوپہر 2:00 تک",
+    "form.eveningWindow": "شام 4:00 سے رات 8:00 تک",
+    "form.messageOptional": "پیغام (اختیاری)",
+    "form.messagePlaceholder": "آپ کی آمد سے پہلے کلینک کو کچھ بتانا ہو تو یہاں لکھ دیجیے",
+
+    /* ---------- payment methods ---------- */
+    "pay.startFailed": "ادائیگی شروع نہیں ہو سکی۔",
+    "pay.methodFailed": "یہ طریقۂ ادائیگی نہیں کھل سکا۔",
+    "pay.notOpenTitle": "آن لائن ادائیگی ابھی دستیاب نہیں",
+    "pay.notOpenBodyA": "آپ کا وقت پھر بھی محفوظ رکھا جا سکتا ہے۔ نیچے",
+    "pay.notOpenBodyB": "دبائیں، کلینک فون پر آپ سے تصدیق کر لے گا — ابھی کچھ ادا نہیں کرنا۔",
+    "pay.dueNow": "ابھی قابلِ ادا",
+    "pay.secureNote":
+      "ادائیگی فراہم کنندہ کے اپنے محفوظ صفحے پر مکمل ہوتی ہے۔ TLC Med Clinics آپ کا کارڈ نمبر یا والٹ کا PIN نہ دیکھتا ہے نہ محفوظ کرتا ہے۔",
+
+    /* ---------- appointment history strip ---------- */
+    "history.title": "تاریخچہ",
+    "history.none": "ابھی کچھ درج نہیں ہوا۔",
+    "history.heldUntil": "{{when}} تک محفوظ — مریض کی تصدیق کا انتظار ہے",
+
+    /* ---------- sign-in, sign-up and signing out ---------- */
+    "auth.logoutConfirm": "اپنے ڈیش بورڈ پر واپس آنے کے لیے آپ کو دوبارہ سائن اِن کرنا ہوگا۔",
+    "auth.staySignedIn": "سائن اِن رہنے دیں",
+    "auth.googleFailed": "گوگل سے سائن اِن نہیں ہو سکا۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "auth.googleSignupFailed": "گوگل سے اکاؤنٹ نہیں بن سکا۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "auth.setupFailed": "آپ کا اکاؤنٹ مکمل تیار نہیں ہو سکا",
+    "auth.profileSetupFailed": "پروفائل بنانے میں ناکامی ہوئی",
+    "auth.doctorPending": "اکاؤنٹ بن گیا — آپ کی ڈاکٹر والی درخواست کلینک کی منظوری کی منتظر ہے۔",
+    "auth.specializationPlaceholder": "تخصص (مثلاً نفسیات)",
+    "auth.passwordMinPlaceholder": "پاس ورڈ (کم از کم 6 حروف)",
+    "auth.creatingAccount": "اکاؤنٹ بنایا جا رہا ہے…",
+
+    /* ---------- admin — overview ---------- */
+    "admin.overview.satisfaction": "مریضوں کا اطمینان",
+    "admin.overview.noRatings": "ابھی کسی ملاقات کو ریٹنگ نہیں ملی۔",
+    "admin.overview.ratingSummary":
+      "{{count}} ریٹنگ شدہ ملاقاتوں میں دیے گئے تمام جوابات کا اوسط۔ ہر سوال کا اوسط صرف اُن جوابات پر لیا گیا ہے جو اسے واقعی ملے۔",
+    "admin.overview.answers": "{{count}} جواب",
+
+    /* ---------- admin — appointments ---------- */
+    "admin.appointments.subtitle2":
+      "ویڈیو اور چیٹ سیشن مقررہ وقت پر خود کھل جاتے ہیں، یا آپ یہاں سے کوئی سیشن جلدی یا دیر سے شروع کر سکتے ہیں۔",
+    "admin.appointments.assigned": "{{name}} کے سپرد کر دی گئی۔",
+    "admin.appointments.assignFailed": "ڈاکٹر مقرر نہیں ہو سکا۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "admin.appointments.refundTitle": "رقم واپس کر دیں؟",
+    "admin.appointments.refundBody":
+      "Stripe اور PayPal کی ادائیگیاں فوراً واپس ہو جاتی ہیں۔ Safepay، JazzCash یا EasyPaisa کی ادائیگی اُسی ادارے کے اپنے ڈیش بورڈ سے واپس کرنی پڑتی ہے — آپ کو بتا دیا جائے گا کہ کہاں سے، اور بعد میں آپ اسے یہاں درج کر سکتے ہیں۔",
+    "admin.appointments.refundConfirm": "رقم واپس کریں",
+    "admin.appointments.manualRefundNeeded":
+      "یہ ادائیگی فراہم کنندہ کے ڈیش بورڈ سے واپس کرنی ہوگی۔",
+    "admin.appointments.recordRefundTitle": "کیا آپ وہاں سے رقم واپس کر چکے ہیں؟",
+    "admin.appointments.recordRefundBody":
+      "تصدیق صرف اُس وقت کریں جب رقم کی واپسی فراہم کنندہ کے ڈیش بورڈ میں واقعی نظر آ رہی ہو۔ اس سے یہاں بکنگ پر ’رقم واپس‘ کا نشان لگ جائے گا؛ اس سے کوئی رقم منتقل نہیں ہوتی۔",
+    "admin.appointments.recordRefundConfirm": "ہاں، رقم واپس شدہ لکھ دیں",
+    "admin.appointments.notYet": "ابھی نہیں",
+    "admin.appointments.recordRefundFailed": "رقم کی واپسی درج نہیں ہو سکی",
+    "admin.appointments.refundRecorded": "رقم واپس شدہ کے طور پر درج کر دی گئی۔",
+    "admin.appointments.refundFailed": "رقم واپس نہیں ہو سکی",
+    "admin.appointments.alreadyRefunded": "رقم پہلے ہی واپس کی جا چکی ہے۔",
+    "admin.appointments.refundIssued": "رقم واپس کر دی گئی۔",
+    "admin.appointments.refundError": "رقم واپس نہیں کی جا سکی۔",
+    "admin.appointments.statusUpdated": "’{{status}}‘ لکھ دیا گیا۔",
+    "admin.appointments.statusFailed": "حالت تبدیل نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "admin.appointments.assignFirst": "وقت بدلنے سے پہلے ڈاکٹر مقرر کریں۔",
+    "admin.appointments.slotsFailed": "اس ڈاکٹر کے خالی اوقات نہیں کھل سکے۔",
+    "admin.appointments.rescheduleFailed": "اس ملاقات کا وقت تبدیل نہیں ہو سکا۔",
+    "admin.appointments.loadingSlots": "خالی اوقات کھل رہے ہیں…",
+    "admin.appointments.noOtherSlots":
+      "اس ڈاکٹر کے پاس ابھی کوئی اور خالی وقت نہیں — پہلے اوقات والے صفحے سے کوئی وقت کھول لیں۔",
+    "admin.appointments.paidOnline": "آن لائن ادائیگی ہو چکی",
+    "admin.appointments.requestedCallBack": "کال بیک کی درخواست کی",
+    "admin.appointments.rescheduledFrom": "پہلے {{date}} {{time}} پر تھی",
+    "admin.appointments.cancelledBy": "{{by}} نے منسوخ کی: {{reason}}",
+    "admin.appointments.refundedOn": "{{date}} کو رقم واپس کی گئی",
+    "admin.appointments.sessionReady": "سیشن تیار ہے۔",
+    "admin.appointments.sessionStarted": "سیشن شروع ہو گیا۔",
+    "status.awaitingPayment": "مریض کی ادائیگی کا انتظار",
+
+    /* ---------- admin — doctors ---------- */
+    "admin.doctors.subtitle":
+      "ڈاکٹروں کے اکاؤنٹ یہاں بنائیں، یا جن ڈاکٹروں نے خود رجسٹر کیا ہے انہیں منظور کریں — ہر ڈاکٹر کو صرف وہی مریض نظر آتے ہیں جو آپ ملاقاتوں والے صفحے سے اُس کے سپرد کرتے ہیں۔",
+    "admin.doctors.add": "ڈاکٹر شامل کریں",
+    "admin.doctors.createFailed": "ڈاکٹر کا اکاؤنٹ نہیں بن سکا",
+    "admin.doctors.created":
+      "{{name}} کا اکاؤنٹ تیار ہے۔ پاس ورڈ انہیں محفوظ طریقے سے پہنچا دیجیے۔",
+    "admin.doctors.suspended": "ڈاکٹر کو معطل کر دیا گیا۔",
+    "admin.doctors.reactivated": "ڈاکٹر دوبارہ فعال کر دیا گیا۔",
+    "admin.doctors.updateFailed":
+      "اس ڈاکٹر کی تفصیل تبدیل نہیں ہو سکی۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "admin.doctors.approved": "{{name}} کی منظوری دے دی گئی۔",
+    "admin.doctors.declined": "{{name}} کی درخواست مسترد کر دی گئی۔",
+    "admin.doctors.decisionFailed":
+      "اس درخواست پر فیصلہ محفوظ نہیں ہو سکا۔ براہِ کرم دوبارہ کوشش کریں۔",
+    "admin.doctors.nameUrHint":
+      "وہی اردو ہجے لکھیے جو ڈاکٹر خود استعمال کرتے ہیں۔ خالی چھوڑ دیں تو دونوں زبانوں میں انگریزی نام ہی دکھایا جائے گا۔",
+    "admin.doctors.specializationPlaceholder": "مثلاً نفسیات",
+    "admin.doctors.bio": "مختصر تعارف",
+    "admin.doctors.bioHint": "ڈاکٹر کے کارڈ پر دکھایا جاتا ہے۔ دو تین جملے کافی ہیں۔",
+    "admin.doctors.tempPassword": "عارضی پاس ورڈ",
+    "admin.doctors.creating": "بنایا جا رہا ہے…",
+    "admin.doctors.pendingRequests": "زیرِ التوا درخواستیں",
+    "admin.doctors.approve": "منظور کریں",
+    "admin.doctors.decline": "مسترد کریں",
+    "admin.doctors.declinedBadge": "مسترد",
+    "admin.doctors.suspendedBadge": "معطل",
+    "admin.doctors.suspend": "معطل کریں",
+    "admin.doctors.reactivate": "دوبارہ فعال کریں",
+
+    /* ---------- admin — Urdu translation coverage ---------- */
+    "admin.translations.title": "اردو ترجمہ",
+    "admin.translations.lede": "سائٹ اب تک اردو میں کیا کہہ سکتی ہے، اور کیا ابھی نہیں۔",
+    "admin.translations.reportFailed": "رپورٹ نہیں پڑھی جا سکی۔",
+    "admin.translations.confirmTitle": "{{count}} خانوں کا ترجمہ کر دیں؟",
+    "admin.translations.confirmBody":
+      "تقریباً {{chars}} حروف گوگل ٹرانسلیٹ کو بھیجے جائیں گے اور اردو کے خانوں میں لکھ دیے جائیں گے۔\n\nجو پہلے سے ترجمہ شدہ ہے اسے ہاتھ نہیں لگایا جائے گا۔ اس طرح لکھی گئی ہر چیز پر ’پڑھنا باقی ہے‘ کا نشان رہے گا، جب تک کوئی اسے کھول کر محفوظ نہ کرے — طبی اصطلاحات کا مشینی ترجمہ رواں تو ہوتا ہے، ہمیشہ درست نہیں۔",
+    "admin.translations.confirmCta": "ترجمہ کر دیں",
+    "admin.translations.failed": "ترجمہ نہیں ہو سکا۔",
+    "admin.translations.done":
+      "{{items}} اشیاء کے {{fields}} خانوں کا اردو مسودہ تیار ہو گیا۔ براہِ کرم انہیں پڑھ لیجیے۔",
+    "admin.translations.notConfigured": "مشینی ترجمہ فعال نہیں ہے",
+    "admin.translations.notConfiguredA": "یہاں سے ترجمے کا مسودہ بنانے کے لیے سرور پر",
+    "admin.translations.notConfiguredB":
+      "مقرر کریں۔ اس کے بغیر بھی ہر فارم میں اردو کے خانے کام کرتے ہیں — طبی اصطلاحات کے لیے انہیں ہاتھ سے لکھنا ویسے بھی زیادہ درست ہے۔",
+    "admin.translations.coverage":
+      "{{documents}} اشیاء · {{total}} میں سے {{translated}} خانوں میں اردو موجود ہے",
+    "admin.translations.draftMissing": "{{count}} خالی خانوں کا مسودہ بنائیں",
+    "admin.translations.nothingMissing": "کچھ باقی نہیں",
+    "admin.translations.openCollection": "{{name}} کھولیں",
+    "admin.translations.needsRead": "{{count}} اشیاء ابھی پڑھی جانی باقی ہیں",
+    "admin.translations.trustTitle": "مسودہ ترجمے پر بھروسا کرنے سے پہلے",
+    "admin.translations.trust1":
+      "علاج اور بیماریوں کے نام وہی جگہ ہیں جہاں مشین غلطی کرتی ہے۔ ترجمہ رواں آتا ہے، اور مریض کے پاس یہ جانچنے کا کوئی طریقہ نہیں کہ ترجمہ درست ہے یا محض بااعتماد لہجے میں غلط۔",
+    "admin.translations.trust2":
+      "جس چیز پر ’پڑھنا باقی ہے‘ لکھا ہو اسے کھولیں، اردو والا خانہ دیکھیں، جو غلط ہو درست کریں اور محفوظ کر دیں۔ محفوظ کرتے ہی نشان ہٹ جاتا ہے۔",
+    "admin.translations.trust3":
+      "اسے دوبارہ چلانے سے پہلے سے موجود اردو کبھی نہیں مٹتی — آپ کی درستیاں محفوظ رہتی ہیں۔",
+
+    /* ---------- admin — slots ---------- */
+    "admin.slots.subtitle":
+      "مریض صرف وہی اوقات بک کر سکتے ہیں جو آپ یہاں شامل کرتے ہیں — وہ خود تاریخ اور وقت منتخب نہیں کرتے۔ کوئی وقت بک ہوتے ہی بکنگ کی فہرست سے ہٹ جاتا ہے۔",
+    "admin.slots.pickDoctorFirst": "پہلے ڈاکٹر منتخب کریں۔",
+    "admin.slots.createFailed": "اوقات نہیں بن سکے",
+    "admin.slots.created": "{{doctor}} کے لیے {{count}} اوقات شامل کر دیے گئے۔",
+    "admin.slots.deleteTitle": "یہ وقت حذف کر دیں؟",
+    "admin.slots.deleteBody":
+      "{{doctor}} کے ساتھ {{date}} کو {{time}}۔ مریضوں کو یہ وقت اب نظر نہیں آئے گا۔",
+    "admin.slots.deleteCta": "وقت حذف کریں",
+    "admin.slots.deleteFailed": "یہ وقت حذف نہیں ہو سکا",
+    "admin.slots.deleted": "وقت حذف کر دیا گیا۔",
+    "admin.slots.freeTitle": "یہ وقت دوبارہ دستیاب کر دیں؟",
+    "admin.slots.freeBody":
+      "{{doctor}} کے ساتھ {{date}} کو {{time}}۔ یہ صرف اُس صورت میں کریں جب اس پر موجود ملاقات پہلے ہی سسٹم سے باہر منسوخ ہو چکی ہو — ورنہ ایک ہی وقت پر دو بکنگ ہو سکتی ہیں۔",
+    "admin.slots.freeCta": "وقت خالی کریں",
+    "admin.slots.freed": "وقت خالی کر دیا گیا۔",
+    "admin.slots.freeFailed": "یہ وقت تبدیل نہیں ہو سکا۔",
+    "admin.slots.selectDoctor": "ڈاکٹر منتخب کریں",
+    "admin.slots.doctorHint": "نیچے دیے گئے اوقات صرف اسی ڈاکٹر کے کیلنڈر سے ملائے جاتے ہیں۔",
+
+    /* ---------- slots — shared labels ---------- */
+    "slot.anyService": "کوئی بھی سروس",
+    "slot.minutes": "{{count}} منٹ",
+    "slot.available": "دستیاب",
+    "slot.booked": "بک شدہ",
+    "slot.freeUp": "خالی کریں",
+    "common.deleting": "حذف ہو رہا ہے…",
+    "common.remove": "ہٹائیں",
+    "common.updated": "تبدیلی محفوظ ہو گئی۔",
+    "common.from": "سے",
+    "common.to": "تک",
+
+    /* ---------- admin — services and coupons ---------- */
+    "admin.services.categoryEmpty": "{{category}} میں ابھی کچھ نہیں",
+    "admin.services.categoryEmptyHint":
+      "اس زمرے میں کوئی سروس شامل کریں، یا اوپر سے کوئی اور زمرہ منتخب کر لیں۔",
+    "admin.services.noPrice": "قیمت مقرر نہیں — بکنگ نہیں ہو سکتی",
+    "admin.services.advanceToBook": "بکنگ کے لیے {{amount}} روپے پیشگی",
+    "admin.coupons.emailsPlaceholder": "a@b.com, c@d.com",
+    "admin.coupons.deleteTitle": "{{code}} حذف کر دیں؟",
+    "admin.coupons.deleteBody": "مریض اب یہ کوڈ استعمال نہیں کر سکیں گے۔",
+    "admin.coupons.deactivated": "{{code}} بند کر دیا گیا۔",
+    "admin.coupons.reactivated": "{{code}} دوبارہ فعال ہو گیا۔",
+    "admin.coupons.usedTitle": "{{code}} پہلے استعمال ہو چکا ہے",
+    "admin.coupons.usedBody":
+      "{{count}} بکنگز میں یہ کوڈ استعمال ہوا ہے۔ اسے حذف کرنے سے وہ بکنگز ایسی رعایت سے جڑی رہ جائیں گی جس کا کوئی ریکارڈ نہیں۔ بند کرنے سے ریکارڈ بھی رہتا ہے اور نیا استعمال بھی رک جاتا ہے۔",
+    "admin.coupons.deleteAnyway": "پھر بھی حذف کریں",
+    "admin.coupons.deleted": "{{code}} حذف کر دیا گیا۔",
+    "admin.coupons.deactivate": "بند کریں",
+    "admin.coupons.activate": "فعال کریں",
+
+    /* ---------- doctor — dashboard, appointments and patients ---------- */
+    "doctor.dashboard.welcomeNamed": "ڈاکٹر {{name}}، دوبارہ خوش آمدید",
+    "doctor.appointments.startEarly": "جلدی شروع کریں",
+    "doctor.patients.loadFailed": "اس مریض کی تفصیل نہیں کھل سکی۔ براہِ کرم صفحہ تازہ کریں۔",
+    "doctor.patients.back": "مریضوں کی فہرست پر واپس",
+    "doctor.patients.noRecord": "کوئی ریکارڈ نہیں ملا — ہو سکتا ہے یہ مریض (اب) آپ کے سپرد نہ ہو۔",
+    "doctor.patients.nextSession": "اگلا سیشن",
+    "doctor.patients.totalSessions": "آپ کے ساتھ کل سیشن",
+    "doctor.patients.mostRecent": "تازہ ترین بکنگ",
+    "doctor.patients.history": "ملاقاتوں کا ریکارڈ",
+    "doctor.patients.joinNoteA": "کسی پکی ملاقات کی کال یا چیٹ میں شامل ہونا ہے؟ جائیں",
+    "doctor.patients.joinNoteB": "— سیشن وہیں سے کھلتے ہیں۔",
+
+    /* ---------- doctor — availability ---------- */
+    "doctor.slots.title": "میری دستیابی",
+    "doctor.slots.lede":
+      "جن اوقات میں آپ مریض دیکھ سکتے ہیں وہ کھولیں، اور جن دنوں آپ نہیں ہوں گے وہ درج کر دیں۔",
+    "doctor.slots.opened": "{{count}} اوقات کھول دیے گئے۔",
+    "doctor.slots.removeTitle": "یہ وقت ہٹا دیں؟",
+    "doctor.slots.removeBody": "{{date}} کو {{time}}۔ مریضوں کو یہ وقت اب نظر نہیں آئے گا۔",
+    "doctor.slots.pickFirstDay": "چھٹی کا پہلا دن منتخب کریں۔",
+    "doctor.slots.leaveBooked":
+      "چھٹی محفوظ ہو گئی، لیکن اُن دنوں میں {{count}} ملاقاتیں پہلے سے بک ہیں۔ کلینک کو اُن کا وقت بدلنا ہوگا۔",
+    "doctor.slots.leaveSavedRemoved": "چھٹی محفوظ ہو گئی — {{count}} خالی اوقات ہٹا دیے گئے۔",
+    "doctor.slots.leaveSaved": "چھٹی محفوظ ہو گئی۔",
+    "doctor.slots.removeLeaveTitle": "یہ چھٹی ہٹا دیں؟",
+    "doctor.slots.removeLeaveBody":
+      "وہ دن دوبارہ کھل جائیں گے۔ جو اوقات ہٹائے گئے تھے وہ واپس نہیں آئیں گے — آپ کو انہیں دوبارہ شامل کرنا ہوگا۔",
+    "doctor.slots.removeLeaveCta": "چھٹی ہٹائیں",
+    "doctor.slots.daysAway": "چھٹی کے دن",
+    "doctor.slots.daysAwayHint":
+      "چھٹی لگانے سے اُن دنوں کے آپ کے خالی اوقات ہٹ جاتے ہیں اور نئے اوقات شامل نہیں ہو سکتے۔",
+    "doctor.slots.reason": "وجہ (اختیاری)",
+    "doctor.slots.reasonPlaceholder": "کانفرنس",
+    "doctor.slots.markAway": "چھٹی لگائیں",
+    "doctor.slots.noLeave": "کوئی چھٹی درج نہیں۔",
+    "doctor.slots.myTimes": "میرے اوقات",
+    "doctor.slots.noTimes":
+      "ابھی کوئی خالی وقت نہیں۔ اوپر سے کچھ اوقات کھول دیں تاکہ مریض بکنگ کر سکیں۔",
+
+    /* ---------- service and blog forms ---------- */
+    "serviceForm.name": "سروس کا نام",
+    "serviceForm.namePlaceholder": "مثلاً کیٹامین تھراپی",
+    "serviceForm.category": "زمرہ",
+    "serviceForm.categoryPlaceholder": "مثلاً ہیلتھ کیئر",
+    "serviceForm.short": "مختصر تعارف (کارڈ پر دکھایا جاتا ہے)",
+    "serviceForm.intro": "مکمل تعارف",
+    "serviceForm.points": "جاننے کی باتیں (ہر سطر میں ایک)",
+    "serviceForm.pointsPlaceholder": "عام علامات…\nتشخیص کا طریقہ…\nکیا توقع رکھیں…",
+    "serviceForm.pointsHint":
+      "ہر سطر میں ایک بات۔ دونوں خانوں میں سطروں کی تعداد ایک جیسی رکھیں — یہ ایک ہی فہرست کے طور پر دکھائی جاتی ہیں، جوڑا بنا کر نہیں۔",
+    "serviceForm.treatments": "پیش کردہ علاج (ہر سطر میں ایک)",
+    "serviceForm.treatmentsPlaceholder": "علاج الف\nعلاج ب",
+    "serviceForm.price": "مکمل قیمت (روپے)",
+    "serviceForm.advance": "بکنگ کے لیے پیشگی رقم (روپے)",
+    "serviceForm.advanceHint": "خالی چھوڑ دیں تو آن لائن پوری قیمت وصول کی جائے گی۔",
+    "serviceForm.duration": "دورانیہ (منٹ)",
+    "serviceForm.image": "تصویر (اختیاری)",
+    "serviceForm.saveFailed": "سروس محفوظ کرنے میں کچھ گڑبڑ ہو گئی۔",
+    "serviceForm.update": "سروس اپ ڈیٹ کریں",
+    "serviceForm.create": "سروس بنائیں",
+    "blogForm.cover": "سرِورق تصویر",
+    "blogForm.titlePlaceholder": "عنوان",
+    "blogForm.authorPlaceholder": "مصنف",
+    "blogForm.excerptPlaceholder": "مختصر اقتباس (کارڈ پر دکھایا جاتا ہے)",
+    "blogForm.contentPlaceholder": "پوسٹ کا مکمل متن",
+    "blogForm.publishNow": "ابھی شائع کریں",
+    "blogForm.saveFailed": "پوسٹ محفوظ کرنے میں کچھ گڑبڑ ہو گئی۔",
+    "blogForm.update": "پوسٹ اپ ڈیٹ کریں",
+    "blogForm.publish": "پوسٹ شائع کریں",
+
+    /* ---------- the bilingual field ---------- */
+    "bilingual.translateFailed": "اس کا ترجمہ نہیں ہو سکا۔",
+    "bilingual.nothingBack": "کوئی جواب نہیں آیا — براہِ کرم اردو خود لکھ لیجیے۔",
+    "bilingual.translating": "ترجمہ ہو رہا ہے…",
+    "bilingual.draft": "اردو کا مسودہ بنائیں ←",
+    "bilingual.english": "انگریزی",
+    "bilingual.draftHint":
+      "مشین کا ترجمہ صرف ایک ابتدا ہے — محفوظ کرنے سے پہلے اسے پڑھ لیجیے۔ طبی اصطلاحات ہی وہ جگہ ہیں جہاں مشین غلطی کرتی ہے۔",
+
+    /* ---------- the slot builder ---------- */
+    "slotBuilder.length": "ہر سیشن کتنی دیر کا ہے؟",
+    "slotBuilder.lengthHint":
+      "نیچے کے اوقات اسی حساب سے بنتے ہیں — ہر {{duration}} منٹ بعد، اور کوئی سیشن اپنے مقررہ وقفے سے آگے نہیں جاتا۔",
+    "slotBuilder.date": "تاریخ",
+    "slotBuilder.where": "کلینک میں یا آن لائن",
+    "slotBuilder.onlineFrom": "آن لائن، اس وقت سے",
+    "slotBuilder.until": "اس وقت تک",
+    "slotBuilder.endAfterStart": "اختتامی وقت شروع کے وقت کے بعد ہونا چاہیے۔",
+    "slotBuilder.onlineNote":
+      "آن لائن اوقات آپ خود طے کرتے ہیں — ضروری نہیں کہ یہ کلینک کے اوقاتِ کار کے اندر ہوں۔",
+    "slotBuilder.clinicHours": "{{weekday}} کو کلینک کے اوقات:",
+    "slotBuilder.closedOn":
+      "{{weekday}} کو کلینک بند رہتا ہے۔ کوئی اور دن منتخب کریں، یا اس کے بجائے آن لائن اوقات کھول لیں۔",
+    "slotBuilder.pickDateForHours": "اُس دن کے کلینک کے اوقات دیکھنے کے لیے تاریخ منتخب کریں۔",
+    "slotBuilder.tapTimes": "جن اوقات میں آپ دستیاب ہیں اُن پر ٹیپ کریں",
+    "slotBuilder.selectedCount": "{{count}} منتخب",
+    "slotBuilder.selectAll": "سب منتخب کریں",
+    "slotBuilder.pickDateFirst": "پہلے تاریخ منتخب کریں۔",
+    "slotBuilder.closedThatDay": "دکھانے کو کچھ نہیں — اُس دن کلینک بند ہے۔",
+    "slotBuilder.noFit":
+      "{{duration}} منٹ کا سیشن اس دورانیے میں نہیں سماتا۔ دورانیہ بڑھائیں، یا چھوٹا سیشن منتخب کریں۔",
+    "slotBuilder.alreadyOnCalendar": "پہلے ہی آپ کے کیلنڈر میں موجود ہے",
+    "slotBuilder.crossedOut": "کٹے ہوئے اوقات اُس دن آپ کے کیلنڈر میں پہلے سے موجود ہیں۔",
+    "slotBuilder.forOneService": "صرف ایک سروس کے لیے (اختیاری)",
+    "slotBuilder.pickSomeTimes": "کچھ اوقات منتخب کریں",
+    "slotBuilder.openN": "{{count}} × {{duration}} منٹ کے اوقات کھولیں",
   },
 };

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { authedFetch } from "@/lib/authed-fetch";
 import { readApiError } from "@/lib/api-error";
 import { InlineSpinner } from "@/components/Loader";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * The payment buttons on the booking page.
@@ -153,6 +154,7 @@ export default function PaymentMethods({
   onBusyChange?: (busy: boolean) => void;
   onError?: (message: string) => void;
 }) {
+  const t = useT();
   const [methods, setMethods] = useState<Method[] | null>(null);
   const [starting, setStarting] = useState<string | null>(null);
 
@@ -185,7 +187,7 @@ export default function PaymentMethods({
       );
 
       if (!res.ok) {
-        throw new Error(await readApiError(res, "Could not start the payment."));
+        throw new Error(await readApiError(res, t("pay.startFailed")));
       }
 
       const raw = await res.json();
@@ -216,9 +218,9 @@ export default function PaymentMethods({
         return; // leaving; stay disabled
       }
 
-      throw new Error("That payment method could not be opened.");
+      throw new Error(t("pay.methodFailed"));
     } catch (err) {
-      onError?.(err instanceof Error ? err.message : "Could not start the payment.");
+      onError?.(err instanceof Error ? err.message : t("pay.startFailed"));
       setStarting(null);
       onBusyChange?.(false);
     }
@@ -240,11 +242,11 @@ export default function PaymentMethods({
     // happens to take payment by phone.
     return (
       <div className="mt-5 rounded-2xl border border-line bg-paper-dim/40 px-5 py-4">
-        <p className="text-sm font-semibold text-ink">Online payment isn&apos;t open yet</p>
+        <p className="text-sm font-semibold text-ink">{t("pay.notOpenTitle")}</p>
         <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
-          Your slot can still be held. Use{" "}
-          <span className="font-medium text-ink">Request a call-back</span> below
-          and the clinic will confirm it with you by phone — nothing to pay now.
+          {t("pay.notOpenBodyA")}{" "}
+          <span className="font-medium text-ink">{t("book.requestCallBack")}</span>{" "}
+          {t("pay.notOpenBodyB")}
         </p>
       </div>
     );
@@ -289,10 +291,10 @@ export default function PaymentMethods({
                           This is the advance, not the whole price, and the
                           difference is worth one small word. */}
                       <span className="block text-[0.625rem] font-medium uppercase tracking-wide text-ink-soft/70">
-                        Due now
+                        {t("pay.dueNow")}
                       </span>
-                      <span className="numeric block text-sm font-semibold text-ink">
-                        PKR {amount.toLocaleString()}
+                      <span className="block text-sm font-semibold text-ink">
+                        {t("services.priceAmount", { price: amount.toLocaleString() })}
                       </span>
                     </span>
                   )}
@@ -326,8 +328,7 @@ export default function PaymentMethods({
           <LockIcon />
         </span>
         <p className="text-center text-xs leading-relaxed text-ink-soft">
-          Payment is completed on the provider&apos;s own secure page. TLC Med
-          Clinics never sees or stores your card number or wallet PIN.
+          {t("pay.secureNote")}
         </p>
       </div>
     </div>

@@ -197,9 +197,9 @@ function Shell({ role, nav, children }: Props) {
     // account is a phone number waiting on an SMS code.
     const ok = await confirm({
       title: t("common.logout"),
-      message: "You'll need to sign in again to get back to your dashboard.",
+      message: t("auth.logoutConfirm"),
       confirmLabel: t("common.logout"),
-      cancelLabel: "Stay signed in",
+      cancelLabel: t("auth.staySignedIn"),
     });
     if (!ok) return;
 

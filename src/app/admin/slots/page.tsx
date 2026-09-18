@@ -37,7 +37,7 @@ export default function AdminSlotsPage() {
       const data: Slot[] = await res.json();
       setSlots(data);
     } catch {
-      toast.error("Couldn't load slots. Please refresh.");
+      toast.error(t("error.loadFailed"));
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ export default function AdminSlotsPage() {
   async function handleCreate(draft: SlotDraft): Promise<boolean> {
     const doctor = doctors.find((d) => d.uid === createDoctorId);
     if (!doctor) {
-      toast.error("Pick a doctor first.");
+      toast.error(t("admin.slots.pickDoctorFirst"));
       return false;
     }
 
@@ -70,13 +70,14 @@ export default function AdminSlotsPage() {
         body: JSON.stringify({ ...draft, doctorId: doctor.uid, doctorName: doctor.name }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Couldn't create slot(s)");
-      const n = draft.times.length;
-      toast.success(`${n} slot${n > 1 ? "s" : ""} added for ${doctor.name}.`);
+      if (!res.ok) throw new Error(data.error ?? t("admin.slots.createFailed"));
+      toast.success(
+        t("admin.slots.created", { count: draft.times.length, doctor: doctor.name })
+      );
       load();
       return true;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't create slot(s)");
+      toast.error(err instanceof Error ? err.message : t("admin.slots.createFailed"));
       return false;
     } finally {
       setSubmitting(false);
@@ -86,9 +87,13 @@ export default function AdminSlotsPage() {
   async function deleteSlot(slot: Slot) {
     if (
       !(await confirm({
-        title: "Delete this slot?",
-        message: `${slot.date} at ${formatClinicTime(slot.time)} with ${slot.doctorName}. Patients will no longer see it.`,
-        confirmLabel: "Delete slot",
+        title: t("admin.slots.deleteTitle"),
+        message: t("admin.slots.deleteBody", {
+          date: slot.date,
+          time: formatClinicTime(slot.time),
+          doctor: slot.doctorName,
+        }),
+        confirmLabel: t("admin.slots.deleteCta"),
         destructive: true,
       }))
     )
@@ -101,11 +106,11 @@ export default function AdminSlotsPage() {
         body: JSON.stringify({ id: slot.id }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error ?? "Couldn't delete this slot");
-      toast.success("Slot deleted.");
+      if (!res.ok) throw new Error(data.error ?? t("admin.slots.deleteFailed"));
+      toast.success(t("admin.slots.deleted"));
       load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't delete this slot");
+      toast.error(err instanceof Error ? err.message : t("admin.slots.deleteFailed"));
     } finally {
       setDeletingId(null);
     }
@@ -114,9 +119,13 @@ export default function AdminSlotsPage() {
   async function freeUp(slot: Slot) {
     if (
       !(await confirm({
-        title: "Mark this slot available again?",
-        message: `${slot.date} at ${formatClinicTime(slot.time)} with ${slot.doctorName}. Only do this if the appointment on it was already cancelled outside the system — otherwise the time can be double-booked.`,
-        confirmLabel: "Free it up",
+        title: t("admin.slots.freeTitle"),
+        message: t("admin.slots.freeBody", {
+          date: slot.date,
+          time: formatClinicTime(slot.time),
+          doctor: slot.doctorName,
+        }),
+        confirmLabel: t("admin.slots.freeCta"),
         destructive: true,
       }))
     )
@@ -128,10 +137,10 @@ export default function AdminSlotsPage() {
         body: JSON.stringify({ id: slot.id, status: "available" }),
       });
       if (!res.ok) throw new Error();
-      toast.success("Slot freed up.");
+      toast.success(t("admin.slots.freed"));
       load();
     } catch {
-      toast.error("Couldn't update this slot.");
+      toast.error(t("admin.slots.freeFailed"));
     }
   }
 
@@ -167,11 +176,8 @@ export default function AdminSlotsPage() {
 
   return (
     <div className="animate-fade-up">
-      <h1 className="h1">Slots</h1>
-      <p className="mt-2 text-sm text-ink-soft">
-        Patients can only book the slots you add here — they no longer pick a date/time
-        themselves. A slot disappears from booking the moment it&apos;s taken.
-      </p>
+      <h1 className="h1">{t("nav.slots")}</h1>
+      <p className="mt-2 text-sm text-ink-soft">{t("admin.slots.subtitle")}</p>
 
       {/* The same builder the doctors use, with a doctor picker on top. Two
           copies of this form is how the admin one ended up still asking for a
@@ -183,23 +189,21 @@ export default function AdminSlotsPage() {
         onCreate={handleCreate}
         header={
           <label className="field">
-            <span className="label">Doctor</span>
+            <span className="label">{t("role.doctor")}</span>
             <select
               required
               className="input"
               value={createDoctorId}
               onChange={(e) => setCreateDoctorId(e.target.value)}
             >
-              <option value="">Select doctor</option>
+              <option value="">{t("admin.slots.selectDoctor")}</option>
               {doctors.map((d) => (
                 <option key={d.uid} value={d.uid}>
                   {d.name}
                 </option>
               ))}
             </select>
-            <span className="field-hint">
-              Times below are checked against this doctor&apos;s calendar only.
-            </span>
+            <span className="field-hint">{t("admin.slots.doctorHint")}</span>
           </label>
         }
       />
@@ -251,8 +255,9 @@ export default function AdminSlotsPage() {
                           {formatClinicTime(s.time)} · {s.doctorName}
                         </p>
                         <p className="text-xs text-ink-soft">
-                          {s.service ? s.service : "Any service"} · {s.durationMinutes} min ·{" "}
-                          {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
+                          {s.service ? s.service : t("slot.anyService")} ·{" "}
+                          {t("slot.minutes", { count: s.durationMinutes })} ·{" "}
+                          {t((s.mode ?? "online") === "in-clinic" ? "mode.inClinic" : "mode.online")}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -263,14 +268,14 @@ export default function AdminSlotsPage() {
                               : "bg-indigo/10 text-indigo"
                           }`}
                         >
-                          {s.status === "available" ? "Available" : "Booked"}
+                          {t(s.status === "available" ? "slot.available" : "slot.booked")}
                         </span>
                         {s.status === "booked" ? (
                           <button
                             onClick={() => freeUp(s)}
                             className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-indigo hover:text-indigo"
                           >
-                            Free up
+                            {t("slot.freeUp")}
                           </button>
                         ) : (
                           <button
@@ -278,7 +283,7 @@ export default function AdminSlotsPage() {
                             disabled={deletingId === s.id}
                             className="rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink-soft transition-colors hover:border-crimson hover:text-crimson-deep disabled:opacity-50"
                           >
-                            {deletingId === s.id ? "Deleting…" : "Delete"}
+                            {t(deletingId === s.id ? "common.deleting" : "common.delete")}
                           </button>
                         )}
                       </div>

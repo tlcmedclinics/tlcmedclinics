@@ -91,7 +91,7 @@ export default function AdminServicesPage() {
     if (
       !(await confirm({
         title: t("admin.services.deleteConfirm"),
-        confirmLabel: "Delete",
+        confirmLabel: t("common.delete"),
         destructive: true,
       }))
     )
@@ -178,8 +178,8 @@ export default function AdminServicesPage() {
         // Without this branch an empty category renders an empty grid with a
         // "1 of 1" pager underneath it, which reads as a broken page.
         <EmptyState
-          title={`Nothing in ${category} yet`}
-          hint="Add a service to this category, or choose another above."
+          title={t("admin.services.categoryEmpty", { category })}
+          hint={t("admin.services.categoryEmptyHint")}
           action={
             <Link href="/admin/services/new" className="btn-indigo btn-sm">
               + {t("admin.services.add")}
@@ -209,19 +209,24 @@ export default function AdminServicesPage() {
                         for, and a card that simply shows nothing hides that. */}
                     <div className="mt-3 space-y-1 text-xs">
                       {typeof s.price === "number" ? (
-                        <p className="numeric text-ink">
-                          PKR {s.price.toLocaleString()}
+                        <p className="text-ink">
+                          {t("services.priceAmount", { price: s.price.toLocaleString() })}
                           {typeof s.durationMinutes === "number" && s.durationMinutes > 0 && (
-                            <span className="text-ink-soft"> · {s.durationMinutes} min</span>
+                            <span className="text-ink-soft">
+                              {" · "}
+                              {t("slot.minutes", { count: s.durationMinutes })}
+                            </span>
                           )}
                         </p>
                       ) : (
-                        <p className="text-crimson-deep">No price set — cannot be booked</p>
+                        <p className="text-crimson-deep">{t("admin.services.noPrice")}</p>
                       )}
 
                       {takesAdvance && (
-                        <p className="numeric text-indigo">
-                          PKR {s.advancePayment!.toLocaleString()} advance to book
+                        <p className="text-indigo">
+                          {t("admin.services.advanceToBook", {
+                            amount: s.advancePayment!.toLocaleString(),
+                          })}
                         </p>
                       )}
                     </div>

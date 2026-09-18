@@ -94,8 +94,7 @@ export default function DoctorSlotsPage() {
       const out = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(out.error);
 
-      const n = draft.times.length;
-      toast.success(`${n} time${n === 1 ? "" : "s"} opened.`);
+      toast.success(t("doctor.slots.opened", { count: draft.times.length }));
       load();
       return true;
     } catch (err) {
@@ -108,9 +107,12 @@ export default function DoctorSlotsPage() {
 
   async function removeSlot(slot: Slot) {
     const ok = await confirm({
-      title: "Remove this time?",
-      message: `${slot.date} at ${formatClinicTime(slot.time)}. Patients will no longer see it.`,
-      confirmLabel: "Remove",
+      title: t("doctor.slots.removeTitle"),
+      message: t("doctor.slots.removeBody", {
+        date: slot.date,
+        time: formatClinicTime(slot.time),
+      }),
+      confirmLabel: t("common.remove"),
       destructive: true,
     });
     if (!ok) return;
@@ -140,7 +142,7 @@ export default function DoctorSlotsPage() {
     const to = String(data.get("to") ?? "") || from;
 
     if (!from) {
-      toast.error("Pick the first day you're away.");
+      toast.error(t("doctor.slots.pickFirstDay"));
       return;
     }
 
@@ -158,14 +160,12 @@ export default function DoctorSlotsPage() {
       // and they need telling rather than deleting. Said plainly here so the
       // doctor knows the leave alone didn't settle it.
       if (out.bookedSlots?.length) {
-        toast.error(
-          `Leave saved, but ${out.bookedSlots.length} appointment(s) in those days are already booked. The clinic needs to reschedule them.`
-        );
+        toast.error(t("doctor.slots.leaveBooked", { count: out.bookedSlots.length }));
       } else {
         toast.success(
           out.removedSlots
-            ? `Leave saved — ${out.removedSlots} open time(s) removed.`
-            : "Leave saved."
+            ? t("doctor.slots.leaveSavedRemoved", { count: out.removedSlots })
+            : t("doctor.slots.leaveSaved")
         );
       }
 
@@ -180,10 +180,9 @@ export default function DoctorSlotsPage() {
 
   async function removeLeave(leave: Leave) {
     const ok = await confirm({
-      title: "Remove this leave?",
-      message:
-        "Those days become open again. The times that were cleared aren't restored — you'll need to add them back.",
-      confirmLabel: "Remove leave",
+      title: t("doctor.slots.removeLeaveTitle"),
+      message: t("doctor.slots.removeLeaveBody"),
+      confirmLabel: t("doctor.slots.removeLeaveCta"),
       destructive: true,
     });
     if (!ok) return;
@@ -206,10 +205,8 @@ export default function DoctorSlotsPage() {
 
   return (
     <div className="animate-fade-up">
-      <h1 className="h1">My availability</h1>
-      <p className="lede mt-1">
-        Open the times you can see patients, and mark the days you&apos;re away.
-      </p>
+      <h1 className="h1">{t("doctor.slots.title")}</h1>
+      <p className="lede mt-1">{t("doctor.slots.lede")}</p>
 
       {/* ---- Add times ---- */}
       <SlotBuilder
@@ -221,27 +218,25 @@ export default function DoctorSlotsPage() {
 
       {/* ---- Leave ---- */}
       <section className="mt-10">
-        <h2 className="text-base font-semibold text-ink">Days away</h2>
-        <p className="mt-1 text-sm text-ink-soft">
-          Marking leave removes your open times in those days and stops new ones being added.
-        </p>
+        <h2 className="text-base font-semibold text-ink">{t("doctor.slots.daysAway")}</h2>
+        <p className="mt-1 text-sm text-ink-soft">{t("doctor.slots.daysAwayHint")}</p>
 
         <form onSubmit={addLeave} className="card card-pad mt-4 grid gap-4 sm:grid-cols-4">
           <label className="field">
-            <span className="label">From</span>
+            <span className="label">{t("common.from")}</span>
             <input name="from" type="date" required min={todayIso()} className="input numeric" />
           </label>
           <label className="field">
-            <span className="label">To</span>
+            <span className="label">{t("common.to")}</span>
             <input name="to" type="date" min={todayIso()} className="input numeric" />
           </label>
           <label className="field">
-            <span className="label">Reason (optional)</span>
-            <input name="reason" className="input" placeholder="Conference" />
+            <span className="label">{t("doctor.slots.reason")}</span>
+            <input name="reason" className="input" placeholder={t("doctor.slots.reasonPlaceholder")} />
           </label>
           <div className="flex items-end">
             <button type="submit" disabled={savingLeave} className="btn-indigo w-full">
-              {savingLeave ? <InlineSpinner /> : "Mark away"}
+              {savingLeave ? <InlineSpinner /> : t("doctor.slots.markAway")}
             </button>
           </div>
         </form>
@@ -249,7 +244,7 @@ export default function DoctorSlotsPage() {
         {loading ? (
           <Loader className="py-8" />
         ) : leaves.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">No leave booked.</p>
+          <p className="mt-4 text-sm text-ink-soft">{t("doctor.slots.noLeave")}</p>
         ) : (
           <ul className="mt-4 space-y-2">
             {leaves.map((l) => (
@@ -272,7 +267,7 @@ export default function DoctorSlotsPage() {
                   disabled={busyId === l.id}
                   className="text-xs font-medium text-ink-soft hover:text-crimson-deep disabled:opacity-50"
                 >
-                  Remove
+                  {t("common.remove")}
                 </button>
               </li>
             ))}
@@ -282,14 +277,12 @@ export default function DoctorSlotsPage() {
 
       {/* ---- Existing times ---- */}
       <section className="mt-10">
-        <h2 className="text-base font-semibold text-ink">My times</h2>
+        <h2 className="text-base font-semibold text-ink">{t("doctor.slots.myTimes")}</h2>
 
         {loading ? (
           <SkeletonRows rows={3} className="mt-4" />
         ) : byDate.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-soft">
-            No open times yet. Add some above so patients can book.
-          </p>
+          <p className="mt-4 text-sm text-ink-soft">{t("doctor.slots.noTimes")}</p>
         ) : (
           <div className="mt-4 space-y-6">
             {byDate.map(([date, daySlots]) => (
@@ -304,21 +297,21 @@ export default function DoctorSlotsPage() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-ink">{formatClinicTime(s.time)}</p>
                         <p className="text-xs text-ink-soft">
-                          {s.durationMinutes} min ·{" "}
-                          {(s.mode ?? "online") === "in-clinic" ? "In clinic" : "Online"}
+                          {t("slot.minutes", { count: s.durationMinutes })} ·{" "}
+                          {t((s.mode ?? "online") === "in-clinic" ? "mode.inClinic" : "mode.online")}
                           {s.service ? ` · ${s.service}` : ""}
                         </p>
                       </div>
 
                       {s.status === "booked" ? (
-                        <span className="pill pill-indigo shrink-0">Booked</span>
+                        <span className="pill pill-indigo shrink-0">{t("slot.booked")}</span>
                       ) : (
                         <button
                           onClick={() => removeSlot(s)}
                           disabled={busyId === s.id}
                           className="shrink-0 text-xs font-medium text-ink-soft hover:text-crimson-deep disabled:opacity-50"
                         >
-                          Remove
+                          {t("common.remove")}
                         </button>
                       )}
                     </div>

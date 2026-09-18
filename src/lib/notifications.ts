@@ -7,7 +7,11 @@ type NotifyInput = {
   role: UserRole;
   type: NotificationType;
   title: string;
+  /** The same title in Urdu. Required — see the note on `AppNotification`. */
+  titleUr: string;
   message: string;
+  /** The same message in Urdu. */
+  messageUr: string;
   appointmentId?: string;
 };
 
@@ -18,7 +22,9 @@ function buildDoc(ref: FirebaseFirestore.DocumentReference, input: NotifyInput):
     role: input.role,
     type: input.type,
     title: input.title,
+    titleUr: input.titleUr,
     message: input.message,
+    messageUr: input.messageUr,
     appointmentId: input.appointmentId,
     read: false,
     createdAt: new Date().toISOString(),
@@ -41,7 +47,9 @@ function buildDoc(ref: FirebaseFirestore.DocumentReference, input: NotifyInput):
 function push(input: NotifyInput): Promise<void> {
   return sendPush(input.userId, {
     title: input.title,
+    titleUr: input.titleUr,
     body: input.message,
+    bodyUr: input.messageUr,
     data: {
       type: input.type,
       // The app uses this to open straight onto the appointment instead of

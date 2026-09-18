@@ -33,15 +33,20 @@ const statusStyles: Record<Appointment["status"], string> = {
   cancelled: "bg-crimson/10 text-crimson-deep",
 };
 
-/** How much of the hold is left, in words. */
-function holdRemaining(dueAt?: string): string | null {
+/** How much of the hold is left, in milliseconds, or null once it has run out. */
+function holdRemainingMs(dueAt?: string): number | null {
   if (!dueAt) return null;
   const ms = Date.parse(dueAt) - Date.now();
   if (Number.isNaN(ms) || ms <= 0) return null;
-  const hours = Math.floor(ms / 3_600_000);
-  if (hours >= 1) return `${hours} hour${hours === 1 ? "" : "s"}`;
-  const mins = Math.max(1, Math.round(ms / 60_000));
-  return `${mins} minute${mins === 1 ? "" : "s"}`;
+  return ms;
+}
+
+/**
+ * A mode as the dictionary names it. The stored value for an in-person visit is
+ * "in-person"; every other mode's key is the value itself.
+ */
+function modeKey(mode: string): string {
+  return mode === "in-person" ? "mode.inPerson" : `mode.${mode}`;
 }
 
 function PatientDashboardContent() {
@@ -92,13 +97,23 @@ function PatientDashboardContent() {
    * appointment — so this only has to say which one.
    */
 
+  /** How much of the hold is left, in words the reader's language uses. */
+  function holdWords(dueAt?: string): string | null {
+    const ms = holdRemainingMs(dueAt);
+    if (ms === null) return null;
+    const hours = Math.floor(ms / 3_600_000);
+    if (hours >= 1) return hours === 1 ? t("time.hour") : t("time.hours", { n: hours });
+    const mins = Math.max(1, Math.round(ms / 60_000));
+    return mins === 1 ? t("time.minute") : t("time.minutes", { n: mins });
+  }
+
   /** Turning down a held follow-up — frees the slot straight away. */
   async function handleDecline(a: Appointment) {
     if (
       !(await confirm({
-        title: "Release this time?",
-        message: "The slot goes back to other patients. You can always book again later.",
-        confirmLabel: "Release it",
+        title: t("patient.dashboard.releaseTitle"),
+        message: t("patient.dashboard.releaseBody"),
+        confirmLabel: t("patient.dashboard.releaseConfirm"),
         destructive: true,
       }))
     )
@@ -110,19 +125,19 @@ function PatientDashboardContent() {
         body: JSON.stringify({ id: a.id, status: "cancelled" }),
       });
       if (!res.ok) throw new Error();
-      toast.success("Time released. You can book whenever suits you.");
+      toast.success(t("patient.dashboard.released"));
     } catch {
-      toast.error("Couldn't release that time.");
+      toast.error(t("patient.dashboard.releaseFailed"));
     }
   }
 
   async function handleCancel(a: Appointment) {
     if (
       !(await confirm({
-        title: "Cancel this appointment?",
-        message: "If you have already paid, the clinic will process your refund.",
-        confirmLabel: "Cancel appointment",
-        cancelLabel: "Keep it",
+        title: t("patient.dashboard.cancelTitle"),
+        message: t("patient.dashboard.cancelBody"),
+        confirmLabel: t("patient.dashboard.cancel"),
+        cancelLabel: t("patient.dashboard.keepIt"),
         destructive: true,
       }))
     )
@@ -134,10 +149,10 @@ function PatientDashboardContent() {
         body: JSON.stringify({ id: a.id, status: "cancelled" }),
       });
       if (!res.ok) throw new Error();
-      toast.success("Appointment cancelled.");
+      toast.success(t("patient.dashboard.cancelled"));
       load();
     } catch {
-      toast.error("Couldn't cancel. Please try again.");
+      toast.error(t("patient.dashboard.cancelFailed"));
     }
   }
 
@@ -151,9 +166,9 @@ function PatientDashboardContent() {
       if (!res.ok) throw new Error();
       const data = await res.json();
       setAppointments((prev) => prev.map((x) => (x.id === a.id ? data.appointment : x)));
-      toast.success("Thanks for your feedback!");
+      toast.success(t("rating.thanks"));
     } catch {
-      toast.error("Couldn't submit your rating. Please try again.");
+      toast.error(t("patient.dashboard.rateFailed"));
     }
   }
 
@@ -188,7 +203,7 @@ function PatientDashboardContent() {
     <div className="animate-fade-up">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="eyebrow text-indigo">Welcome back</p>
+          <p className="eyebrow text-indigo">{t("patient.dashboard.welcome")}</p>
           <h1 className="mt-3 h1">{profile?.name}</h1>
         </div>
       </div>
@@ -197,23 +212,25 @@ function PatientDashboardContent() {
       <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-line/70 bg-paper p-5">
           <p className="stat-number text-indigo">{loading ? "—" : stats.upcomingCount}</p>
-          <p className="mt-1 text-xs text-ink-soft">Upcoming appointments</p>
+          <p className="mt-1 text-xs text-ink-soft">{t("patient.dashboard.upcoming")}</p>
         </div>
         <div className="rounded-2xl border border-line/70 bg-paper p-5">
           <p className="stat-number text-indigo">{loading ? "—" : stats.completed}</p>
-          <p className="mt-1 text-xs text-ink-soft">Completed sessions</p>
+          <p className="mt-1 text-xs text-ink-soft">{t("patient.dashboard.completed")}</p>
         </div>
         <div className="col-span-2 rounded-2xl border border-line/70 bg-indigo-deep/5 p-5 sm:col-span-1">
           {stats.nextUp ? (
             <>
-              <p className="text-xs font-medium uppercase tracking-wide text-indigo-deep">Next up</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-indigo-deep">
+                {t("patient.dashboard.nextUp")}
+              </p>
               <p className="mt-1 text-sm font-medium text-ink">{stats.nextUp.service}</p>
               <p className="text-xs text-ink-soft">
                 {stats.nextUp.date} · {formatClinicTime(stats.nextUp.time)}
               </p>
             </>
           ) : (
-            <p className="text-xs text-ink-soft">Nothing scheduled — book whenever you&apos;re ready.</p>
+            <p className="text-xs text-ink-soft">{t("patient.dashboard.nothingScheduled")}</p>
           )}
         </div>
       </div>
@@ -223,7 +240,7 @@ function PatientDashboardContent() {
       </p>
 
       <div className="mt-8 flex items-center justify-between">
-        <h2 className="h3 text-ink">Your Appointments</h2>
+        <h2 className="h3 text-ink">{t("patient.dashboard.yourAppointments")}</h2>
         <Link
           href="/patient/book"
           className="rounded-full bg-crimson px-5 py-2.5 text-sm font-medium text-white hover:bg-crimson-deep"
@@ -236,7 +253,7 @@ function PatientDashboardContent() {
         <SkeletonRows rows={3} className="mt-6" />
       ) : appointments.length === 0 ? (
         <div className="mt-6 rounded-2xl border border-line/70 bg-mist/40 p-8 text-center">
-          <p className="text-sm text-ink-soft">No appointments yet.</p>
+          <p className="text-sm text-ink-soft">{t("patient.dashboard.none")}</p>
         </div>
       ) : (
         <div className="mt-6 space-y-3">
@@ -249,31 +266,35 @@ function PatientDashboardContent() {
                   <div>
                     <p className="font-medium text-ink">{a.service}</p>
                     <p className="text-sm text-ink-soft">
-                      {a.date} · {formatClinicTime(a.time)} · {a.mode}
-                      {a.doctorName && <span> · Dr. {a.doctorName.replace(/^Dr\.?\s*/i, "")}</span>}
+                      {a.date} · {formatClinicTime(a.time)} · {t(modeKey(a.mode))}
+                      {a.doctorName && (
+                        <span> · {t("role.drPrefix")} {a.doctorName.replace(/^Dr\.?\s*/i, "")}</span>
+                      )}
                     </p>
                   </div>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-medium capitalize ${statusStyles[a.status]}`}
                   >
-                    {a.status === "pending"
-                      ? "Awaiting call-back"
-                      : a.status === "awaiting-payment"
-                      ? "Confirm to book"
-                      : a.status}
+                    {a.status === "awaiting-payment"
+                      ? t("patient.dashboard.confirmToBook")
+                      : t(`status.${a.status}`)}
                   </span>
                 </div>
 
                 {a.status === "awaiting-payment" && (
                   <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
                     <p className="text-sm font-medium text-amber-900">
-                      Dr. {(a.doctorName ?? "").replace(/^Dr\.?\s*/i, "")} has held this
-                      time for you — PKR {a.amount}
+                      {t("patient.dashboard.holdNotice", {
+                        doctor: (a.doctorName ?? "").replace(/^Dr\.?\s*/i, ""),
+                        amount: a.amount,
+                      })}
                     </p>
                     <p className="mt-1 text-xs text-amber-800">
-                      {holdRemaining(a.paymentDueAt)
-                        ? `Confirm within ${holdRemaining(a.paymentDueAt)} or the time is released to other patients.`
-                        : "This hold has expired. Please book a new time."}
+                      {holdWords(a.paymentDueAt)
+                        ? t("patient.dashboard.holdCountdown", {
+                            time: holdWords(a.paymentDueAt) as string,
+                          })
+                        : t("patient.dashboard.holdExpired")}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <button
@@ -281,16 +302,16 @@ function PatientDashboardContent() {
                           setPayError(null);
                           setPayFor(a);
                         }}
-                        disabled={!holdRemaining(a.paymentDueAt)}
+                        disabled={!holdRemainingMs(a.paymentDueAt)}
                         className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo-deep disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        Confirm and pay
+                        {t("patient.dashboard.confirmAndPay")}
                       </button>
                       <button
                         onClick={() => handleDecline(a)}
                         className="rounded-full border border-line px-4 py-2 text-xs font-medium text-ink-soft transition-colors hover:text-crimson-deep"
                       >
-                        Not this time
+                        {t("patient.dashboard.notThisTime")}
                       </button>
                     </div>
                   </div>
@@ -307,12 +328,12 @@ function PatientDashboardContent() {
                       className="rounded-full bg-indigo px-4 py-2 text-xs font-medium text-white transition-colors hover:bg-indigo-deep disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {pendingId === a.id
-                        ? "Connecting…"
+                        ? t("video.connecting")
                         : a.mode === "video"
-                        ? "Join video call"
+                        ? t("video.joinVideo")
                         : a.mode === "audio"
-                        ? "Join audio call"
-                        : "Open secure chat"}
+                        ? t("video.joinAudio")
+                        : t("video.openChat")}
                     </button>
                   </div>
                 )}
@@ -322,7 +343,7 @@ function PatientDashboardContent() {
                     onClick={() => handleCancel(a)}
                     className="mt-3 text-xs font-medium text-ink-soft hover:text-crimson-deep"
                   >
-                    Cancel appointment
+                    {t("patient.dashboard.cancel")}
                   </button>
                 )}
 
@@ -340,13 +361,18 @@ function PatientDashboardContent() {
                     }}
                     className="mt-3 inline-block rounded-full border border-indigo px-4 py-2 text-xs font-medium text-indigo transition-colors hover:bg-indigo hover:text-white"
                   >
-                    Book this again
-                    {a.doctorName ? ` with Dr. ${a.doctorName.replace(/^Dr\.?\s*/i, "")}` : ""}
+                    {a.doctorName
+                      ? t("patient.dashboard.bookAgainWith", {
+                          doctor: a.doctorName.replace(/^Dr\.?\s*/i, ""),
+                        })
+                      : t("patient.dashboard.bookAgain")}
                   </Link>
                 )}
 
                 {a.status === "cancelled" && a.cancelReason && (
-                  <p className="mt-2 text-xs text-ink-soft">Reason: {a.cancelReason}</p>
+                  <p className="mt-2 text-xs text-ink-soft">
+                    {t("patient.dashboard.reason", { reason: a.cancelReason })}
+                  </p>
                 )}
 
                 <AppointmentHistory appointment={a} />
@@ -436,7 +462,7 @@ function PatientDashboardContent() {
         >
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t("common.close")}
             // Behind the sheet, not over it. Disabled while a gateway is
             // opening, because dismissing the sheet mid-handover leaves the
             // patient watching a page they can no longer cancel from.
@@ -447,12 +473,12 @@ function PatientDashboardContent() {
 
           <div className="relative z-10 max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl bg-paper p-6 shadow-2xl sm:max-w-md sm:rounded-3xl">
             <h2 id="pay-followup-title" className="text-lg font-semibold text-ink">
-              Confirm your appointment
+              {t("patient.dashboard.payTitle")}
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-ink-soft">
               {payFor.service}
               {payFor.date ? ` · ${payFor.date}` : ""}
-              {payFor.time ? ` at ${formatClinicTime(payFor.time)}` : ""}
+              {payFor.time ? ` · ${formatClinicTime(payFor.time)}` : ""}
             </p>
 
             {payError && (
@@ -477,7 +503,7 @@ function PatientDashboardContent() {
               onClick={() => setPayFor(null)}
               className="mt-4 w-full rounded-full border border-line px-4 py-2.5 text-sm font-medium text-ink-soft transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Not now
+              {t("patient.dashboard.notNow")}
             </button>
           </div>
         </Overlay>
