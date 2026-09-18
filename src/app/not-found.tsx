@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import VitalsLine from "@/components/VitalsLine";
+import { T } from "@/components/T";
 import { ArrowRightIcon, PhoneIcon } from "@/components/Icons";
 import { site } from "@/data/site";
 
@@ -36,27 +37,36 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-/** Where someone who hits a dead URL most likely meant to go. */
+/**
+ * Where someone who hits a dead URL most likely meant to go.
+ *
+ * Dictionary keys rather than literals — this sits at module scope, so <T>
+ * resolves them where each row is rendered. The labels reuse the keys the nav
+ * and the content pages already use, so a page renamed in one place does not
+ * keep its old name here.
+ */
 const ROUTES = [
-  { href: "/", label: "Home", hint: "Start again from the beginning" },
-  { href: "/conditions", label: "Conditions", hint: "What we treat, and how" },
-  { href: "/treatments", label: "Treatments", hint: "Every treatment, with prices" },
-  { href: "/patient/book", label: "Book an appointment", hint: "Pick a doctor and a time" },
-  { href: "/contact", label: "Contact & directions", hint: "Find us in Johar Town" },
-  { href: "/faq", label: "FAQ", hint: "Answers to the common questions" },
+  { href: "/", labelKey: "nav.home", hintKey: "notFound.hint.home" },
+  { href: "/conditions", labelKey: "nav.conditions", hintKey: "notFound.hint.conditions" },
+  { href: "/treatments", labelKey: "nav.treatments", hintKey: "notFound.hint.treatments" },
+  { href: "/patient/book", labelKey: "content.bookCta", hintKey: "notFound.hint.book" },
+  { href: "/contact", labelKey: "contact.title", hintKey: "notFound.hint.contact" },
+  { href: "/faq", labelKey: "nav.faq", hintKey: "notFound.hint.faq" },
 ];
 
 export default function NotFound() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-20 sm:py-28">
-      <p className="eyebrow text-indigo">Error 404</p>
-      <h1 className="mt-3 h1-hero">This page doesn&apos;t exist</h1>
+      <p className="eyebrow text-indigo">
+        <T k="notFound.eyebrow" />
+      </p>
+      <h1 className="mt-3 h1-hero">
+        <T k="notFound.title" />
+      </h1>
       <VitalsLine className="mt-5 h-3 w-40" color="var(--crimson)" />
 
       <p className="mt-6 max-w-lg text-base leading-relaxed text-ink-soft">
-        The link may be out of date, or the address may have a typo in it.
-        Nothing is wrong with your appointment or your account — this is just a
-        page that isn&apos;t here.
+        <T k="notFound.body" />
       </p>
 
       <div className="mt-12 grid gap-3 sm:grid-cols-2">
@@ -68,9 +78,11 @@ export default function NotFound() {
           >
             <span>
               <span className="block font-medium text-ink group-hover:text-indigo-deep">
-                {route.label}
+                <T k={route.labelKey} />
               </span>
-              <span className="mt-0.5 block text-sm text-ink-soft">{route.hint}</span>
+              <span className="mt-0.5 block text-sm text-ink-soft">
+                <T k={route.hintKey} />
+              </span>
             </span>
             <ArrowRightIcon className="h-4 w-4 shrink-0 text-indigo transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
@@ -79,7 +91,7 @@ export default function NotFound() {
 
       <p className="mt-12 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
         <PhoneIcon className="h-4 w-4 text-indigo" />
-        Or call the clinic on
+        <T k="notFound.callUs" />
         <a
           href={`tel:${site.phoneE164}`}
           className="numeric font-medium text-indigo transition-colors hover:text-indigo-deep"

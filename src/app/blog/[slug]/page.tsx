@@ -5,6 +5,8 @@ import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { pageMetadata, blogPostingSchema, breadcrumbSchema } from "@/lib/seo";
 import type { BlogPost } from "@/types";
 
@@ -88,11 +90,13 @@ export default async function BlogDetailPage({
       />
 
       <Link href="/blog" className="text-sm text-indigo hover:text-indigo-deep">
-        ← Back to blog
+        ← <T k="blog.back" />
       </Link>
 
       <p className="eyebrow mt-6 text-indigo">{post.authorName}</p>
-      <h1 className="mt-3 h1-hero">{post.title}</h1>
+      <h1 className="mt-3 h1-hero">
+        <Bilingual en={post.title} ur={post.titleUr} />
+      </h1>
       <VitalsLine className="mt-5 h-3 w-40" />
       <time dateTime={post.createdAt} className="mt-4 block text-sm text-ink-soft">
         {formatDate(post.createdAt)}
@@ -114,20 +118,24 @@ export default async function BlogDetailPage({
         </div>
       )}
 
-      <div className="prose prose-neutral mt-8 max-w-none whitespace-pre-line text-ink-soft">
-        {post.content}
-      </div>
+      <Bilingual
+        en={post.content}
+        ur={post.contentUr}
+        className="prose prose-neutral mt-8 block max-w-none whitespace-pre-line text-ink-soft"
+      />
 
       <aside className="mt-14 rounded-2xl bg-mist/60 p-6 sm:p-8">
-        <p className="h3 text-ink">Have a question about this?</p>
+        <p className="h3 text-ink">
+          <T k="blog.question.title" />
+        </p>
         <p className="mt-2 text-sm text-ink-soft">
-          Book a consultation with our team — in the clinic in Lahore, or online.
+          <T k="blog.question.body" />
         </p>
         <Link
           href="/patient/book"
           className="mt-5 inline-block rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
-          Book Appointment
+          <T k="content.bookCta" />
         </Link>
       </aside>
     </article>

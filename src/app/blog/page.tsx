@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 import type { BlogPost } from "@/types";
 
@@ -79,16 +81,21 @@ export default async function BlogListPage() {
         ]}
       />
 
-      <p className="eyebrow text-indigo">Health &amp; wellness</p>
-      <h1 className="mt-3 h1-hero">Blog</h1>
+      <p className="eyebrow text-indigo">
+        <T k="home.posts.eyebrow" />
+      </p>
+      <h1 className="mt-3 h1-hero">
+        <T k="nav.blog" />
+      </h1>
       <VitalsLine className="mt-5 h-3 w-40" />
       <p className="mt-5 max-w-lg text-ink-soft">
-        Plain-language notes on mental wellbeing, ketamine therapy and skin care from
-        the team at TLC Med Clinics.
+        <T k="blog.lede" />
       </p>
 
       {posts.length === 0 ? (
-        <p className="mt-10 text-sm text-ink-soft">No posts published yet — check back soon.</p>
+        <p className="mt-10 text-sm text-ink-soft">
+          <T k="blog.empty" />
+        </p>
       ) : (
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {posts.map((post, i) => (
@@ -112,10 +119,14 @@ export default async function BlogListPage() {
               <div className="p-5">
                 {/* h2, not a styled paragraph — the heading outline is how a
                     crawler works out that these are the page's articles. */}
-                <h2 className="h4 text-ink">{post.title}</h2>
-                <p className="mt-2 text-sm leading-relaxed text-ink-soft line-clamp-2">
-                  {post.excerpt}
-                </p>
+                <h2 className="h4 text-ink">
+                  <Bilingual en={post.title} ur={post.titleUr} />
+                </h2>
+                <Bilingual
+                  en={post.excerpt}
+                  ur={post.excerptUr}
+                  className="mt-2 block text-sm leading-relaxed text-ink-soft line-clamp-2"
+                />
                 <time dateTime={post.createdAt} className="mt-3 block text-xs text-ink-soft/70">
                   {formatDate(post.createdAt)}
                 </time>

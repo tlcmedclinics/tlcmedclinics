@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import SiteImage from "@/components/SiteImage";
 import VitalsLine from "@/components/VitalsLine";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { AwardIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/Icons";
 import { doctorBySlug, doctorContact, doctors } from "@/data/doctors";
 import { images } from "@/data/images";
@@ -52,31 +54,44 @@ export default async function DoctorProfilePage({
   const doctor = doctorBySlug(slug);
   if (!doctor) notFound();
 
-  const details: { Icon: typeof PhoneIcon; label: string; value: string; href?: string }[] = [
+  // `labelKey` is resolved by <T> at render time, and `valueUr` by <Bilingual>:
+  // this is a server component, so neither can be picked here. A row with no
+  // `valueUr` — the phone number, the email address — reads the same in both
+  // languages and is rendered as it stands.
+  const details: {
+    Icon: typeof PhoneIcon;
+    labelKey: string;
+    value: string;
+    valueUr?: string;
+    href?: string;
+  }[] = [
     {
       Icon: AwardIcon,
-      label: "Speciality",
+      labelKey: "doctorProfile.speciality",
       value: doctor.speciality,
+      valueUr: doctor.specialityUr,
     },
     {
       Icon: ClockIcon,
-      label: "Degree",
+      labelKey: "doctorProfile.degree",
       value: doctor.degree,
+      valueUr: doctor.degreeUr,
     },
     {
       Icon: MapPinIcon,
-      label: "Address",
+      labelKey: "contact.label.address",
       value: doctorContact.address,
+      valueUr: doctorContact.addressUr,
     },
     {
       Icon: PhoneIcon,
-      label: "Phone",
+      labelKey: "contact.label.phone",
       value: doctorContact.phone,
       href: `tel:${doctorContact.phoneE164}`,
     },
     {
       Icon: MailIcon,
-      label: "Email",
+      labelKey: "contact.label.email",
       value: doctorContact.email,
       href: `mailto:${doctorContact.email}`,
     },
@@ -115,7 +130,7 @@ export default async function DoctorProfilePage({
         href="/about/our-doctors"
         className="text-sm font-medium text-indigo transition-colors hover:text-indigo-deep"
       >
-        ← Our doctors
+        ← <T k="doctorProfile.back" />
       </Link>
 
       {/* 14rem, at 4:5. A profile is read for what it says; the photograph is
@@ -134,39 +149,58 @@ export default async function DoctorProfilePage({
             />
           </div>
 
+          {/* The name goes in as it is written, in both languages — the same
+              way the home page passes the doctor's name into its Urdu copy. A
+              physician's name is not translated. */}
           <Link href="/patient/book" className="btn-indigo mt-5 block w-full text-center">
-            Book with {doctor.name.split(" ").slice(0, 2).join(" ")}
+            <T
+              k="doctorProfile.bookWith"
+              vars={{ name: doctor.name.split(" ").slice(0, 2).join(" ") }}
+            />
           </Link>
         </div>
 
         <div>
-          <p className="eyebrow text-indigo">{doctor.title}</p>
-          <h1 className="mt-3 h1-hero">{doctor.name}</h1>
+          <p className="eyebrow text-indigo">
+            <Bilingual en={doctor.title} ur={doctor.titleUr} />
+          </p>
+          <h1 className="mt-3 h1-hero">
+            <Bilingual en={doctor.name} ur={doctor.nameUr} />
+          </h1>
+          {/* Credentials stay as written — see the note on the field. */}
           <p className="numeric mt-2 text-sm uppercase tracking-wider text-ink-soft">
             {doctor.credentials}
           </p>
           <VitalsLine className="mt-5 h-3 w-40" />
 
-          <p className="mt-6 max-w-2xl text-base leading-relaxed text-ink-soft">
-            {doctor.summary}
-          </p>
+          <Bilingual
+            en={doctor.summary}
+            ur={doctor.summaryUr}
+            className="mt-6 block max-w-2xl text-base leading-relaxed text-ink-soft"
+          />
 
+          {/* Mapped over the English list with the Urdu line beside it, rather
+              than BilingualList, so the clinic's own bullet and award-icon
+              styling is kept. The two arrays are written as a pair in
+              data/doctors.ts and stay the same length. */}
           <ul className="mt-8 space-y-3.5">
-            {doctor.highlights.map((line) => (
+            {doctor.highlights.map((line, i) => (
               <li key={line} className="flex gap-3 text-[0.95rem] leading-relaxed text-ink-soft">
                 <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-                <span>{line}</span>
+                <Bilingual en={line} ur={doctor.highlightsUr[i]} />
               </li>
             ))}
           </ul>
 
           <div className="mt-10 rounded-2xl border border-line bg-paper-dim/40 p-6">
-            <p className="text-sm font-semibold text-ink">Certifications</p>
+            <p className="text-sm font-semibold text-ink">
+              <T k="doctorProfile.certifications" />
+            </p>
             <ul className="mt-3 space-y-2.5">
-              {doctor.certifications.map((line) => (
+              {doctor.certifications.map((line, i) => (
                 <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
                   <AwardIcon className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
-                  <span>{line}</span>
+                  <Bilingual en={line} ur={doctor.certificationsUr[i]} />
                 </li>
               ))}
             </ul>
@@ -176,18 +210,20 @@ export default async function DoctorProfilePage({
               reference information someone scans for one line of, and five
               cards would make the scan longer than the content. */}
           <div className="mt-10">
-            <p className="eyebrow text-ink-soft/80">Profile details</p>
+            <p className="eyebrow text-ink-soft/80">
+              <T k="doctorProfile.details" />
+            </p>
             <dl className="mt-4 overflow-hidden rounded-2xl border border-line">
-              {details.map(({ Icon, label, value, href }, i) => (
+              {details.map(({ Icon, labelKey, value, valueUr, href }, i) => (
                 <div
-                  key={label}
+                  key={labelKey}
                   className={`flex flex-wrap items-start gap-x-4 gap-y-1 px-5 py-3.5 ${
                     i > 0 ? "border-t border-line/70" : ""
                   }`}
                 >
                   <dt className="flex min-w-[7.5rem] items-center gap-2 text-sm text-ink-soft">
                     <Icon className="h-4 w-4 shrink-0 text-indigo" />
-                    {label}
+                    <T k={labelKey} />
                   </dt>
                   <dd className="flex-1 text-sm text-ink">
                     {href ? (
@@ -195,7 +231,7 @@ export default async function DoctorProfilePage({
                         {value}
                       </a>
                     ) : (
-                      value
+                      <Bilingual en={value} ur={valueUr} />
                     )}
                   </dd>
                 </div>
@@ -205,10 +241,10 @@ export default async function DoctorProfilePage({
 
           <div className="mt-10 flex flex-wrap gap-3">
             <Link href="/patient/book" className="btn-indigo !px-7 !py-3.5">
-              Book an appointment
+              <T k="content.bookCta" />
             </Link>
             <a href={`tel:${doctorContact.phoneE164}`} className="btn-outline !px-7 !py-3.5">
-              Call the clinic
+              <T k="contact.call" />
             </a>
           </div>
         </div>

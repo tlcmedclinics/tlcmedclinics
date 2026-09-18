@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { site } from "@/data/site";
 import VitalsLine from "@/components/VitalsLine";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import type { LegalDoc } from "@/data/legal";
 
 /**
@@ -27,20 +29,27 @@ export default function LegalDocument({
   return (
     <div className="mx-auto max-w-6xl px-6 py-14">
       <header className="max-w-3xl">
-        <p className="eyebrow text-indigo">Legal</p>
+        <p className="eyebrow text-indigo">
+          <T k="legal.eyebrow" />
+        </p>
+        {/* The document itself stays in English, in both languages: it is the
+            text the clinic's lawyer wrote and the one that governs. Only the
+            furniture around it is translated. */}
         <h1 className="mt-3 h1-hero">{doc.title}</h1>
         <VitalsLine className="mt-5 h-3 w-40" />
         <p className="lede mt-5">{doc.summary}</p>
         {note && <div className="mt-5">{note}</div>}
         <p className="mt-5 text-xs text-ink-soft">
-          Last revised <span className="numeric">{doc.lastRevised}</span>
+          <T k="legal.lastRevised" /> <span className="numeric">{doc.lastRevised}</span>
         </p>
       </header>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-[16rem_1fr] lg:items-start">
         {/* Contents. Ordered, because a legal document's order is part of it. */}
         <nav aria-label="Contents" className="lg:sticky lg:top-24">
-          <p className="eyebrow text-ink-soft/80">On this page</p>
+          <p className="eyebrow text-ink-soft/80">
+            <T k="legal.onThisPage" />
+          </p>
           <ol className="mt-4 space-y-1.5">
             {doc.sections.map((section, i) => (
               <li key={section.id} className="flex gap-2.5 text-sm leading-snug">
@@ -122,7 +131,9 @@ export default function LegalDocument({
               inside the prose — the document's own copy carried a mistyped
               address, and one source of truth for this is site.ts. */}
           <div className="mt-12 rounded-2xl border border-line bg-paper-dim/40 p-6">
-            <p className="text-sm font-semibold text-ink">Questions about this document?</p>
+            <p className="text-sm font-semibold text-ink">
+              <T k="legal.questions" />
+            </p>
             <ul className="mt-3 space-y-1.5 text-sm text-ink-soft">
               <li>
                 <a
@@ -140,10 +151,12 @@ export default function LegalDocument({
                   {site.phone}
                 </a>
               </li>
-              <li>{site.address}</li>
+              <li>
+                <Bilingual en={site.address} ur={site.addressUr} />
+              </li>
             </ul>
             <Link href="/contact" className="btn-outline btn-sm mt-5 inline-block">
-              Contact the clinic
+              <T k="legal.contactClinic" />
             </Link>
           </div>
         </article>

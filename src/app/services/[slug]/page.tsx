@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
 import { pageMetadata, serviceSchema, breadcrumbSchema } from "@/lib/seo";
 import type { Service } from "@/types";
 
@@ -131,7 +132,7 @@ export default async function ServiceDetailPage({
       />
 
       <Link href="/services" className="text-sm text-indigo hover:text-indigo-deep">
-        ← All services
+        ← <T k="services.allServices" />
       </Link>
 
       {service.category && (
@@ -151,14 +152,23 @@ export default async function ServiceDetailPage({
       )}
       {typeof service.price === "number" && (
         <p className="mt-4 font-mono text-sm text-ink">
-          Starting from <span className="text-indigo-deep">PKR {service.price.toLocaleString()}</span>
+          {/* One string rather than a label plus a figure: Urdu puts the amount
+              before the words, so the two halves cannot be styled separately
+              without the sentence coming out backwards. */}
+          <T
+            k="services.startingFrom"
+            className="text-indigo-deep"
+            vars={{ price: service.price.toLocaleString("en") }}
+          />
         </p>
       )}
 
       <div className="mt-10 grid gap-8 sm:grid-cols-2">
         {service.points.length > 0 && (
           <div>
-            <h2 className="h4 text-indigo-deep">Good to know</h2>
+            <h2 className="h4 text-indigo-deep">
+              <T k="services.goodToKnow" />
+            </h2>
             <BilingualList
               en={service.points}
               ur={service.pointsUr}
@@ -170,7 +180,9 @@ export default async function ServiceDetailPage({
 
         {service.treatments.length > 0 && (
           <div>
-            <h2 className="h4 text-indigo-deep">Treatments offered</h2>
+            <h2 className="h4 text-indigo-deep">
+              <T k="services.treatmentsOffered" />
+            </h2>
             <BilingualList
               en={service.treatments}
               ur={service.treatmentsUr}
@@ -182,32 +194,44 @@ export default async function ServiceDetailPage({
       </div>
 
       <div className="mt-12 rounded-2xl bg-mist/60 p-6 sm:p-8">
-        <p className="h3 text-ink">Ready to book {service.name}?</p>
+        {/* The treatment's own name goes in as written — a service is looked up
+            and booked under one name, so it is not re-worded per language. */}
+        <p className="h3 text-ink">
+          <T k="services.readyToBook" vars={{ name: service.name }} />
+        </p>
         <p className="mt-2 text-sm text-ink-soft">
           {typeof service.price === "number" ? (
             <>
-              <span className="numeric font-medium text-ink">
-                PKR {service.price.toLocaleString()}
-              </span>
+              <T
+                k="services.priceAmount"
+                className="numeric font-medium text-ink"
+                vars={{ price: service.price.toLocaleString("en") }}
+              />
               {typeof service.advancePayment === "number" &&
                 service.advancePayment < service.price && (
                   <>
                     {" · "}
-                    <span className="numeric">
-                      PKR {service.advancePayment.toLocaleString()}
-                    </span>{" "}
-                    to hold the appointment, balance at the clinic
+                    {/* No `numeric` here: the class is for figures, and this
+                        line is mostly words. */}
+                    <T
+                      k="services.advanceNote"
+                      vars={{ price: service.advancePayment.toLocaleString("en") }}
+                    />
                   </>
                 )}
               {typeof service.durationMinutes === "number" && service.durationMinutes > 0 && (
                 <>
                   {" · "}
-                  <span className="numeric">{service.durationMinutes} minutes</span>
+                  <T
+                    k="services.durationMinutes"
+                    className="numeric"
+                    vars={{ count: service.durationMinutes }}
+                  />
                 </>
               )}
             </>
           ) : (
-            <>Book a consultation and we&apos;ll walk you through what to expect.</>
+            <T k="services.noPriceFallback" />
           )}
         </p>
         {/* Carries the slug, so the booking page opens with this treatment
@@ -218,14 +242,14 @@ export default async function ServiceDetailPage({
           href={`/patient/book?service=${encodeURIComponent(service.slug)}`}
           className="mt-5 inline-block rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
-          Book this appointment
+          <T k="services.bookThis" />
         </Link>
       </div>
 
       {related.length > 0 && (
         <div className="mt-14">
           <h2 className="h4 text-indigo-deep">
-            Related in {service.category}
+            <T k="services.relatedIn" vars={{ category: service.category }} />
           </h2>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             {related.map((s) => (
@@ -234,7 +258,7 @@ export default async function ServiceDetailPage({
                 href={`/services/${s.slug}`}
                 className="rounded-xl border border-line/70 px-4 py-3.5 text-sm text-ink transition-colors hover:border-indigo/40 hover:text-indigo-deep"
               >
-                {s.name}
+                <Bilingual en={s.name} ur={s.nameUr} />
               </Link>
             ))}
           </div>

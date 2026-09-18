@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/contexts/ToastContext";
+import { useT } from "@/contexts/LanguageContext";
 import { readApiError } from "@/lib/api-error";
 import { site } from "@/data/site";
 
@@ -19,6 +20,7 @@ import { site } from "@/data/site";
  */
 export default function ContactForm() {
   const toast = useToast();
+  const t = useT();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
@@ -49,14 +51,14 @@ export default function ContactForm() {
       });
 
       if (!res.ok) {
-        toast.error(await readApiError(res, "Your message could not be sent."));
+        toast.error(await readApiError(res, t("contact.form.sendFailed")));
         return;
       }
 
       setSent(true);
     } catch {
       // Offline, or the request never reached the server.
-      toast.error("No connection — please check your internet and try again.");
+      toast.error(t("common.offline"));
     } finally {
       setBusy(false);
     }
@@ -65,15 +67,18 @@ export default function ContactForm() {
   if (sent) {
     return (
       <div className="rounded-2xl border border-line bg-paper-dim/50 p-6">
-        <p className="font-semibold text-ink">Thank you — your message is with us.</p>
+        <p className="font-semibold text-ink">{t("contact.form.sentTitle")}</p>
+        {/* The address sits inside the sentence as a placeholder rather than in
+            a span of its own: Urdu puts it in a different position, and two
+            fragments either side of it only line up in English. */}
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          We reply to{" "}
-          <span className="font-medium text-ink">{email}</span> within one
-          business day. If it is urgent, please call us on{" "}
+          {t("contact.form.sentBody", { email })}
+        </p>
+        <p className="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          {t("contact.form.sentUrgent")}{" "}
           <a href={`tel:${site.phoneE164}`} className="numeric font-medium text-indigo hover:underline">
             {site.phone}
           </a>
-          .
         </p>
         <button
           type="button"
@@ -83,7 +88,7 @@ export default function ContactForm() {
           }}
           className="btn-outline btn-sm mt-5"
         >
-          Send another message
+          {t("contact.form.sendAnother")}
         </button>
       </div>
     );
@@ -94,22 +99,20 @@ export default function ContactForm() {
       onSubmit={handleSubmit}
       className="relative rounded-2xl border border-line bg-paper p-6"
     >
-      <p className="font-semibold text-ink">Send us a message</p>
-      <p className="mt-1.5 text-sm text-ink-soft">
-        Ask us anything — fees, timings, whether a treatment is right for you.
-      </p>
+      <p className="font-semibold text-ink">{t("contact.form.title")}</p>
+      <p className="mt-1.5 text-sm text-ink-soft">{t("contact.form.lede")}</p>
 
       {/* Honeypot. Off-screen rather than display:none, which some bots check
           for, and taken out of the tab order so no keyboard user lands in it. */}
       <div aria-hidden className="absolute left-[-9999px] h-0 w-0 overflow-hidden">
-        <label htmlFor="website">Leave this field empty</label>
+        <label htmlFor="website">{t("contact.form.honeypot")}</label>
         <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
 
       <div className="mt-5 space-y-4">
         <div className="field">
           <label className="label" htmlFor="contact-email">
-            Email
+            {t("contact.label.email")}
           </label>
           <input
             id="contact-email"
@@ -125,7 +128,10 @@ export default function ContactForm() {
 
         <div className="field">
           <label className="label" htmlFor="contact-name">
-            Name <span className="font-normal text-ink-soft/70">(optional)</span>
+            {t("contact.form.name")}{" "}
+            <span className="font-normal text-ink-soft/70">
+              ({t("common.optional")})
+            </span>
           </label>
           <input
             id="contact-name"
@@ -133,14 +139,14 @@ export default function ContactForm() {
             autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="How should we address you?"
+            placeholder={t("contact.form.namePlaceholder")}
             className="input"
           />
         </div>
 
         <div className="field">
           <label className="label" htmlFor="contact-message">
-            Message
+            {t("contact.form.message")}
           </label>
           <textarea
             id="contact-message"
@@ -150,23 +156,19 @@ export default function ContactForm() {
             rows={5}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Tell us what you would like to know."
+            placeholder={t("contact.form.messagePlaceholder")}
             className="input resize-none"
           />
-          <p className="field-hint">
-            Please do not include medical details you would not want in an
-            email — we will take those in the consultation.
-          </p>
+          <p className="field-hint">{t("contact.form.privacy")}</p>
         </div>
       </div>
 
       <button type="submit" disabled={busy} className="btn-indigo mt-5 w-full !py-3">
-        {busy ? "Sending…" : "Send message"}
+        {busy ? t("contact.form.sending") : t("contact.form.submit")}
       </button>
 
       <p className="mt-3 text-center text-xs text-ink-soft/80">
-        Goes straight to{" "}
-        <span className="font-medium text-ink-soft">{site.email}</span>.
+        {t("contact.form.goesTo", { email: site.email })}
       </p>
     </form>
   );

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { adminDb } from "@/lib/firebase/admin";
 import type { Service } from "@/types";
 import VitalsLine from "./VitalsLine";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { ArrowRightIcon, BrainIcon, SparkleIcon, StethoscopeIcon } from "@/components/Icons";
 import type { IconProps } from "@/components/Icons";
 
@@ -16,22 +18,27 @@ import type { IconProps } from "@/components/Icons";
  * behind it, so the depth is visible without being spelled out.
  */
 
-/** Keyed by the category names on the Service documents in Firestore. */
+/**
+ * Keyed by the category names on the Service documents in Firestore.
+ *
+ * The blurbs are dictionary keys, and deliberately the same ones CareAreas
+ * uses: the home page says these three sentences twice, and two copies of a
+ * sentence is two things to translate and one of them to forget.
+ */
 const CATEGORY_META: Record<
   string,
-  { blurb: string; Icon: (props: IconProps) => ReactElement }
+  { blurbKey: string; Icon: (props: IconProps) => ReactElement }
 > = {
   Diagnosis: {
-    blurb: "A proper evaluation first — a treatment plan built on a real diagnosis.",
+    blurbKey: "home.care.diagnosis.blurb",
     Icon: StethoscopeIcon,
   },
   "Mental Health": {
-    blurb:
-      "Psychiatry, therapy and ketamine treatment, led by a U.S. board certified physician.",
+    blurbKey: "home.care.health.blurb",
     Icon: BrainIcon,
   },
   "Skin & Aesthetics": {
-    blurb: "Botox, fillers, PRP and micro-needling — conservative, natural-looking results.",
+    blurbKey: "home.care.skin.blurb",
     Icon: SparkleIcon,
   },
 };
@@ -77,15 +84,19 @@ export default async function ServicesOverview() {
     <section className="mx-auto max-w-6xl px-6 py-20">
       <div className="flex flex-wrap items-end justify-between gap-6">
         <div>
-          <p className="eyebrow text-indigo">What we treat</p>
-          <h2 className="mt-3 h1 sm:text-4xl">Our Services</h2>
+          <p className="eyebrow text-indigo">
+            <T k="services.eyebrow" />
+          </p>
+          <h2 className="mt-3 h1 sm:text-4xl">
+            <T k="services.ourServices" />
+          </h2>
           <VitalsLine className="mt-5 h-3 w-32" color="var(--crimson)" />
         </div>
         <Link
           href="/services"
           className="group hidden shrink-0 items-center gap-1.5 text-sm font-medium text-indigo hover:text-indigo-deep sm:flex"
         >
-          View all services
+          <T k="services.viewAll" />
           <ArrowRightIcon className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
         </Link>
       </div>
@@ -116,7 +127,7 @@ export default async function ServicesOverview() {
 
               <h3 className="mt-5 h3 text-indigo-deep">{category}</h3>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                {meta?.blurb ?? "Personalised, physician-led care."}
+                <T k={meta?.blurbKey ?? "home.care.fallbackBlurb"} />
               </p>
 
               {featured && (
@@ -124,17 +135,24 @@ export default async function ServicesOverview() {
                   href={`/services/${featured.slug}`}
                   className="group mt-6 block rounded-xl border border-line/70 bg-paper px-4 py-4 transition-colors hover:border-indigo/40"
                 >
-                  <span className="block text-sm font-medium text-ink group-hover:text-indigo-deep">
-                    {featured.name}
-                  </span>
+                  <Bilingual
+                    en={featured.name}
+                    ur={featured.nameUr}
+                    className="block text-sm font-medium text-ink group-hover:text-indigo-deep"
+                  />
                   {featured.short && (
-                    <span className="mt-1 block text-xs leading-snug text-ink-soft">
-                      {featured.short}
-                    </span>
+                    <Bilingual
+                      en={featured.short}
+                      ur={featured.shortUr}
+                      className="mt-1 block text-xs leading-snug text-ink-soft"
+                    />
                   )}
                   {typeof featured.price === "number" && (
                     <span className="numeric mt-2 block text-xs text-ink-soft">
-                      From PKR {featured.price.toLocaleString()}
+                      <T
+                        k="home.care.fromPrice"
+                        vars={{ price: featured.price.toLocaleString("en") }}
+                      />
                     </span>
                   )}
                 </Link>
@@ -148,10 +166,12 @@ export default async function ServicesOverview() {
               >
                 {others > 0 ? (
                   <span>
-                    <span className="numeric">{others}</span> more in {category}
+                    <T k="services.moreIn" vars={{ count: others, category }} />
                   </span>
                 ) : (
-                  <span>See {category}</span>
+                  <span>
+                    <T k="home.care.seeCategory" vars={{ category }} />
+                  </span>
                 )}
                 <ArrowRightIcon className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
@@ -164,7 +184,7 @@ export default async function ServicesOverview() {
         href="/services"
         className="mt-10 inline-block text-sm font-medium text-indigo hover:text-indigo-deep sm:hidden"
       >
-        View all services →
+        <T k="services.viewAll" /> →
       </Link>
     </section>
   );

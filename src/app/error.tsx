@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { useT } from "@/contexts/LanguageContext";
 
 /**
  * What a visitor sees when a page throws on the server.
@@ -34,6 +35,8 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useT();
+
   useEffect(() => {
     // The digest is the only handle on the real stack trace, which Next keeps
     // on the server and never sends to the browser. Without it in the console,
@@ -43,11 +46,10 @@ export default function Error({
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">
-      <p className="eyebrow text-crimson">Something went wrong</p>
-      <h1 className="mt-3 h1">This page didn&apos;t load.</h1>
+      <p className="eyebrow text-crimson">{t("errorPage.eyebrow")}</p>
+      <h1 className="mt-3 h1">{t("errorPage.title")}</h1>
       <p className="mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
-        The problem is at our end, not yours. Trying again usually works — most
-        of these clear on their own within a moment.
+        {t("errorPage.body")}
       </p>
 
       <div className="mt-8 flex flex-wrap items-center gap-4">
@@ -56,33 +58,33 @@ export default function Error({
           onClick={reset}
           className="rounded-full bg-indigo px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-indigo-deep"
         >
-          Try again
+          {t("common.retry")}
         </button>
         <Link
           href="/"
           className="rounded-full border border-line px-6 py-3 text-sm font-medium text-ink transition-colors hover:border-indigo/40 hover:text-indigo-deep"
         >
-          Go to the home page
+          {t("errorPage.goHome")}
         </Link>
       </div>
 
       <div className="mt-10 rounded-2xl border border-line/70 bg-paper-dim/40 p-6">
-        <p className="text-sm font-medium text-ink">Need us now?</p>
+        <p className="text-sm font-medium text-ink">{t("errorPage.needUsNow")}</p>
         <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-          Call the clinic on{" "}
+          {t("errorPage.callOn")}{" "}
           <a
             href="tel:+923100404444"
             className="numeric font-medium text-indigo hover:text-indigo-deep"
           >
             +92 310 040 4444
           </a>{" "}
-          — Monday to Saturday, 11:00 AM – 2:00 PM and 4:00 PM – 8:00 PM.
+          — {t("errorPage.hours")}
         </p>
       </div>
 
       {error.digest && (
         <p className="numeric mt-8 text-xs text-ink-soft">
-          Reference: {error.digest}
+          {t("errorPage.reference", { digest: error.digest })}
         </p>
       )}
     </div>

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { adminDb } from "@/lib/firebase/admin";
 import VitalsLine from "@/components/VitalsLine";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
 import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 import type { Service } from "@/types";
 
@@ -71,17 +72,20 @@ export default async function ServicesPage() {
         ]}
       />
 
-      <p className="eyebrow text-indigo">What we treat</p>
-      <h1 className="mt-3 h1-hero">Services</h1>
+      <p className="eyebrow text-indigo">
+        <T k="services.eyebrow" />
+      </p>
+      <h1 className="mt-3 h1-hero">
+        <T k="nav.services" />
+      </h1>
       <VitalsLine className="mt-5 h-3 w-40" />
       <p className="mt-5 max-w-lg text-ink-soft">
-        Every plan starts with a proper diagnosis. Choose a category below to see
-        conditions we treat and how.
+        <T k="services.lede" />
       </p>
 
       {services.length === 0 ? (
         <p className="mt-14 text-sm text-ink-soft">
-          Services are being updated — please check back shortly, or call the clinic.
+          <T k="services.empty" />
         </p>
       ) : (
         <div className="mt-14 space-y-16">
@@ -110,11 +114,14 @@ export default async function ServicesPage() {
                       />
                       {typeof s.price === "number" && (
                         <p className="mt-3 font-mono text-xs text-ink-soft">
-                          From PKR {s.price.toLocaleString()}
+                          <T
+                            k="home.care.fromPrice"
+                            vars={{ price: s.price.toLocaleString("en") }}
+                          />
                         </p>
                       )}
                       <span className="mt-4 inline-block text-sm font-medium text-indigo">
-                        Learn more →
+                        <T k="services.learnMore" /> →
                       </span>
                     </Link>
                   ))}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import LegalDocument from "@/components/LegalDocument";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
 import { refundDoc } from "@/data/legal";
 import { pageMetadata, breadcrumbSchema } from "@/lib/seo";
 
@@ -39,12 +40,14 @@ export default function RefundPolicyPage() {
         doc={refundDoc}
         note={
           <p className="rounded-2xl border border-line bg-paper-dim/50 px-5 py-4 text-sm leading-relaxed text-ink-soft">
-            This policy is part of our{" "}
+            {/* Split around the link rather than carrying it in a placeholder:
+                the sentence runs the same way in both languages — words, link,
+                words — so each half translates on its own. */}
+            <T k="legal.refundNoteA" />{" "}
             <Link href="/terms" className="font-medium text-indigo hover:text-indigo-deep">
-              Terms of Service
+              <T k="legal.termsOfService" />
             </Link>
-            , not a separate agreement. It is repeated here on its own page so
-            you can find it without reading the whole document.
+            <T k="legal.refundNoteB" />
           </p>
         }
       />

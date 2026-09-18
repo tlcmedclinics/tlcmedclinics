@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import LegalDocument from "@/components/LegalDocument";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
 import { privacyDoc } from "@/data/legal";
 import { pageMetadata, breadcrumbSchema } from "@/lib/seo";
 
@@ -41,13 +42,11 @@ export default function PrivacyPage() {
         doc={privacyDoc}
         note={
           <p className="rounded-2xl border border-line bg-paper-dim/50 px-5 py-4 text-sm leading-relaxed text-ink-soft">
-            These practices are part of our{" "}
+            <T k="legal.privacyNoteA" />{" "}
             <Link href="/terms" className="font-medium text-indigo hover:text-indigo-deep">
-              Terms of Service
+              <T k="legal.termsOfService" />
             </Link>
-            , not a separate agreement. The sections below are the ones that
-            govern your personal and health information; the full document
-            contains them along with everything else you agree to.
+            <T k="legal.privacyNoteB" />
           </p>
         }
       />

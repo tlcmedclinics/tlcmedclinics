@@ -4,6 +4,8 @@ import { site } from "@/data/site";
 import VitalsLine from "@/components/VitalsLine";
 import ContactForm from "@/components/ContactForm";
 import JsonLd from "@/components/JsonLd";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon } from "@/components/Icons";
 import { pageMetadata, breadcrumbSchema, absoluteUrl } from "@/lib/seo";
 
@@ -29,17 +31,20 @@ const MAP_QUERY = encodeURIComponent(`${site.name}, ${site.address}`);
 const MAP_SRC = `https://www.google.com/maps?q=${MAP_QUERY}&output=embed`;
 const MAP_LINK = `https://www.google.com/maps/search/?api=1&query=${MAP_QUERY}`;
 
+// `labelKey` rather than a literal, the same way navLinks does it: this array
+// lives at module scope, where there is no hook to call, so the label is
+// resolved by <T> at the point it is rendered.
 const DETAILS = [
   {
     Icon: PhoneIcon,
-    label: "Phone",
+    labelKey: "contact.label.phone",
     value: site.phone,
     href: `tel:${site.phoneE164}`,
     numeric: true,
   },
   {
     Icon: MailIcon,
-    label: "Email",
+    labelKey: "contact.label.email",
     value: site.email,
     href: `mailto:${site.email}`,
     numeric: false,
@@ -67,12 +72,15 @@ export default function ContactPage() {
 
       <div className="grid gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
         <div>
-          <p className="eyebrow text-indigo">Get in touch</p>
-          <h1 className="mt-3 h1-hero">Contact &amp; Directions</h1>
+          <p className="eyebrow text-indigo">
+            <T k="contact.eyebrow" />
+          </p>
+          <h1 className="mt-3 h1-hero">
+            <T k="contact.title" />
+          </h1>
           <VitalsLine className="mt-5 h-3 w-40" />
           <p className="mt-5 max-w-sm text-ink-soft">
-            We are in Johar Town, next to Doctors Hospital. Call us, or book your
-            appointment online and pick your own doctor and time.
+            <T k="contact.lede" />
           </p>
 
           {/* Booking lives in one place — the booking flow, where a patient can
@@ -80,10 +88,10 @@ export default function ContactPage() {
               different thing: a question, not an appointment. */}
           <div className="mt-7 flex flex-wrap gap-3">
             <Link href="/patient/book" className="btn-indigo !px-7 !py-3.5">
-              Book an appointment
+              <T k="content.bookCta" />
             </Link>
             <a href={`tel:${site.phoneE164}`} className="btn-outline !px-7 !py-3.5">
-              Call the clinic
+              <T k="contact.call" />
             </a>
           </div>
 
@@ -91,9 +99,11 @@ export default function ContactPage() {
             <div className="flex gap-4">
               <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-indigo" />
               <div>
-                <p className="eyebrow text-ink-soft/70">Address</p>
+                <p className="eyebrow text-ink-soft/70">
+                  <T k="contact.label.address" />
+                </p>
                 <address className="mt-1.5 not-italic leading-relaxed text-ink">
-                  {site.address}
+                  <Bilingual en={site.address} ur={site.addressUr} />
                 </address>
                 <a
                   href={MAP_LINK}
@@ -101,16 +111,18 @@ export default function ContactPage() {
                   rel="noopener noreferrer"
                   className="mt-2 inline-block text-sm font-medium text-indigo hover:text-indigo-deep"
                 >
-                  Open in Google Maps →
+                  <T k="contact.openMaps" /> →
                 </a>
               </div>
             </div>
 
-            {DETAILS.map(({ Icon, label, value, href, numeric }) => (
-              <div key={label} className="flex gap-4">
+            {DETAILS.map(({ Icon, labelKey, value, href, numeric }) => (
+              <div key={labelKey} className="flex gap-4">
                 <Icon className="mt-0.5 h-5 w-5 shrink-0 text-indigo" />
                 <div>
-                  <p className="eyebrow text-ink-soft/70">{label}</p>
+                  <p className="eyebrow text-ink-soft/70">
+                    <T k={labelKey} />
+                  </p>
                   <a
                     href={href}
                     className={`mt-1.5 block text-ink transition-colors hover:text-indigo ${
@@ -126,11 +138,17 @@ export default function ContactPage() {
             <div className="flex gap-4">
               <ClockIcon className="mt-0.5 h-5 w-5 shrink-0 text-indigo" />
               <div>
-                <p className="eyebrow text-ink-soft/70">Hours</p>
+                <p className="eyebrow text-ink-soft/70">
+                  <T k="footer.hours" />
+                </p>
                 {site.hours.map((h) => (
                   <p key={h.label} className="mt-1.5 text-sm text-ink">
-                    <span className="text-ink-soft/70">{h.label}: </span>
-                    <span className="numeric">{h.value}</span>
+                    <span className="text-ink-soft/70">
+                      <Bilingual en={h.label} ur={h.labelUr} />:{" "}
+                    </span>
+                    <span className="numeric">
+                      <Bilingual en={h.value} ur={h.valueUr} />
+                    </span>
                   </p>
                 ))}
               </div>
@@ -154,8 +172,7 @@ export default function ContactPage() {
           </div>
 
           <p className="mt-4 text-sm text-ink-soft">
-            Parking is available on site. If this is your first appointment,
-            please arrive 15 minutes early to complete check-in.
+            <T k="contact.parking" />
           </p>
 
           {/* The form sits under the map rather than beside the address, so the
