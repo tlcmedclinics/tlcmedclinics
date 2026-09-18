@@ -44,14 +44,38 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const isPaid = bookingType === "online-payment" && Boolean(paymentReference);
-
-  if (bookingType === "online-payment" && !isPaid) {
+  // ── Paid bookings do not come through this route ──────────────────────
+  //
+  // This used to read:
+  //
+  //     const isPaid = bookingType === "online-payment" && Boolean(paymentReference);
+  //
+  // — and that one line was the whole payment check. `paymentReference` is a
+  // string from the request body. Nothing looked it up, nothing asked a
+  // gateway, nothing checked it had not been used before. Anyone signed in
+  // could open the browser console and post
+  //
+  //     { service, slotId, bookingType: "online-payment", paymentReference: "x" }
+  //
+  // and receive an appointment written as `status: "confirmed"`,
+  // `paymentStatus: "paid"` — indistinguishable, on every screen the clinic
+  // has, from one that was actually paid for. Free treatment, and a revenue
+  // figure on the admin dashboard that could never be reconciled against the
+  // merchant account.
+  //
+  // A paid booking is created by /api/payments/start, which holds the slot,
+  // prices it server-side, and only turns it into an appointment once the
+  // gateway's own callback confirms the money arrived. That path exists and
+  // both the website and the app use it. This one is for the unpaid kinds:
+  // a call-back request, or a slot the clinic will collect for at the desk.
+  if (bookingType === "online-payment") {
     return NextResponse.json(
-      { error: "Payment not verified — complete payment before booking." },
-      { status: 402 }
+      { error: "Start an online payment through /api/payments/start." },
+      { status: 400 }
     );
   }
+
+  const isPaid = false;
 
   // What this booking costs, decided here rather than accepted from the
   // browser. An unpaid booking's amount is what the clinic collects at the
@@ -289,8 +313,27 @@ export async function GET(req: NextRequest) {
       // A doctor may narrow to one of *their* patients; the doctorId filter
       // above still applies, so this can't reach another doctor's records.
       if (patientId) query = query.where("patientId", "==", patientId);
-    } else if (patientId) {
-      query = query.where("patientId", "==", patientId);
+    } else if (auth.role === "admin") {
+      // The clinic sees everything, optionally narrowed to one patient.
+      if (patientId) query = query.where("patientId", "==", patientId);
+    } else {
+      // Deny by default.
+      //
+      // This branch used to be `else if (patientId)`, which meant a token
+      // whose role was neither "patient" nor "doctor" — including one with no
+      // role claim at all — fell past every filter and read the entire
+      // appointments collection: every patient's name, phone number, notes and
+      // prescriptions, paged through with `before`.
+      //
+      // A role-less token is not hypothetical. Firebase puts a custom claim
+      // into the ID token only after it is refreshed, so the token minted at
+      // sign-up carries no role for the first moments of an account's life —
+      // and stays valid for an hour.
+      //
+      // It would also have opened silently the day the clinic added a fourth
+      // role. A list of roles that may read everything belongs in the code,
+      // spelled out.
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     if (status) query = query.where("status", "==", status);
@@ -455,13 +498,25 @@ export async function PATCH(req: NextRequest) {
       if (appointment?.status === "completed" || appointment?.status === "cancelled") {
         return NextResponse.json({ error: "This appointment can no longer be cancelled" }, { status: 400 });
       }
+      // The payment status is left exactly as it was.
+      //
+      // Cancelling used to flip a paid booking to `refunded` — written by the
+      // patient's own request, with no refund issued and nobody at the clinic
+      // involved. Two things followed: the clinic's books showed money
+      // returned that was still sitting in the merchant account, and the
+      // patient was told on their own dashboard that they had been refunded.
+      // Neither was true.
+      //
+      // `refundRequested` records what actually happened — somebody asked —
+      // and /api/appointments/[id]/refund remains the only thing that writes
+      // `refunded`, after the money has genuinely moved.
       const wasPaid = appointment?.paymentStatus === "paid";
       await ref.update({
         status: "cancelled",
         cancelledBy: "patient",
         cancelReason: cancelReason || undefined,
         cancelledAt: new Date().toISOString(),
-        paymentStatus: wasPaid ? "refunded" : appointment?.paymentStatus,
+        ...(wasPaid ? { refundRequested: true, refundRequestedAt: new Date().toISOString() } : {}),
       });
       if (appointment.slotId) {
         await adminDb

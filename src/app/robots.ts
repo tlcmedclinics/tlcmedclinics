@@ -20,7 +20,20 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         disallow: [
+          // Both forms of each panel, on purpose.
+          //
+          // robots.txt matches on a literal prefix, so "/admin/" covers
+          // /admin/appointments and misses /admin itself — which is the URL
+          // Next.js actually serves the panel index at. All three landing
+          // pages were crawlable.
+          //
+          // "/doctors" is deliberately absent: the public doctor pages live
+          // there and are meant to be indexed. That is also why "/doctor" is
+          // listed with its own trailing-slash twin rather than shortened —
+          // a bare "/doctor" prefix would swallow /doctors/dr-naseem too.
+          "/admin",
           "/admin/",
+          "/patient",
           "/patient/",
           "/doctor/",
           "/api/",
