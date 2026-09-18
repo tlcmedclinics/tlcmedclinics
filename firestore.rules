@@ -2,6 +2,35 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // ─────────────────────────────────────────────────────────────────────
+    //  The posture
+    //
+    //  The Admin SDK — every /api route — bypasses these rules entirely.
+    //  So this file is not "the clinic's permissions". It is the answer to a
+    //  narrower and more dangerous question: what can somebody do by opening
+    //  the browser console and talking to Firestore directly, going around
+    //  every check the API makes?
+    //
+    //  The previous version answered that too generously, and one line in
+    //  particular undid a payment fix made on the server the same day:
+    //
+    //      allow create: if isSignedIn()
+    //        && request.resource.data.patientId == request.auth.uid;
+    //
+    //  Any signed-in patient could write an appointment document of their own
+    //  design — status "confirmed", paymentStatus "paid", amount 0 — straight
+    //  into the collection. The API's booking route had just been closed
+    //  against exactly that; this rule left the back door open. Its comment
+    //  said the Flutter app needed it, which is no longer true: the app books
+    //  through /api/payments/start like the website does.
+    //
+    //  So: the client reads, the server writes. Every write path in this
+    //  project already goes through an /api route, and each of those checks
+    //  ownership, prices server-side, and only confirms a payment the gateway
+    //  has confirmed first. The one exception is chat, which genuinely is a
+    //  direct client write — see that block for why.
+    // ─────────────────────────────────────────────────────────────────────
+
     function isSignedIn() {
       return request.auth != null;
     }
@@ -18,41 +47,78 @@ service cloud.firestore {
       return isSignedIn() && role() == 'doctor';
     }
 
-    // Users can read/write their own profile; admin can read/write any.
-    // (A doctor's UI reads patient name/phone off the appointment doc
-    // itself, which is denormalized for exactly this reason — a doctor
-    // never needs direct read access to a patient's own profile doc.)
+    // ── Profiles ─────────────────────────────────────────────────────────
+    //
+    // Readable by their owner and by admin. A doctor never needs to read a
+    // patient's profile document: the name and phone they work from are
+    // denormalised onto the appointment, which is deliberate.
+    //
+    // Writes are the interesting half. This used to be a blanket
+    // `isOwner(uid) || isAdmin()`, which let any patient set their own
+    // `role`, `approvalStatus` and `active`. The API reads the role from the
+    // Firebase custom claim rather than from this document, so that did not
+    // grant API access — but the browser reads it from here, so a patient
+    // could make the admin panel render for them, and a doctor waiting for
+    // approval could approve themselves and appear in the public doctor list.
+    //
+    // The allowlist below is the fields a person may change about themselves.
+    // Everything that decides what they are allowed to do is absent from it,
+    // and is set by the server or by an admin.
     match /users/{uid} {
       allow read: if isOwner(uid) || isAdmin();
-      allow write: if isOwner(uid) || isAdmin();
+
+      allow create: if isAdmin();
+
+      allow update: if isAdmin() || (
+        isOwner(uid) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name', 'nameUr', 'photoURL', 'bio', 'bioUr',
+          'specialization', 'specializationUr',
+          'presenceVisible', 'notificationSound', 'messageSound',
+          'updatedAt'
+        ])
+      );
+
+      allow delete: if isAdmin();
     }
 
-    // Appointments: the patient who booked it, its assigned doctor, and
-    // admin can read. Patients can create their own booking directly (used
-    // by the Flutter app); only admin assigns/reassigns a doctor; admin or
-    // the assigned doctor can update status (confirm/complete/cancel);
-    // only admin can delete.
+    // ── Appointments ─────────────────────────────────────────────────────
+    //
+    // Read by the patient it belongs to, the doctor assigned to it, and
+    // admin. This is what the live dashboards listen to, so reads stay open
+    // to those three.
+    //
+    // No client writes at all. Booking, cancelling, confirming payment,
+    // assigning a doctor, writing a prescription — every one of those is an
+    // /api route that checks something this file cannot: that the gateway
+    // says the money arrived, that the price matches the service document,
+    // that the slot is still free inside a transaction.
     match /appointments/{id} {
       allow read: if isAdmin()
         || (isSignedIn() && resource.data.patientId == request.auth.uid)
         || (isDoctor() && resource.data.doctorId == request.auth.uid);
-      allow create: if isSignedIn() && request.resource.data.patientId == request.auth.uid;
-      allow update: if isAdmin()
-        || (isDoctor() && resource.data.doctorId == request.auth.uid
-            && request.resource.data.doctorId == resource.data.doctorId);
-      allow delete: if isAdmin();
+
+      allow write: if false;
     }
 
-    // Services: public can read (booking form + services page), admin manages.
+    // ── Services ─────────────────────────────────────────────────────────
+    //
+    // Public: the booking form and the services page read these before
+    // anyone signs in. Nothing sensitive lives here.
     match /services/{id} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // Chat messages: end-to-end-ish encrypted — Firestore only ever holds
-    // ciphertext + iv (see /api/chat/[threadId]/key for how the AES-GCM key
-    // is derived and handed out). Only the patient, the assigned doctor, and
-    // admin on this appointment (threadId === appointment id) may read/write.
+    // ── Chat ─────────────────────────────────────────────────────────────
+    //
+    // The one place a client genuinely writes. Firestore holds ciphertext and
+    // an IV, never plaintext; the AES-GCM key is derived server-side and
+    // handed out by /api/chat/[threadId]/key, which checks the same three
+    // people named here.
+    //
+    // The `get()` calls cost a document read each and are worth it: the
+    // alternative is trusting a threadId from the client.
     match /chatThreads/{threadId}/messages/{messageId} {
       allow read, write: if isSignedIn() && (
         isAdmin() ||
@@ -62,33 +128,87 @@ service cloud.firestore {
       );
     }
 
-    // Coupons and payments: admin can read/manage everything. A signed-in
-    // patient may create their own payment record (mock checkout, used by
-    // both the web and Flutter booking flow) but never read/edit others'.
+    // ── Coupons ──────────────────────────────────────────────────────────
+    //
+    // Admin only, including reads.
+    //
+    // `allow read: if isSignedIn()` let any patient list the entire
+    // collection from the console — every code, every discount, and the
+    // `restrictedEmails` array, which is a list of patients' email addresses.
+    // At a mental-health clinic that list is itself the sensitive fact.
+    //
+    // A patient never needs to read a coupon. They type a code; the server
+    // checks it and returns a price.
     match /coupons/{code} {
-      allow read: if isSignedIn();
+      allow read: if isAdmin();
       allow write: if isAdmin();
     }
+
+    // ── Payment records ──────────────────────────────────────────────────
+    //
+    // Written by the server when a gateway confirms a payment. `allow create:
+    // if isSignedIn()` let a patient write their own payment record, which is
+    // the same class of problem as writing their own appointment.
     match /payments/{id} {
       allow read: if isAdmin();
-      allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      allow write: if false;
     }
 
-    // Blogs: public can read published posts, admin manages everything.
+    // Started before the patient leaves for the gateway, and the only thing
+    // the callback trusts. Server-only, both ways.
+    match /paymentAttempts/{id} {
+      allow read, write: if false;
+    }
+
+    // Slots the clinic is holding mid-booking. Server-only.
+    match /pendingBookings/{id} {
+      allow read, write: if false;
+    }
+
+    // ── Push tokens ──────────────────────────────────────────────────────
+    //
+    // Registered through /api/push/token, which takes the uid from the
+    // verified ID token rather than the body — so a token can never be
+    // registered against somebody else's account. Nothing reads these from a
+    // client.
+    match /pushTokens/{token} {
+      allow read, write: if false;
+    }
+
+    // ── Doctor availability ──────────────────────────────────────────────
+    //
+    // Slots are read through /api/slots, which hides the appointmentId from
+    // patients and filters out times that have already passed. Reading the
+    // raw collection would hand anyone the clinic's whole calendar.
+    match /slots/{id} {
+      allow read, write: if false;
+    }
+
+    match /leaves/{id} {
+      allow read, write: if false;
+    }
+
+    // ── Blogs ────────────────────────────────────────────────────────────
     match /blogs/{id} {
       allow read: if resource.data.published == true || isAdmin();
       allow write: if isAdmin();
     }
 
-    // In-app notifications (bell icon): a user can only read their own —
-    // used for the real-time listener that drives the unread badge.
-    // Notifications are only ever created/updated via the server (Admin
-    // SDK through /api/notifications and /api/appointments), which bypasses
-    // these rules entirely — so no client write path is allowed here.
+    // ── Notifications ────────────────────────────────────────────────────
+    //
+    // Read your own; the bell's unread badge is a live listener on this.
+    // Written only by the server.
     match /notifications/{id} {
       allow read: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow write: if false;
+    }
+
+    // ── Everything else ──────────────────────────────────────────────────
+    //
+    // Deny by default. A collection added next month is closed until somebody
+    // decides what it should be, rather than open until somebody notices.
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

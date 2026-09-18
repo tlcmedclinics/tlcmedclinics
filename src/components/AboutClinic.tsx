@@ -1,4 +1,6 @@
 import Reveal from "@/components/Reveal";
+import { T } from "@/components/T";
+import { Bilingual, BilingualList } from "@/components/Bilingual";
 import Link from "next/link";
 import SiteImage from "@/components/SiteImage";
 import VitalsLine from "@/components/VitalsLine";
@@ -16,24 +18,34 @@ import { leadDoctor } from "@/data/doctors";
  * marketing; next to the numbers, they read as a record.
  */
 
+/**
+ * Nine claims the clinic makes about itself.
+ *
+ * Keys rather than sentences: every one of these is a reason somebody might
+ * choose this clinic over another, and a reason you cannot read is not a reason.
+ */
 const POINTS = [
-  "The first medical centre of its kind in Pakistan to offer the same level of care and environment as clinics in the U.S.A.",
-  "Directly run and supervised by U.S.-trained, American Board Certified specialists with over 38 years of experience in patient care, education and management.",
-  "International-level facilities and the U.S.A. standard of care at a competitive cost.",
-  "We use the latest and most effective U.S.A. diagnosis and treatment protocols.",
-  "An alternative to travelling to the U.S.A. for diagnosis and treatment.",
-  "The best trained and most experienced team of doctors under one roof.",
-  "An environment that is pristine, safe and inviting to all.",
-  "Executive health screenings and physicals, stress-reduction and performance-improvement strategies.",
-  "Preventative health screenings and health management.",
+  "home.about.point1",
+  "home.about.point2",
+  "home.about.point3",
+  "home.about.point4",
+  "home.about.point5",
+  "home.about.point6",
+  "home.about.point7",
+  "home.about.point8",
+  "home.about.point9",
 ];
 
 export default function AboutClinic() {
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <Reveal className="text-center">
-        <p className="eyebrow text-indigo">About us</p>
-        <h2 className="mt-3 h1 sm:text-4xl">Who we are</h2>
+        <p className="eyebrow text-indigo">
+          <T k="home.about.eyebrow" />
+        </p>
+        <h2 className="mt-3 h1 sm:text-4xl">
+          <T k="home.about.title" />
+        </h2>
       </Reveal>
 
       <div className="mt-12 grid gap-12 lg:grid-cols-2 lg:items-start">
@@ -56,7 +68,7 @@ export default function AboutClinic() {
             {POINTS.map((point) => (
               <li key={point} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
                 <CheckIcon className="mt-0.5 h-4 w-4 shrink-0 text-crimson" />
-                {point}
+                <T k={point} />
               </li>
             ))}
           </ul>
@@ -65,25 +77,28 @@ export default function AboutClinic() {
 
       {/* ---- Outcome data ---- */}
       <Reveal className="mt-20 rounded-3xl border border-line bg-paper-dim/50 p-8 sm:p-12">
-        <p className="eyebrow text-indigo">Outcome data</p>
+        <p className="eyebrow text-indigo">
+          <T k="home.outcome.eyebrow" />
+        </p>
         <h3 className="mt-3 h1 text-2xl sm:text-3xl">
-          Telemedicine, proven effective in symptom reduction
+          <T k="home.outcome.title" />
         </h3>
         <VitalsLine className="mt-5 h-3 w-40" color="var(--crimson)" />
 
         <p className="mt-5 max-w-2xl text-sm leading-relaxed text-ink-soft">
-          Across 10,000 participants with anxiety and depression, followed over
-          twelve weeks.
+          <T k="home.outcome.lede" />
         </p>
 
         <div className="mt-9 grid gap-8 sm:grid-cols-2">
           {[
-            { figure: "50%", label: "of participants fully recovered" },
-            { figure: "70%", label: "of participants saw significant improvement" },
+            { figure: "50%", labelKey: "home.outcome.recovered" },
+            { figure: "70%", labelKey: "home.outcome.improved" },
           ].map((row) => (
             <div key={row.figure} className="rounded-2xl bg-paper p-6">
               <p className="stat-number text-4xl text-indigo-deep">{row.figure}</p>
-              <p className="mt-2 text-sm leading-snug text-ink-soft">{row.label}</p>
+              <p className="mt-2 text-sm leading-snug text-ink-soft">
+                <T k={row.labelKey} />
+              </p>
             </div>
           ))}
         </div>
@@ -91,7 +106,7 @@ export default function AboutClinic() {
         {/* The source is named rather than implied. A recovery figure with no
             citation beside it is the kind of claim a clinic should not make. */}
         <p className="mt-6 text-xs text-ink-soft/80">
-          Source: BMC Psychiatry, June 2020.
+          <T k="home.outcome.source" />
         </p>
       </Reveal>
 
@@ -144,33 +159,33 @@ export default function AboutClinic() {
         </div>
 
         <div>
-          <p className="eyebrow text-indigo">{leadDoctor.title}</p>
+          <p className="eyebrow text-indigo">
+            <Bilingual en={leadDoctor.title} ur={leadDoctor.titleUr} />
+          </p>
           <h3 className="mt-3 h1 text-2xl sm:text-3xl">
             <Link
               href={`/doctors/${leadDoctor.slug}`}
               className="transition-colors hover:text-indigo-deep"
             >
-              {leadDoctor.name}
+              <Bilingual en={leadDoctor.name} ur={leadDoctor.nameUr} />
             </Link>
           </h3>
           <p className="mt-1.5 font-mono text-xs uppercase tracking-wider text-ink-soft">
             {leadDoctor.credentials}
           </p>
 
-          <ul className="mt-6 space-y-3.5">
-            {leadDoctor.highlights.map((line) => (
-              <li key={line} className="flex gap-3 text-sm leading-relaxed text-ink-soft">
-                <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-                <span>{line}</span>
-              </li>
-            ))}
-          </ul>
+          <BilingualList
+            en={leadDoctor.highlights}
+            ur={leadDoctor.highlightsUr}
+            className="mt-6 space-y-3.5"
+            variant="bullet"
+          />
 
           <Link
             href={`/doctors/${leadDoctor.slug}`}
             className="mt-7 inline-flex items-center gap-1.5 text-sm font-medium text-indigo transition-colors hover:text-indigo-deep"
           >
-            Full profile &amp; certifications
+            <T k="home.doctor.fullProfile" />
             <span aria-hidden>→</span>
           </Link>
         </div>
@@ -186,16 +201,15 @@ export default function AboutClinic() {
         <div>
           <span className="inline-flex items-center gap-2 rounded-full bg-crimson/10 px-3 py-1.5 text-xs font-medium text-crimson">
             <AwardIcon className="h-4 w-4" />
-            Castle Connolly, 2001
+            <T k="home.award.badge" />
           </span>
 
-          <h3 className="mt-5 h1 text-2xl sm:text-3xl">Top Doctor in Chicago</h3>
+          <h3 className="mt-5 h1 text-2xl sm:text-3xl">
+            <T k="home.award.title" />
+          </h3>
 
           <p className="mt-5 text-base leading-relaxed text-ink-soft">
-            {site.doctor.name} received the Castle Connolly Medical “Top Doctor”
-            award in Chicago, U.S.A. It is given to one physician out of several
-            thousand, for dedicated and outstanding work in their area of
-            specialisation.
+            <T k="home.award.body" vars={{ doctor: site.doctor.name }} />
           </p>
         </div>
 
@@ -212,12 +226,14 @@ export default function AboutClinic() {
       {/* ---- Qualifications ---- */}
       {certificates.length > 0 && (
         <Reveal className="mt-20">
-          <p className="eyebrow text-indigo">Qualifications</p>
-          <h3 className="mt-3 h1 text-2xl sm:text-3xl">Certifications & licences</h3>
+          <p className="eyebrow text-indigo">
+            <T k="home.certs.eyebrow" />
+          </p>
+          <h3 className="mt-3 h1 text-2xl sm:text-3xl">
+            <T k="home.certs.title" />
+          </h3>
           <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            The framed originals hang in the clinic. They are reproduced here so
-            that a patient can check them before booking rather than after
-            arriving.
+            <T k="home.certs.lede" />
           </p>
 
           {/* Scrolls horizontally on a phone instead of shrinking ten

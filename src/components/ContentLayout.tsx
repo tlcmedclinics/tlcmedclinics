@@ -1,5 +1,7 @@
 import Link from "next/link";
 import ContentBlocks from "@/components/ContentBlocks";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import Reveal from "@/components/Reveal";
 import SiteImage from "@/components/SiteImage";
 import { GROUP_META, groupedPages, type ContentPage } from "@/data/content";
@@ -62,21 +64,25 @@ export default async function ContentLayout({ page }: { page: ContentPage }) {
         )}
 
         <div className="relative mx-auto max-w-6xl px-6">
-          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{page.title}</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <Bilingual en={page.title} ur={page.titleUr} />
+          </h1>
           <nav aria-label="Breadcrumb" className="mt-3 text-sm text-paper/70">
             <Link href="/" className="hover:text-paper">
-              Home
+              <T k="nav.home" />
             </Link>
             <span aria-hidden className="px-2">
               »
             </span>
             <Link href={meta.href} className="hover:text-paper">
-              {meta.label}
+              <Bilingual en={meta.label} ur={meta.labelUr} />
             </Link>
             <span aria-hidden className="px-2">
               »
             </span>
-            <span className="text-paper">{page.title}</span>
+            <span className="text-paper">
+              <Bilingual en={page.title} ur={page.titleUr} />
+            </span>
           </nav>
         </div>
       </section>
@@ -86,28 +92,32 @@ export default async function ContentLayout({ page }: { page: ContentPage }) {
           <ContentBlocks blocks={page.blocks} services={services} />
 
           <div className="mt-12 rounded-2xl border border-line bg-paper-dim/50 p-6">
-            <p className="text-sm font-semibold text-ink">Ready to talk to someone?</p>
+            <p className="text-sm font-semibold text-ink">
+              <T k="content.readyTitle" />
+            </p>
             <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-              Book an appointment in the clinic or by telemedicine — or call us on{" "}
-              <a href={`tel:${site.phoneE164}`} className="font-medium text-indigo hover:underline">
+              <T k="content.readyBody" />{" "}
+              <a href={`tel:${site.phoneE164}`} className="numeric font-medium text-indigo hover:underline">
                 {site.phone}
               </a>
               .
             </p>
             <Link href="/patient/book" className="btn-indigo btn-sm mt-4 inline-block">
-              Book an appointment
+              <T k="content.bookCta" />
             </Link>
           </div>
         </Reveal>
 
         <aside className="lg:sticky lg:top-24">
-          <p className="eyebrow text-indigo">{meta.label}</p>
+          <p className="eyebrow text-indigo">
+            <Bilingual en={meta.label} ur={meta.labelUr} />
+          </p>
 
           {sections.map(({ section, pages }) => (
             <div key={section ?? "_"} className="mt-5">
               {section && (
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft/80">
-                  {section}
+                  <Bilingual en={section} ur={pages[0]?.sectionUr} />
                 </p>
               )}
               <ul className="space-y-1">
@@ -124,7 +134,7 @@ export default async function ContentLayout({ page }: { page: ContentPage }) {
                             : "text-ink-soft hover:bg-paper-dim hover:text-ink"
                         }`}
                       >
-                        {p.title}
+                        <Bilingual en={p.title} ur={p.titleUr} />
                       </Link>
                     </li>
                   );
@@ -134,18 +144,22 @@ export default async function ContentLayout({ page }: { page: ContentPage }) {
           ))}
 
           <div className="mt-8 rounded-2xl border border-line p-5 text-sm">
-            <p className="font-semibold text-ink">Clinic hours</p>
+            <p className="font-semibold text-ink">
+              <T k="content.clinicHours" />
+            </p>
             <ul className="mt-3 space-y-2 text-ink-soft">
               {site.hours.map((h) => (
                 <li key={h.label}>
                   <span className="block text-xs uppercase tracking-wide text-ink-soft/70">
-                    {h.label}
+                    <Bilingual en={h.label} ur={h.labelUr} />
                   </span>
-                  {h.value}
+                  <Bilingual en={h.value} ur={h.valueUr} className="numeric" />
                 </li>
               ))}
             </ul>
-            <p className="mt-4 text-ink-soft">{site.address}</p>
+            <p className="mt-4 text-ink-soft">
+              <Bilingual en={site.address} ur={site.addressUr} />
+            </p>
           </div>
         </aside>
       </div>

@@ -2,6 +2,7 @@ import type { ReactElement } from "react";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
 import { Bilingual } from "@/components/Bilingual";
+import { T } from "@/components/T";
 import SiteImage from "@/components/SiteImage";
 import { ArrowRightIcon, BrainIcon, SparkleIcon, StethoscopeIcon } from "@/components/Icons";
 import type { IconProps } from "@/components/Icons";
@@ -23,24 +24,40 @@ import type { Service } from "@/types";
  * page looks finished before anyone uploads anything, and improves as they do.
  */
 
-/** What each category looks like. Unknown categories still render, plainly. */
+/**
+ * What each category looks like.
+ *
+ * The category itself is a Firestore string and arrives in English — the
+ * clinic types "Skin & Aesthetics" into the admin panel, and there is no
+ * `categoryUr` column yet. So the three the clinic actually uses are mapped to
+ * dictionary keys here, and anything else renders under its own name. That is
+ * the honest fallback: a category nobody has translated shows in the language
+ * it was written in, rather than showing nothing.
+ */
 const CATEGORY_META: Record<
   string,
-  { blurb: string; Icon: (props: IconProps) => ReactElement; image: string }
+  {
+    titleKey: string;
+    blurbKey: string;
+    Icon: (props: IconProps) => ReactElement;
+    image: string;
+  }
 > = {
   Diagnosis: {
-    blurb: "A proper evaluation first — a treatment plan built on a real diagnosis.",
+    titleKey: "home.care.diagnosis.title",
+    blurbKey: "home.care.diagnosis.blurb",
     Icon: StethoscopeIcon,
     image: images.diagnosis,
   },
   "Health Care": {
-    blurb:
-      "Psychiatry, therapy and ketamine treatment, led by a U.S. board certified physician.",
+    titleKey: "home.care.health.title",
+    blurbKey: "home.care.health.blurb",
     Icon: BrainIcon,
     image: images.mental,
   },
   "Skin & Aesthetics": {
-    blurb: "Botox, fillers, PRP and micro-needling — conservative, natural-looking results.",
+    titleKey: "home.care.skin.title",
+    blurbKey: "home.care.skin.blurb",
     Icon: SparkleIcon,
     image: images.skin,
   },
@@ -86,12 +103,14 @@ export default async function CareAreas() {
     <section className="bg-paper-dim/40">
       <div className="mx-auto max-w-6xl px-6 py-20">
         <Reveal className="text-center">
-          <p className="eyebrow text-indigo">Patient-centred care</p>
-          <h2 className="mt-3 h1 sm:text-4xl">Where we can help</h2>
+          <p className="eyebrow text-indigo">
+            <T k="home.care.eyebrow" />
+          </p>
+          <h2 className="mt-3 h1 sm:text-4xl">
+            <T k="home.care.title" />
+          </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-ink-soft">
-            People who come to TLC Med Clinics can expect polite, friendly, helpful
-            staff who relate to each person as an individual — recognising their
-            history, relationships, culture and needs.
+            <T k="home.care.lede" />
           </p>
         </Reveal>
 
@@ -128,10 +147,16 @@ export default async function CareAreas() {
 
                   <div className="flex flex-1 flex-col px-6 pb-6 pt-9">
                     <h3 className="text-lg font-semibold text-ink transition-colors group-hover:text-indigo-deep">
-                      {category}
+                      {meta ? <T k={meta.titleKey} /> : category}
                     </h3>
                     <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                      {meta?.blurb ?? featured?.short ?? "Personalised, physician-led care."}
+                      {meta ? (
+                        <T k={meta.blurbKey} />
+                      ) : featured?.short ? (
+                        <Bilingual en={featured.short} ur={featured.shortUr} />
+                      ) : (
+                        <T k="home.care.fallbackBlurb" />
+                      )}
                     </p>
 
                     {featured && (
@@ -143,7 +168,10 @@ export default async function CareAreas() {
                         />
                         {typeof featured.price === "number" && (
                           <span className="numeric mt-1 block text-xs text-ink-soft">
-                            From PKR {featured.price.toLocaleString()}
+                            <T
+                              k="home.care.fromPrice"
+                              vars={{ price: featured.price.toLocaleString("en") }}
+                            />
                           </span>
                         )}
                       </span>
@@ -151,11 +179,14 @@ export default async function CareAreas() {
 
                     <span className="mt-auto flex items-center gap-1.5 pt-5 text-sm font-medium text-indigo">
                       {inCategory.length > 1 ? (
-                        <>
-                          <span className="numeric">{inCategory.length}</span> treatments
-                        </>
+                        <T
+                          k="home.care.treatmentCount"
+                          vars={{ count: inCategory.length }}
+                        />
+                      ) : meta ? (
+                        <T k="home.care.seeThis" />
                       ) : (
-                        <>See {category}</>
+                        <T k="home.care.seeCategory" vars={{ category }} />
                       )}
                       <ArrowRightIcon className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover:translate-x-1" />
                     </span>

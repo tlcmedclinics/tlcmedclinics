@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReactElement } from "react";
 import Link from "next/link";
 import Reveal from "@/components/Reveal";
@@ -11,6 +13,8 @@ import {
   type IconProps,
 } from "@/components/Icons";
 import { GROUP_META, groupedPages, type ContentGroup } from "@/data/content";
+import { useLanguage, useT } from "@/contexts/LanguageContext";
+import { pick } from "@/lib/bilingual";
 
 /**
  * The index page for a content group — every page in it, grouped by section.
@@ -29,13 +33,23 @@ const GROUP_ICON: Record<ContentGroup, (props: IconProps) => ReactElement> = {
   about: HeartIcon,
 };
 
+/**
+ * `introKey` rather than `intro`.
+ *
+ * The four index pages are server components and used to hand this component a
+ * finished English sentence, which is a sentence no language switch could ever
+ * reach. A dictionary key crosses the server/client boundary just as well — it
+ * is only a string — and arrives here where the locale is known.
+ */
 export default function ContentIndex({
   group,
-  intro,
+  introKey,
 }: {
   group: ContentGroup;
-  intro: string;
+  introKey: string;
 }) {
+  const { locale } = useLanguage();
+  const t = useT();
   const meta = GROUP_META[group];
   const sections = groupedPages(group);
   const GroupIcon = GROUP_ICON[group];
@@ -53,10 +67,14 @@ export default function ContentIndex({
             <GroupIcon className="h-8 w-8 text-paper" />
           </span>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">{meta.label}</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-paper/80">{intro}</p>
+            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
+              {pick(locale, meta.label, meta.labelUr)}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-paper/80">
+              {t(introKey)}
+            </p>
             <p className="mt-4 text-xs uppercase tracking-[0.16em] text-paper/50">
-              <span className="numeric">{total}</span> pages
+              {t("content.pageCount", { count: total })}
             </p>
           </div>
         </div>
@@ -68,7 +86,7 @@ export default function ContentIndex({
             {section && (
               <h2 className="mb-5 flex items-center gap-2.5 text-lg font-semibold text-ink">
                 <GroupIcon className="h-5 w-5 text-indigo" />
-                {section}
+                {pick(locale, section, pages[0]?.sectionUr)}
               </h2>
             )}
 
@@ -80,16 +98,16 @@ export default function ContentIndex({
                     className="group flex h-full flex-col rounded-2xl border border-line/70 bg-paper-dim/40 p-5 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo/40 hover:bg-paper-dim hover:shadow-[0_18px_40px_-28px_rgba(21,86,59,0.6)]"
                   >
                     <span className="font-medium text-ink group-hover:text-indigo-deep">
-                      {p.title}
+                      {pick(locale, p.title, p.titleUr)}
                     </span>
                     <span className="mt-2 flex-1 text-sm leading-relaxed text-ink-soft">
-                      {p.summary}
+                      {pick(locale, p.summary, p.summaryUr)}
                     </span>
                     {/* Visible at rest, not revealed on hover. A "read more"
                         that only appears under the cursor tells a touch-screen
                         visitor nothing, and they are most of them. */}
                     <span className="mt-4 flex items-center gap-1.5 text-sm font-medium text-indigo">
-                      Read more
+                      {t("content.readMore")}
                       <ArrowRightIcon className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                     </span>
                   </Link>

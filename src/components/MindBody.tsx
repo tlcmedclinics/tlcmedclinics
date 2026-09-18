@@ -1,4 +1,5 @@
 import Reveal from "@/components/Reveal";
+import { T } from "@/components/T";
 import {
   BrainIcon,
   ClockIcon,
@@ -14,6 +15,10 @@ import {
  * The list is long and stays long. Someone scanning this page is usually
  * looking for one word — their own condition — and a trimmed "selected
  * highlights" version fails exactly the person it was shortened for.
+ *
+ * That is also the reason every condition name is now a dictionary key rather
+ * than an English string: the person scanning for their own condition is
+ * exactly the person least able to scan for it in a second language.
  */
 
 /**
@@ -23,32 +28,32 @@ import {
  * flattened PNG of a wheel could do.
  */
 const PILLARS = [
-  { Icon: BrainIcon, label: "Mindset & stress response" },
-  { Icon: ClockIcon, label: "Sleep" },
-  { Icon: DropletIcon, label: "Nutrition" },
-  { Icon: HeartIcon, label: "Movement" },
-  { Icon: UsersIcon, label: "Relationships" },
-  { Icon: ShieldIcon, label: "Relaxation & breathing" },
+  { Icon: BrainIcon, key: "home.mind.pillar.mindset" },
+  { Icon: ClockIcon, key: "home.mind.pillar.sleep" },
+  { Icon: DropletIcon, key: "home.mind.pillar.nutrition" },
+  { Icon: HeartIcon, key: "home.mind.pillar.movement" },
+  { Icon: UsersIcon, key: "home.mind.pillar.relationships" },
+  { Icon: ShieldIcon, key: "home.mind.pillar.relaxation" },
 ];
 
 const CONDITIONS_LEFT = [
-  "Anxiety",
-  "Depression",
-  "Migraines",
-  "Insomnia / sleep disorders",
-  "Hypertension",
-  "Psoriasis",
-  "Atrial fibrillation / heart arrhythmias",
-  "Cancer",
+  "home.mind.cond.anxiety",
+  "home.mind.cond.depression",
+  "home.mind.cond.migraines",
+  "home.mind.cond.insomnia",
+  "home.mind.cond.hypertension",
+  "home.mind.cond.psoriasis",
+  "home.mind.cond.afib",
+  "home.mind.cond.cancer",
 ];
 
 const CONDITIONS_RIGHT = [
-  "Coronary artery disease",
-  "Menopause symptoms",
-  "Multiple sclerosis",
-  "Chronic pain conditions — back and neck pain, fibromyalgia, headaches, osteoarthritis and TMJ",
-  "Gastrointestinal conditions — GERD, irritable bowel syndrome (IBS), Crohn's disease and ulcerative colitis",
-  "Rheumatoid arthritis and other autoimmune conditions",
+  "home.mind.cond.cad",
+  "home.mind.cond.menopause",
+  "home.mind.cond.ms",
+  "home.mind.cond.chronicPain",
+  "home.mind.cond.gi",
+  "home.mind.cond.autoimmune",
 ];
 
 export default function MindBody() {
@@ -56,33 +61,31 @@ export default function MindBody() {
     <section className="mx-auto max-w-6xl px-6 py-20">
       <Reveal className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
         <div>
-          <h2 className="h1 sm:text-4xl">Mind-Body Medicine at TLC Med Clinics</h2>
+          <h2 className="h1 sm:text-4xl">
+            <T k="home.mind.title" />
+          </h2>
 
           <p className="mt-6 text-base leading-relaxed text-ink-soft">
-            Mind-body medicine uses a range of practices to reduce the effects of
-            stress, anxiety and depression on immune, endocrine and autonomic
-            function. Our doctors carry out a detailed examination and start an
-            individualised treatment plan. These interventions can reverse the
-            negative health effects of chronic stress by lowering the level of
-            stress hormones in the body.
+            <T k="home.mind.p1" />
           </p>
 
           <p className="mt-4 text-base leading-relaxed text-ink-soft">
-            Many studies have shown that these practices improve both physical
-            and mental health.
+            <T k="home.mind.p2" />
           </p>
         </div>
 
         <div className="rounded-3xl border border-line bg-paper-dim/50 p-6 sm:p-8">
-          <p className="eyebrow text-indigo">What a plan is built from</p>
+          <p className="eyebrow text-indigo">
+            <T k="home.mind.pillars.title" />
+          </p>
           <ul className="mt-5 grid gap-3 sm:grid-cols-2">
-            {PILLARS.map(({ Icon, label }) => (
+            {PILLARS.map(({ Icon, key }) => (
               <li
-                key={label}
+                key={key}
                 className="flex items-center gap-3 rounded-2xl bg-paper p-4 text-sm leading-snug text-ink"
               >
                 <Icon className="h-6 w-6 shrink-0 text-indigo" />
-                {label}
+                <T k={key} />
               </li>
             ))}
           </ul>
@@ -91,20 +94,19 @@ export default function MindBody() {
 
       <Reveal className="mt-14">
         <p className="font-semibold text-ink">
-          Mind-body approaches can help with many medical and psychiatric
-          conditions, including:
+          <T k="home.mind.conditions.title" />
         </p>
 
         <div className="mt-5 grid gap-x-10 gap-y-2 sm:grid-cols-2">
           {[CONDITIONS_LEFT, CONDITIONS_RIGHT].map((column, i) => (
             <ul key={i} className="space-y-2">
-              {column.map((condition) => (
+              {column.map((key) => (
                 <li
-                  key={condition}
+                  key={key}
                   className="flex gap-2.5 text-sm leading-relaxed text-ink-soft"
                 >
                   <span aria-hidden className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo" />
-                  {condition}
+                  <T k={key} />
                 </li>
               ))}
             </ul>
@@ -112,9 +114,7 @@ export default function MindBody() {
         </div>
 
         <p className="mt-6 text-sm text-ink-soft">
-          There are several ways to learn mind-body skills. We offer individual
-          skills-building during office visits — talk with your doctor about
-          which approaches suit you best.
+          <T k="home.mind.note" />
         </p>
       </Reveal>
     </section>

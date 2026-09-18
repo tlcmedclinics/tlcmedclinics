@@ -9,5 +9,5 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function Page() {
-  return <ContentIndex group="treatments" intro={"Every treatment we offer, with what it is for, how long it takes and what it costs."} />;
+  return <ContentIndex group="treatments" introKey="content.intro.treatments" />;
 }

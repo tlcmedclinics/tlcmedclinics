@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { testimonials } from "@/data/site";
+import { useLanguage, useT } from "@/contexts/LanguageContext";
+import { pick } from "@/lib/bilingual";
 
 /**
  * Patient reviews, one at a time.
@@ -31,6 +33,8 @@ function Stars() {
 const INTERVAL_MS = 7000;
 
 export default function Testimonials() {
+  const { locale } = useLanguage();
+  const t = useT();
   const count = testimonials.length;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -80,8 +84,8 @@ export default function Testimonials() {
         onBlurCapture={() => setPaused(false)}
       >
         <div className="text-center">
-          <p className="eyebrow text-crimson">Patient reviews</p>
-          <h2 className="mt-3 h1 sm:text-4xl">What patients say</h2>
+          <p className="eyebrow text-crimson">{t("home.reviews.eyebrow")}</p>
+          <h2 className="mt-3 h1 sm:text-4xl">{t("home.reviews.title")}</h2>
         </div>
 
         {/* aria-live announces the change to a screen reader when it happens on
@@ -98,12 +102,12 @@ export default function Testimonials() {
             </div>
 
             <blockquote className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-paper/95 sm:text-xl">
-              &ldquo;{current.quote}&rdquo;
+              &ldquo;{pick(locale, current.quote, current.quoteUr)}&rdquo;
             </blockquote>
 
             <figcaption className="mt-6 text-sm text-paper/60">
               <span className="font-medium text-paper/85">{current.name}</span>
-              {current.role ? ` · ${current.role}` : ""}
+              {current.role ? ` · ${pick(locale, current.role, current.roleUr)}` : ""}
             </figcaption>
           </figure>
         </div>
@@ -112,7 +116,7 @@ export default function Testimonials() {
           <button
             type="button"
             onClick={() => go(-1)}
-            aria-label="Previous review"
+            aria-label={t("home.reviews.prev")}
             className="rounded-full border border-paper/25 p-2.5 text-paper/80 transition-colors hover:border-paper/60 hover:text-paper"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
@@ -121,12 +125,12 @@ export default function Testimonials() {
           </button>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {testimonials.map((t, i) => (
+            {testimonials.map((review, i) => (
               <button
-                key={`${t.name}-${i}`}
+                key={`${review.name}-${i}`}
                 type="button"
                 onClick={() => setIndex(i)}
-                aria-label={`Review ${i + 1} of ${count}`}
+                aria-label={t("home.reviews.nth", { n: i + 1, total: count })}
                 aria-current={i === index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   i === index ? "w-5 bg-paper" : "w-1.5 bg-paper/35 hover:bg-paper/60"
@@ -138,7 +142,7 @@ export default function Testimonials() {
           <button
             type="button"
             onClick={() => go(1)}
-            aria-label="Next review"
+            aria-label={t("home.reviews.next")}
             className="rounded-full border border-paper/25 p-2.5 text-paper/80 transition-colors hover:border-paper/60 hover:text-paper"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">

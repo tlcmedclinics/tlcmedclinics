@@ -9,5 +9,5 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function Page() {
-  return <ContentIndex group="telemedicine" intro={"See a doctor from home. What telemedicine is, why patients use it, and exactly how an online consultation runs."} />;
+  return <ContentIndex group="telemedicine" introKey="content.intro.telemedicine" />;
 }

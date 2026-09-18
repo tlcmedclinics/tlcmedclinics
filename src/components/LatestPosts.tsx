@@ -4,6 +4,8 @@ import { adminDb } from "@/lib/firebase/admin";
 import Reveal from "@/components/Reveal";
 import VitalsLine from "@/components/VitalsLine";
 import { ArrowRightIcon } from "@/components/Icons";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import type { BlogPost } from "@/types";
 
 /**
@@ -52,15 +54,19 @@ export default async function LatestPosts() {
       <div className="mx-auto max-w-6xl px-6 py-20">
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
-            <p className="eyebrow text-indigo">Health &amp; wellness</p>
-            <h2 className="mt-3 h1 sm:text-4xl">From the clinic</h2>
+            <p className="eyebrow text-indigo">
+              <T k="home.posts.eyebrow" />
+            </p>
+            <h2 className="mt-3 h1 sm:text-4xl">
+              <T k="home.posts.title" />
+            </h2>
             <VitalsLine className="mt-5 h-3 w-32" color="var(--crimson)" />
           </div>
           <Link
             href="/blog"
             className="group hidden shrink-0 items-center gap-1.5 text-sm font-medium text-indigo hover:text-indigo-deep sm:flex"
           >
-            View all posts
+            <T k="home.posts.viewAll" />
             <ArrowRightIcon className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
         </div>
@@ -93,10 +99,10 @@ export default async function LatestPosts() {
 
                 <div className="flex flex-1 flex-col p-5">
                   <h3 className="h4 text-ink transition-colors group-hover:text-indigo-deep">
-                    {post.title}
+                    <Bilingual en={post.title} ur={post.titleUr} />
                   </h3>
                   <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-ink-soft">
-                    {post.excerpt}
+                    <Bilingual en={post.excerpt} ur={post.excerptUr} />
                   </p>
                   <time
                     dateTime={post.createdAt}
@@ -114,7 +120,7 @@ export default async function LatestPosts() {
           href="/blog"
           className="mt-10 inline-block text-sm font-medium text-indigo hover:text-indigo-deep sm:hidden"
         >
-          View all posts →
+          <T k="home.posts.viewAll" /> →
         </Link>
       </div>
     </section>

@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/data/site";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { pick } from "@/lib/bilingual";
 
 /**
  * The clinic's headline numbers, counting up as they come into view.
@@ -92,6 +94,7 @@ function Stat({ value, label, start }: { value: string; label: string; start: bo
 }
 
 export default function StatsBand() {
+  const { locale } = useLanguage();
   const ref = useRef<HTMLDivElement | null>(null);
   const [start, setStart] = useState(false);
 
@@ -119,7 +122,12 @@ export default function StatsBand() {
         className="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-6 py-14 sm:grid-cols-4"
       >
         {site.stats.map((stat) => (
-          <Stat key={stat.label} value={stat.value} label={stat.label} start={start} />
+          <Stat
+            key={stat.label}
+            value={stat.value}
+            label={pick(locale, stat.label, stat.labelUr)}
+            start={start}
+          />
         ))}
       </div>
     </section>

@@ -123,6 +123,44 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // ── Security headers, everywhere ──────────────────────────────
+        //
+        // The site had none. For a clinic that takes card payments and shows
+        // medical records in a browser, three of these do real work:
+        //
+        //   · X-Frame-Options stops the booking and payment pages being
+        //     loaded inside somebody else's invisible iframe and clicked
+        //     through by a patient who thinks they are on another site.
+        //     Clickjacking on a "Confirm and pay" button is not theoretical.
+        //   · Strict-Transport-Security means a patient who types
+        //     tlcmedclinics.com on clinic wifi is never served the first
+        //     request over plain http, where it can be rewritten.
+        //   · Referrer-Policy stops the full URL of a page — which can carry
+        //     an appointment id — being sent to every third-party asset.
+        //
+        // No Content-Security-Policy here on purpose. A CSP for this site has
+        // to allow Firebase, Cloudinary, Daily.co, Safepay and Google Fonts,
+        // and a wrong one breaks payments silently in a way that is hard to
+        // notice from a dashboard. It is worth doing, in report-only mode
+        // first, as its own piece of work.
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          {
+            key: "Permissions-Policy",
+            // The video consultation needs camera and microphone; nothing
+            // else on this site does, and no third-party frame should.
+            value: "camera=(self), microphone=(self), geolocation=(), payment=()",
+          },
+          {
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
+          },
+        ],
+      },
+      {
         // Everything except the API and the hashed build output.
         source: "/((?!api/|_next/static/|_next/image).*)",
         headers: [

@@ -9,5 +9,5 @@ export const metadata: Metadata = pageMetadata({
 });
 
 export default function Page() {
-  return <ContentIndex group="conditions" intro={"The mental health and skin conditions we treat — what they are, how they are diagnosed, and what can be done about them."} />;
+  return <ContentIndex group="conditions" introKey="content.intro.conditions" />;
 }

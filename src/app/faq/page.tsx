@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import JsonLd from "@/components/JsonLd";
 import Reveal from "@/components/Reveal";
+import { T } from "@/components/T";
+import { Bilingual } from "@/components/Bilingual";
 import { breadcrumbSchema, faqSchema, pageMetadata } from "@/lib/seo";
 import { faqs } from "@/data/site";
 
@@ -37,10 +39,10 @@ export default function FaqPage() {
       <section className="border-b border-line bg-indigo-deep py-14 text-paper">
         <div className="mx-auto max-w-6xl px-6">
           <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl">
-            FAQ &amp; Answers
+            <T k="faq.title" />
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-paper/80">
-            The questions patients ask most often, before a first appointment and after.
+            <T k="faq.lede" />
           </p>
         </div>
       </section>
@@ -51,7 +53,7 @@ export default function FaqPage() {
             <Reveal key={faq.question} delay={Math.min(i, 6) * 60}>
               <details className="group rounded-2xl border border-line/70 bg-paper-dim/40 px-5 py-4">
                 <summary className="flex cursor-pointer list-none items-start justify-between gap-4 font-medium text-ink">
-                  {faq.question}
+                  <Bilingual en={faq.question} ur={faq.questionUr} />
                   <span
                     aria-hidden
                     className="mt-0.5 shrink-0 text-indigo transition-transform group-open:rotate-45"
@@ -59,19 +61,23 @@ export default function FaqPage() {
                     +
                   </span>
                 </summary>
-                <p className="mt-3 text-sm leading-relaxed text-ink-soft">{faq.answer}</p>
+                <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                  <Bilingual en={faq.answer} ur={faq.answerUr} />
+                </p>
               </details>
             </Reveal>
           ))}
         </div>
 
         <Reveal className="mt-12 rounded-2xl border border-line bg-paper-dim/50 p-6 text-center">
-          <p className="font-medium text-ink">Didn&apos;t find your answer?</p>
+          <p className="font-medium text-ink">
+            <T k="faq.noAnswer.title" />
+          </p>
           <p className="mt-2 text-sm text-ink-soft">
-            Call the clinic, or book a consultation and ask the doctor directly.
+            <T k="faq.noAnswer.body" />
           </p>
           <Link href="/contact" className="btn-indigo btn-sm mt-4 inline-block">
-            Contact us
+            <T k="nav.contact" />
           </Link>
         </Reveal>
       </div>

@@ -4,7 +4,8 @@ import type { CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { footerColumns, site } from "@/data/site";
-import { useT } from "@/contexts/LanguageContext";
+import { useLanguage, useT } from "@/contexts/LanguageContext";
+import { pick } from "@/lib/bilingual";
 import { images } from "@/data/images";
 import { ClockIcon, MailIcon, MapPinIcon, PhoneIcon, socialIcons } from "@/components/Icons";
 
@@ -37,6 +38,7 @@ const SOCIAL_BUTTON: CSSProperties = { height: "2.25rem", width: "2.25rem" };
 
 export default function Footer() {
   const t = useT();
+  const { locale } = useLanguage();
 
   return (
     <footer className="mt-24 border-t border-line/70 bg-indigo-deep text-paper/90">
@@ -66,12 +68,12 @@ export default function Footer() {
               </span>
             </div>
 
-            <p className="mt-3 max-w-xs text-sm text-paper/65">{site.tagline}</p>
+            <p className="mt-3 max-w-xs text-sm text-paper/65">{pick(locale, site.tagline, site.taglineUr)}</p>
 
             <ul className="mt-6 space-y-3 text-sm">
               <li className="flex gap-2.5">
                 <MapPinIcon className="mt-0.5 h-4 w-4 shrink-0 text-paper/50" />
-                <span className="text-paper/75">{site.address}</span>
+                <span className="text-paper/75">{pick(locale, site.address, site.addressUr)}</span>
               </li>
               <li className="flex gap-2.5">
                 <PhoneIcon className="mt-0.5 h-4 w-4 shrink-0 text-paper/50" />
@@ -98,7 +100,8 @@ export default function Footer() {
                 <span className="text-paper/75">
                   {site.hours.map((h) => (
                     <span key={h.label} className="block">
-                      {h.label} · <span className="numeric">{h.value}</span>
+                      {pick(locale, h.label, h.labelUr)} ·{" "}
+                      <span className="numeric">{pick(locale, h.value, h.valueUr)}</span>
                     </span>
                   ))}
                 </span>
@@ -144,7 +147,9 @@ export default function Footer() {
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {footerColumns.map((column) => (
               <div key={column.heading}>
-                <p className="eyebrow text-paper/45">{column.heading}</p>
+                <p className="eyebrow text-paper/45">
+                  {pick(locale, column.heading, column.headingUr)}
+                </p>
                 <ul className="mt-3.5 space-y-2 text-sm">
                   {column.links.map((link) => (
                     <li key={link.href}>
@@ -152,7 +157,7 @@ export default function Footer() {
                         href={link.href}
                         className="text-paper/70 transition-colors hover:text-paper"
                       >
-                        {link.label}
+                        {pick(locale, link.label, link.labelUr)}
                       </Link>
                     </li>
                   ))}
